@@ -126,7 +126,8 @@ export class Runtime {
 
   // ---- internals ----------------------------------------------------------
 
-  private ref<T>(id: CellId): CellRef<T> {
+  /** typed handle for a registered cell — used to wire deps and read values */
+  ref<T>(id: CellId): CellRef<T> {
     const rt = this
     return {
       id,

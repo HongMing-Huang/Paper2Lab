@@ -54,7 +54,7 @@ describe('Runtime', () => {
   it('async cells keep the last value while stale, debounce bursts, and discard superseded results', async () => {
     const rt = new Runtime()
     const a = rt.param('a', 1)
-    let resolveFn: ((v: number) => void) | null = null
+    const slow = { resolve: null as null | ((v: number) => void) }
     const runs: number[] = []
     rt.asyncDerive<number>(
       'slow',
@@ -64,7 +64,7 @@ describe('Runtime', () => {
           runs.push(v as number)
           if ((v as number) === 3) {
             // slow run for the superseded case
-            resolveFn = resolve
+            slow.resolve = resolve
           } else {
             setTimeout(() => resolve(v as number), 0)
           }
@@ -86,7 +86,7 @@ describe('Runtime', () => {
     await new Promise((r) => setTimeout(r, 30))
     expect(runs).toEqual([1, 4]) // 2 debounced away, 3 superseded before its fn even started? (3 may start: it was trailing once)
     // commit of the superseded generation must be discarded
-    resolveFn?.(999)
+    slow.resolve?.(999)
     await new Promise((r) => setTimeout(r, 10))
     expect(rt.get('slow').value).toBe(4)
     expect(rt.get('slow').stale).toBe(false)
@@ -106,7 +106,7 @@ describe('Runtime', () => {
 
   it('notifies subscribers on commits and stale transitions', () => {
     const rt = new Runtime()
-    const a = rt.param('a', 1)
+    rt.param('a', 1)
     const events: string[] = []
     rt.subscribe('a', () => events.push(`v${rt.get('a').version}`))
     rt.setParam('a', 2)

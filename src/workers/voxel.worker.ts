@@ -1,5 +1,5 @@
 // Finite-scale voxel coverage in a Web Worker so the desk stays at 60fps.
-import { computeVoxelCoverage, type VoxelResult } from '../kakeya/voxels3d'
+import { computeVoxelCoverage } from '../kakeya/voxels3d'
 import type { Tube3 } from '../kakeya/tubes'
 
 interface VoxelRequest {
