@@ -1,0 +1,36 @@
+/* Paper2Lab desk & paper visual system — see AGENTS.md §视觉规范 */
+:root {
+  --paper: #faf6ee;        /* 暖白纸面 */
+  --paper-deep: #f2ecdf;   /* 深一档纸 */
+  --ink: #2b2620;          /* 墨色文字 */
+  --ink-soft: #6b6154;     /* 次级文字 */
+  --rule: #d9d0bf;         /* 细分隔线 */
+  --dot: #d8cfc0;          /* 点阵 */
+  --accent: #9a3b2e;       /* 朱砂红（标注/高亮） */
+  --accent-blue: #2f5d8a;  /* 蓝墨（计算/图表） */
+  --card-shadow: 0 1px 2px rgba(43, 38, 32, 0.08), 0 6px 18px rgba(43, 38, 32, 0.07);
+}
+
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Songti SC", Georgia, serif;
+}
+
+.app-boot { padding: 4rem; }
+
+/* 论文卡片通用样式 */
+.sheet {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: var(--card-shadow);
+  padding: 10px 12px;
+}
+.sheet-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
