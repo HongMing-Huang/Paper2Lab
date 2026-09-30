@@ -1,7 +1,7 @@
 // Observable Plot figures — throw-away-and-recreate pattern (official recipe).
 import { useEffect } from 'react'
 import * as Plot from '@observablehq/plot'
-import type { HistRow } from '../../kakeya/metrics'
+import type { HistRow, CurvePoint } from '../../kakeya/metrics'
 import { useContainerWidth } from '../useContainerWidth'
 
 /** multiplicity histogram — how many voxels are covered exactly m times */
@@ -51,12 +51,6 @@ export function MultiplicityChart({
     }
   }, [rows, width, stale, height, ref])
   return <div ref={ref} className="chart-frame" />
-}
-
-export interface CurvePoint {
-  x: number
-  y: number
-  series: string
 }
 
 /** |⋃T| curve vs N (or δ) — live sweep + precomputed series comparison */

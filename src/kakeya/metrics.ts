@@ -20,3 +20,10 @@ export function unionEfficiency(result: VoxelResult): number {
 
 export const fmt = (v: number, digits = 4) => v.toFixed(digits)
 export const fmtPct = (v: number, digits = 1) => `${(100 * v).toFixed(digits)}%`
+
+/** a point on the |⋃T| sweep curve (live or precomputed series) */
+export interface CurvePoint {
+  x: number
+  y: number
+  series: string
+}

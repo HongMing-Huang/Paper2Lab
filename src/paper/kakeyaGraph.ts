@@ -56,3 +56,43 @@ export const perronCell = kakeya.derive<PerronResult>(
   [pPerronK, pPerronAlpha],
   ([k, alpha]) => perronTree(k as number, alpha as number, 800),
 )
+
+// ---- |⋃T| sweep vs N at current δ/packing (live, coarse grid) --------------
+import type { CurvePoint } from '../kakeya/metrics'
+
+export const SWEEP_NS = [16, 32, 64, 96, 128, 192]
+
+export const sweepCell = kakeya.asyncDerive<CurvePoint[]>(
+  'kakeya.sweep',
+  [deltaCell, pPacking],
+  async ([delta, packing]) => {
+    const points: CurvePoint[] = []
+    for (const n of SWEEP_NS) {
+      const tubes = makeTubes(fibonacciDirections(n), delta as number, packing as number)
+      const r = await computeVoxelsSync(tubes, 40, 0)
+      points.push({ x: n, y: r.occupiedVolume, series: 'live（本页计算）' })
+    }
+    return points
+  },
+  { debounceMs: 260 },
+)
+
+// ---- desk coordination params (event-bus style; nonce objects) -------------
+export interface FocusRequest {
+  nodeId: string
+  nonce: number
+}
+export const pFocusNode = kakeya.param<FocusRequest | null>('desk.focusNode', null)
+
+export interface PaperAnchorRequest {
+  page: number
+  needle: string
+  nonce: number
+}
+export const pPaperAnchor = kakeya.param<PaperAnchorRequest | null>('paper.anchor', null)
+
+/** ask the desk to focus a node (optionally after setting a paper anchor) */
+export function focusPaperAnchor(page: number, needle: string) {
+  kakeya.setParam(pPaperAnchor.id, { page, needle, nonce: Date.now() })
+  kakeya.setParam(pFocusNode.id, { nodeId: 'paper-main', nonce: Date.now() })
+}

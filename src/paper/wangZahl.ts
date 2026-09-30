@@ -42,7 +42,7 @@ export const THEOREMS: TheoremItem[] = [
     commentary:
       '本文主定理：R³ 中任何 Kakeya 集（含每个方向单位线段的紧集）的 Minkowski 维数与 Hausdorff 维数都是 3。Davies (1971) 证明了 n=2 情形；三维情形自 Besicovitch (1919) 以来悬置逾百年。',
     tex: '\\dim_H K \\;=\\; \\dim_M K \\;=\\; 3',
-    anchor: { page: 1, needle: 'Every Kakeya set in R' },
+    anchor: { page: 3, needle: 'Every Kakeya set in R' },
   },
   {
     id: 'thm-1.2',
@@ -54,7 +54,7 @@ export const THEOREMS: TheoremItem[] = [
       '主定理的技术核心：只要管族不聚集（Wolff 公理），并集体积就"几乎最大"。Theorem 1.1 是它的推论。本 Demo 的 voxel 实验即在有限尺度验证这种现象。',
     tex:
       '\\left|\\bigcup_{T\\in\\mathbb{T}} Y(T)\\right| \\;\\geq\\; \\delta^{\\varepsilon}\\,\\lambda^{K}\\!\\sum_{T\\in\\mathbb{T}} |T|',
-    anchor: { page: 1, needle: 'rectangular prism of dimensions' },
+    anchor: { page: 3, needle: 'rectangular prism of dimensions' },
   },
   {
     id: 'def-kakeya-set',
@@ -63,7 +63,7 @@ export const THEOREMS: TheoremItem[] = [
     quote:
       'A Kakeya set is a compact subset of Rⁿ that contains a unit line segment pointing in every direction.',
     commentary: '等价说法：对所有方向 θ ∈ S²，∃ 长度 1 的线段 ℓ ∥ θ 且 ℓ ⊂ K。',
-    anchor: { page: 1, needle: 'unit line segment pointing in every direction' },
+    anchor: { page: 3, needle: 'unit line segment pointing in every direction' },
   },
   {
     id: 'def-delta-tube',
@@ -74,7 +74,7 @@ export const THEOREMS: TheoremItem[] = [
     commentary:
       '单管的体积 |T| ≈ δ²（单位长 × 半径 δ 的管）。本 Demo 用胶囊几何（πδ²·1 + ⅔πδ³）做标定，见 CALCULATED 公式卡。',
     tex: '|T| \\sim \\delta^{2}',
-    anchor: { page: 1, needle: 'neighbourhoods of unit line segments' },
+    anchor: { page: 3, needle: 'neighbourhoods of unit line segments' },
   },
   {
     id: 'def-wolff-axioms',
@@ -84,7 +84,7 @@ export const THEOREMS: TheoremItem[] = [
       'The hypothesis that each a × b × 2 rectangular prism contains at most 100abδ⁻² tubes from 𝕋 is a type of non-clustering condition. A close variant of this hypothesis was first introduced by Wolff, and sets of tubes that satisfy this hypothesis are said to satisfy the Wolff axioms.',
     commentary:
       '方向 δ-分离 ⟹ Wolff 公理成立（论文原注）。"Separated→Packed" 滑杆移动的是管的中点而非方向：方向始终 Fibonacci 球面 δ-分离，packing 只演示"聚集使并集变小、但定理限制其变小程度"。',
-    anchor: { page: 1, needle: 'said to satisfy the Wolff axioms' },
+    anchor: { page: 3, needle: 'said to satisfy the Wolff axioms' },
   },
 ]
 
@@ -155,7 +155,7 @@ export const CONCEPTS: ConceptItem[] = [
     title: 'Sticky Kakeya（粘性构型）',
     body: '"Sticky" 指所有 δ-tube 都穿过同一个粗点（δ-ball）的构型——它是 Kakeya 问题的极值候选，由 Wang–Zahl 在更早的两篇文章（跟随 Katz–Tao 纲领）解决。本 Demo 的 packing=1 就渲染 sticky 构型：所有管过立方体中心。',
     provenance: 'PAPER',
-    anchor: { page: 1, needle: 'sticky' },
+    anchor: { page: 3, needle: 'sticky' },
   },
   {
     id: 'c-perron',

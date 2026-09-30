@@ -19,9 +19,10 @@ function getDoc(url: string) {
 }
 
 interface PageText {
-  /** items joined by single spaces */
+  /** whitespace-collapsed text (single spaces) */
   joined: string
-  items: { text: string; start: number }[]
+  /** nmap[k] = index of the text item owning character k of `joined` */
+  nmap: number[]
   raw: Array<{ transform?: number[]; width?: number; height?: number }>
 }
 const textCache = new Map<string, PageText>()
@@ -32,18 +33,42 @@ async function getPageText(doc: PDFDocumentProxy, url: string, pageNo: number): 
   if (cached) return cached
   const page = await doc.getPage(pageNo)
   const content = await page.getTextContent()
-  const items: PageText['items'] = []
-  const raw: PageText['raw'] = []
-  let joined = ''
-  for (const item of content.items) {
-    const str = (item as { str?: string }).str ?? ''
-    const normStr = str.replace(/\s+/g, ' ')
-    if (items.length > 0) joined += ' '
-    items.push({ text: normStr, start: joined.length })
-    joined += normStr
-    raw.push(item as PageText['raw'][number])
+  // concatenate item strings, then collapse whitespace runs while keeping a
+  // per-character -> item index map (PDF items split arbitrarily, incl. math;
+  // multiple spaces appear between items, e.g. "in   R 3")
+  let raw = ''
+  const map: number[] = []
+  const rawItems: PageText['raw'] = []
+  for (let i = 0; i < content.items.length; i++) {
+    rawItems.push(content.items[i] as PageText['raw'][number])
+    const str = (content.items[i] as { str?: string }).str ?? ''
+    for (const ch of str) {
+      raw += ch
+      map.push(i)
+    }
+    if (i < content.items.length - 1 && raw.length > 0 && !/\s$/.test(raw)) {
+      raw += ' '
+      map.push(i)
+    }
   }
-  cached = { joined, items, raw }
+  let joined = ''
+  const nmap: number[] = []
+  let lastWasSpace = true
+  for (let k = 0; k < raw.length; k++) {
+    const ch = raw[k]
+    if (/\s/.test(ch)) {
+      if (!lastWasSpace) {
+        joined += ' '
+        nmap.push(map[k])
+        lastWasSpace = true
+      }
+    } else {
+      joined += ch
+      nmap.push(map[k])
+      lastWasSpace = false
+    }
+  }
+  cached = { joined, nmap, raw: rawItems }
   textCache.set(key, cached)
   return cached
 }
@@ -73,7 +98,6 @@ export function PaperPageView({
   onAnchorFound?: (found: boolean) => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const wrapRef = useRef<HTMLDivElement>(null)
   const [pageHeight, setPageHeight] = useState(0)
   const [rects, setRects] = useState<AnchorRect[]>([])
 
@@ -100,40 +124,38 @@ export function PaperPageView({
         await page.render({ canvasContext: ctx, viewport }).promise
         if (cancelled) return
 
-        if (highlightNeedle) {
-          const pt = await getPageText(doc, url, pageNo)
-          if (cancelled) return
-          const needle = norm(highlightNeedle)
-          const at = pt.joined.indexOf(needle)
-          if (at < 0) {
-            setRects([])
-            onAnchorFound?.(false)
-            return
-          }
-          const matchEnd = at + needle.length
-          const hitRects: AnchorRect[] = []
-          for (let iIdx = 0; iIdx < pt.items.length; iIdx++) {
-            const it = pt.items[iIdx]
-            const end = it.start + it.text.length
-            if (end < at || it.start > matchEnd) continue
-            const rawItem = pt.raw[iIdx]
-            if (!rawItem.transform) continue
-            const [a, , , , x, y] = rawItem.transform
-            const w = rawItem.width ?? 0
-            const h = rawItem.height ?? Math.abs(a) * 10
-            const [x1, y1, x2, y2] = viewport.convertToViewportRectangle([x, y, x + w, y + h])
-            hitRects.push({
-              left: Math.min(x1, x2),
-              top: Math.min(y1, y2),
-              width: Math.abs(x2 - x1),
-              height: Math.abs(y2 - y1),
-            })
-          }
-          setRects(hitRects)
-          onAnchorFound?.(hitRects.length > 0)
-        } else {
+        if (!highlightNeedle) {
           setRects([])
+          return
         }
+        const needle = norm(highlightNeedle)
+        const pt = await getPageText(doc, url, pageNo)
+        if (cancelled) return
+        const at = pt.joined.indexOf(needle)
+        if (at < 0) {
+          setRects([])
+          onAnchorFound?.(false)
+          return
+        }
+        const hitItems = new Set<number>()
+        for (let k = at; k < at + needle.length && k < pt.nmap.length; k++) hitItems.add(pt.nmap[k])
+        const hitRects: AnchorRect[] = []
+        for (const iIdx of hitItems) {
+          const rawItem = pt.raw[iIdx]
+          if (!rawItem.transform) continue
+          const [a, , , , x, y] = rawItem.transform
+          const w = rawItem.width ?? 0
+          const h = rawItem.height ?? Math.abs(a) * 10
+          const [x1, y1, x2, y2] = viewport.convertToViewportRectangle([x, y, x + w, y + h])
+          hitRects.push({
+            left: Math.min(x1, x2),
+            top: Math.min(y1, y2),
+            width: Math.abs(x2 - x1),
+            height: Math.abs(y2 - y1),
+          })
+        }
+        setRects(hitRects)
+        onAnchorFound?.(hitRects.length > 0)
       } catch (err) {
         console.error('[PaperPageView]', err)
       }
@@ -145,11 +167,18 @@ export function PaperPageView({
   }, [url, pageNo, widthCss, highlightNeedle])
 
   return (
-    <div ref={wrapRef} className="paper-page nodrag nowheel" style={{ width: widthCss, height: pageHeight || undefined }}>
+    <div className="paper-page nodrag nowheel" style={{ width: widthCss, height: pageHeight || undefined }}>
       <canvas ref={canvasRef} />
       {rects.map((r, i) => (
         <div key={i} className="anchor-highlight" style={r} />
       ))}
     </div>
   )
+}
+
+/** Does `needle` appear on `page` of `url`? (for anchor verification) */
+export async function anchorExists(url: string, page: number, needle: string): Promise<boolean> {
+  const doc = await getDoc(url)
+  const pt = await getPageText(doc, url, page)
+  return pt.joined.indexOf(norm(needle)) >= 0
 }
