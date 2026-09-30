@@ -117,22 +117,27 @@ tests: 与内核同目录 *.test.ts（vitest）
 
 ## 9. 当前完成状态（随进度更新）
 
-- [x] 技术调研（xyflow / marimo / R3F / Plot+MathLive+pdf.js / 论文数学事实 / Perron 树构造）— 结论已写入 §3
+- [x] 技术调研（xyflow / marimo / R3F / Plot+MathLive+pdf.js / 论文数学事实 / Perron 树构造）— 结论在 §3
 - [x] 脚手架 + Git + Linear 项目（Paper2Lab / P-CLI-3，CLI-29..40）
-- [ ] Kakeya 数学内核 + vitest（面积/体积不变量）
-- [ ] Reactive Runtime + vitest
-- [ ] 技术 Spike 页面实测（React Flow × R3F × Plot 组合、Worker、pdf.js 定位）
-- [ ] 无限纸面画布 + 节点体系
-- [ ] 3D δ-tubes 实验 + Worker 联动 + 图表 + 公式 + 论文定位
-- [ ] 提问 → expansion packs 展开
-- [ ] 离线预计算脚本 + 数据
-- [ ] 端到端验收（拖参数 → 全联动 + Console 干净）
+- [x] Kakeya 数学内核 + 22 项 vitest（voxel 体积与解析胶囊值 6% 内标定；Perron 面积单调性）
+- [x] Reactive Runtime（param/derive/asyncDerive + useCell；stale-while-recompute + generation 防乱序）
+- [x] Spike 实测（#spike 路由；RF×R3F×Plot×pdf.js×Worker 组合在浏览器验证后合入产品）
+- [x] 无限纸面画布 + 14 类节点（paper/theorem/formula/concept/source/params/experiment3d/chart×2/perron/observation/whatif/sandbox/runtimeGraph）
+- [x] 3D δ-tubes 实验（InstancedMesh 512 管 + voxel 视图）+ Worker 联动 + 指标卡
+- [x] Perron 2D 实验 + 针旋转动画（RAF + 直接 DOM 写入）
+- [x] Observable Plot 图表（multiplicity 直方图 + |⋃T| sweep 曲线，live + 离线预计算双系列）
+- [x] pdf.js 论文页 + 定位高亮（注意：arXiv PDF 有封面页，定理锚点在 p.3；文本匹配需折叠多空格并维护 per-char→item 映射）
+- [x] 提问 → expansion packs（关键词路由，无聊天框；AI 只解释/What-if）
+- [x] 离线预计算脚本（scripts/precompute-kakeya.ts，Node 原生 strip-types，复用同一内核）
+- [x] 端到端验收：δ/packing 拖动 → 3D+指标+图表+观察联动（Σ|T|≈N·πδ² 与解析吻合；packing=1 时 max m=N）；定位原文高亮；Console 无错误（仅 three 内部 Clock 弃用 warn）
 
-## 10. 下一阶段任务
+## 10. 下一阶段任务（比赛迭代方向）
 
-1. 实现并测试 Kakeya 数学内核（Perron 面积递减、voxel 体积 ≈ 单 tube 解析值校准）。
-2. 实现 Reactive Runtime。
-3. Spike 页面实测组合风险点，然后合入正式产品。
+1. 视觉打磨：卡片入场动画、桌面纹理、minimap 主题化。
+2. Runtime 图可视化升级（DAG 连线图，替代列表）。
+3. 更多 expansion packs（Wolff hairbrush、σ/ω 断言等）与第二个 what-if 实验的参数预置。
+4. 交互 3D：OrbitControls（需处理与节点拖拽的事件冲突）或预设机位切换。
+5. 移动端 / 触控板手势适配。
 
 ---
 

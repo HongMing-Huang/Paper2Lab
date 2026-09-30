@@ -230,7 +230,7 @@ export interface ExpansionPack {
 export const EXPANSION_PACKS: ExpansionPack[] = [
   {
     id: 'x-kakeya-what',
-    keywords: ['kakeya', '什么是', '猜想', 'conjecture', 'kakeya 集', 'kakeya集', '介绍', 'overview'],
+    keywords: ['kakeya 集', 'kakeya集', 'kakeya set', '什么是 kakeya', '猜想', 'conjecture', '介绍', 'overview', '背景'],
     title: 'Kakeya 集与猜想',
     nodes: [
       { kind: 'concept', refId: 'c-history', offset: [0, 0] },
@@ -242,7 +242,7 @@ export const EXPANSION_PACKS: ExpansionPack[] = [
   },
   {
     id: 'x-volume-estimate',
-    keywords: ['体积', 'volume', '估计', 'estimate', 'wolff', '公理', 'axiom', '管', 'tube', '1.2'],
+    keywords: ['体积', 'volume', '估计', 'estimate', 'wolff', '公理', 'axiom', 'tube', '1.2', '管族'],
     title: '体积估计与 Wolff 公理',
     nodes: [
       { kind: 'theorem', refId: 'def-delta-tube', offset: [0, 0] },
@@ -254,7 +254,9 @@ export const EXPANSION_PACKS: ExpansionPack[] = [
   },
   {
     id: 'x-sticky',
-    keywords: ['sticky', '粘', '聚集', 'packed', 'separated', ' separated', '分开', 'packing'],
+    keywords: [
+      'sticky', 'sticky kakeya', '粘性', '粘', '聚集', 'packed', 'separated', 'packing', '过中心', '分开',
+    ],
     title: 'Separated → Packed / Sticky',
     nodes: [
       { kind: 'concept', refId: 'c-sticky', offset: [0, 0] },
@@ -265,7 +267,7 @@ export const EXPANSION_PACKS: ExpansionPack[] = [
   },
   {
     id: 'x-needle-2d',
-    keywords: ['针', 'needle', '二维', '2d', 'perron', '佩龙', 'besicovitch', '旋转'],
+    keywords: ['针', 'needle', '二维', '2d', 'perron', '佩龙', 'besicovitch', '旋转', '转向'],
     title: '二维针旋转与 Perron 树',
     nodes: [
       { kind: 'concept', refId: 'c-perron', offset: [0, 0] },

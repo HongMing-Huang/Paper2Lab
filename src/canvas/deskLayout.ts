@@ -20,12 +20,12 @@ export const initialNodes: Node[] = [
   { id: 'f-dim', type: 'formula', position: { x: 900, y: 560 }, data: { refId: 'f-dim-3' } },
   { id: 'sandbox', type: 'formulaSandbox', position: { x: 900, y: 800 }, data: {} },
 
-  { id: 'params', type: 'params', position: { x: 1290, y: 740 }, data: {} },
+  { id: 'params', type: 'params', position: { x: 1290, y: 800 }, data: {} },
   { id: 'exp-3d', type: 'experiment3d', position: { x: 1290, y: -40 }, data: {} },
-  { id: 'chart-multiplicity', type: 'chartMultiplicity', position: { x: 1290, y: 420 }, data: {} },
+  { id: 'chart-multiplicity', type: 'chartMultiplicity', position: { x: 1290, y: 480 }, data: {} },
   { id: 'chart-union', type: 'chartUnion', position: { x: 1760, y: -40 }, data: {} },
-  { id: 'observation', type: 'observation', position: { x: 1760, y: 420 }, data: {} },
-  { id: 'runtime-graph', type: 'runtimeGraph', position: { x: 1290, y: 1120 }, data: {} },
+  { id: 'observation', type: 'observation', position: { x: 1760, y: 480 }, data: {} },
+  { id: 'runtime-graph', type: 'runtimeGraph', position: { x: 1290, y: 1180 }, data: {} },
 
   { id: 'c-history', type: 'concept', position: { x: 0, y: 700 }, data: { refId: 'c-history' } },
   { id: 'perron-exp', type: 'perron', position: { x: 0, y: 1040 }, data: {} },
@@ -33,7 +33,7 @@ export const initialNodes: Node[] = [
   { id: 'f-perron', type: 'formula', position: { x: 820, y: 1160 }, data: { refId: 'f-perron-bound' } },
   { id: 'whatif-sticky', type: 'whatif', position: { x: 440, y: 1400 }, data: { refId: 'w-go-sticky' } },
   { id: 'whatif-delta', type: 'whatif', position: { x: 800, y: 1400 }, data: { refId: 'w-halve-delta' } },
-  { id: 'source', type: 'source', position: { x: 0, y: 1450 }, data: {} },
+  { id: 'source', type: 'source', position: { x: 0, y: 1720 }, data: {} },
 ]
 
 export const initialEdges: Edge[] = [
