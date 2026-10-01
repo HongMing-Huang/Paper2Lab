@@ -10,7 +10,8 @@
 FROM node:22-slim AS web
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
+# pin pnpm to the version the lockfile was written by (corepack default is newer)
+RUN corepack enable && corepack prepare pnpm@10.30.2 --activate && pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
