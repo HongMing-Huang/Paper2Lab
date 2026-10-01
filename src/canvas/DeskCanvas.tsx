@@ -176,39 +176,27 @@ export function DeskCanvas() {
       if (a.type === 'add-node' && a.node) {
         const node = a.node
         setNodes((cur) => {
-          if (cur.some((n) => n.id === node.id)) {
-            kakeya.setParam('desk.focusNode', { nodeId: node.id, nonce: Date.now() })
-            return cur
-          }
+          if (cur.some((n) => n.id === node.id)) return cur
           const origin = originBelow(cur)
           return [...cur, { ...node, position: node.position.x === 0 && node.position.y === 0 ? origin : node.position }]
         })
       } else if (a.type === 'focus-node' && a.nodeId) {
         kakeya.setParam('desk.focusNode', { nodeId: a.nodeId, nonce: Date.now() })
-      } else if (a.type === 'expand-lab') {
-        setNodes((cur) => {
-          const exists = cur.some((n) => n.id === 'exp-3d')
-          if (exists) {
-            kakeya.setParam('desk.focusNode', { nodeId: 'exp-3d', nonce: Date.now() })
-            return cur
-          }
-          const { nodes: added, edges: addedEdges } = buildLabNodes({ x: -160, y: 680 })
-          setEdges((es) => [...es, ...addedEdges])
-          return [...cur, ...added]
+      } else if (a.type === 'expand-lab' || a.type === 'expand-library') {
+        // pure, idempotent updaters (StrictMode double-invokes reducers; no
+        // setState-inside-updater side effects)
+        const lab = a.type === 'expand-lab'
+        const { nodes: added, edges: addedEdges } = lab
+          ? buildLabNodes({ x: -160, y: 680 })
+          : buildLibraryNodes({ x: -160, y: 1560 })
+        const probeId = lab ? 'exp-3d' : 'paper-main'
+        setNodes((cur) => (cur.some((n) => n.id === probeId) ? cur : [...cur, ...added]))
+        setEdges((cur) => {
+          const ids = new Set(cur.map((e) => e.id))
+          const fresh = addedEdges.filter((e) => !ids.has(e.id))
+          return fresh.length ? [...cur, ...fresh] : cur
         })
-        message('实验已展开到 Lab Canvas（参数就长在实验纸里）')
-      } else if (a.type === 'expand-library') {
-        setNodes((cur) => {
-          const exists = cur.some((n) => n.id === 'paper-main')
-          if (exists) {
-            kakeya.setParam('desk.focusNode', { nodeId: 'paper-main', nonce: Date.now() })
-            return cur
-          }
-          const { nodes: added, edges: addedEdges } = buildLibraryNodes({ x: -160, y: 1560 })
-          setEdges((es) => [...es, ...addedEdges])
-          return [...cur, ...added]
-        })
-        message('研究材料已铺开（定理/公式/概念/来源）')
+        message(lab ? '实验已展开到 Lab Canvas（参数就长在实验纸里）' : '研究材料已铺开（定理/公式/概念/来源）')
       } else if (a.type === 'run-plan' && a.plan) {
         void runPlan(a.plan as ExperimentPlan)
       }

@@ -88,20 +88,21 @@ export function UnionCurveChart({
           y: 'y',
           fill: 'series',
           r: 3,
-          channels: { runId: 'runId' },
+          className: 'sweep-dot',
           tip: true,
         }),
       ],
       style: { color: '#2b2620', fontSize: '11px', background: 'transparent' },
     })
     if (onPointClick) {
-      // Plot figures expose .on(type, channels, listener) at runtime; the TS
-      // return union doesn't carry it, hence the local cast
-      const plotWithOn = fig as unknown as {
-        on: (type: string, channels: unknown, listener: (e: PointerEvent, d: { runId?: string }) => void) => void
-      }
-      plotWithOn.on('pointerdown', { runId: 'runId' }, (event, d) => {
-        if (d?.runId) onPointClick(d.runId, { x: event.clientX, y: event.clientY })
+      // Plot 0.6 has no plot.on(); mark elements carry their datum on __data__,
+      // so we delegate pointerdown on the rendered dots (className-filtered)
+      fig.querySelectorAll('.sweep-dot').forEach((el) => {
+        el.addEventListener('pointerdown', (e: Event) => {
+          const pe = e as PointerEvent
+          const d = (e.currentTarget as SVGElement & { __data__?: CurvePoint }).__data__
+          if (d?.runId) onPointClick(d.runId, { x: pe.clientX, y: pe.clientY })
+        })
       })
     }
     ref.current.replaceChildren(fig)
