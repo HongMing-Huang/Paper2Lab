@@ -1,8 +1,6 @@
-// The infinite research desk: warm paper + faint dots, freely zoomable and
-// pannable; asking a question expands research objects onto the desk instead
-// of opening a chat (interaction contract: experiment > computation >
-// visualization > explanation). P0: selection (shift box), grouping,
-// experiment forks, spatial comparison, evidence trace.
+// v3 desk: starts as the paper (Paper Mode). "展开实验" grows the Lab Canvas;
+// questions run the Skills Agent (structured actions, never prose). All modes
+// share one reactive runtime (AGENTS.md §0–§4).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Background,
@@ -20,12 +18,17 @@ import {
 import { RuntimeProvider, useCell } from '../runtime/react'
 import { kakeya } from '../paper/kakeyaGraph'
 import { deskNodeTypes } from './nodes'
-import { initialEdges, initialNodes } from './deskLayout'
-import { originBelow, packToNodes } from './expansions'
-import { EXPANSION_PACKS, findPack } from '../paper/wangZahl'
-import { deskBus, forkStore, requestAddNode, snapshotCurrentFork, type ForkSnapshot } from '../paper/forks'
-import { runSkill } from '../skills/types'
+import { buildLabNodes, buildLibraryNodes, initialEdges, initialNodes } from './deskLayout'
 import { buildGroup, dissolveGroup } from './grouping'
+import { originBelow } from './expansions'
+import {
+  deskBus,
+  requestAddNode,
+  type ForkSnapshot,
+} from '../paper/forks'
+import { runSkill } from '../skills/types'
+import { agentStore } from '../skills/agentStore'
+import type { ExperimentPlan } from '../skills/planner'
 import '../skills'
 
 kakeya.param('desk.showVoxels', 0)
@@ -44,7 +47,6 @@ function FocusListener() {
   return null
 }
 
-/** group/ungroup toolbar — P0 canvas capability */
 function DeskToolbar({
   message,
   selectMode,
@@ -92,62 +94,14 @@ function DeskToolbar({
   )
 }
 
-function QuestionBar({
-  onExpand,
-  onCompareSticky,
-  message,
-}: {
-  onExpand: (packId: string) => void
-  onCompareSticky: () => void
-  message: (m: string) => void
-}) {
-  const [q, setQ] = useState('')
-  const submit = () => {
-    const pack = findPack(q)
-    if (pack) {
-      onExpand(pack.id)
-      message(`已在纸面展开：${pack.title}`)
-    } else if (q.trim()) {
-      onCompareSticky()
-      message('暂无该主题的展开包；已为你运行 separated vs sticky 对比实验')
-    } else {
-      onCompareSticky()
-    }
-    setTimeout(() => message(''), 3200)
+/** wait for a cell to settle (resolved), bounded */
+async function awaitSettled(cellId: string, timeoutMs = 8000): Promise<boolean> {
+  const t0 = Date.now()
+  while (Date.now() - t0 < timeoutMs) {
+    if (kakeya.get(cellId).status === 'resolved') return true
+    await new Promise((r) => setTimeout(r, 120))
   }
-  return (
-    <Panel position="top-center" className="question-panel">
-      <div className="question-bar nodrag nowheel">
-        <span className="question-icon">✎</span>
-        <input
-          name="paper2lab-question"
-          value={q}
-          placeholder="问一个可运行的科研问题 — 优先做实验，而不是给文本…"
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') submit()
-          }}
-        />
-        <button type="button" onClick={submit}>
-          运行/展开
-        </button>
-      </div>
-      <div className="question-chips">
-        {EXPANSION_PACKS.map((p) => (
-          <button key={p.id} type="button" className="chip" onClick={() => onExpand(p.id)}>
-            {p.title}
-          </button>
-        ))}
-        <button type="button" className="chip chip-run" onClick={onCompareSticky}>
-          ⚖️ 对比 separated vs sticky（自动 fork）
-        </button>
-      </div>
-    </Panel>
-  )
-}
-
-function addForkNode(fork: ForkSnapshot, x: number, y: number) {
-  requestAddNode({ id: `forkcard-${fork.id}`, type: 'fork', position: { x, y }, data: { forkId: fork.id } })
+  return kakeya.get(cellId).status === 'resolved'
 }
 
 export function DeskCanvas() {
@@ -156,89 +110,111 @@ export function DeskCanvas() {
   const [note, setNote] = useState<string | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const message = useCallback((m: string) => setNote(m), [])
+  const slotRef = useRef(0) // deterministic placement jitter (not crypto)
 
-  // nodes request canvas actions through the desk bus (no prop drilling)
+  /** the Skills Agent: execute a structured plan; grow the canvas as it runs */
+  const runPlan = useCallback(
+    async (plan: ExperimentPlan) => {
+      agentStore.start(plan)
+      message(`Agent 运行中：${plan.title}`)
+      let forkA: ForkSnapshot | null = null
+      try {
+        for (let i = 0; i < plan.actions.length; i++) {
+          const action = plan.actions[i]
+          agentStore.setStatus(i, 'running')
+          if (action.skill === 'fork_experiment') {
+            forkA = (await runSkill<ForkSnapshot>('fork_experiment', { label: `A · ${String(action.args.label ?? '')}`.replace('A · A', 'A') })) ?? null
+            if (forkA) {
+              const slot = slotRef.current++
+              requestAddNode({ id: `forkcard-${forkA.id}`, type: 'fork', position: { x: 2400, y: 200 + slot * 90 }, data: { forkId: forkA.id } })
+            }
+          } else if (action.skill === 'compare_experiments') {
+            await awaitSettled('kakeya.voxel')
+            const forkB = await runSkill<ForkSnapshot>('fork_experiment', { label: 'B · 变更后' })
+            requestAddNode({ id: `forkcard-${forkB.id}`, type: 'fork', position: { x: 2400, y: 560 }, data: { forkId: forkB.id } })
+            if (forkA?.metrics && forkB.metrics) {
+              await runSkill('compare_experiments', { a: forkA.metrics, b: forkB.metrics })
+              requestAddNode({
+                id: `compare-${forkA.id}-${forkB.id}`,
+                type: 'compare',
+                position: { x: 2760, y: 300 },
+                data: { aId: forkA.id, bId: forkB.id },
+              })
+            }
+          } else if (action.skill === 'explain_result') {
+            await awaitSettled('kakeya.voxel')
+            const m = kakeya.get('kakeya.voxel').value as
+              | { occupiedVolume: number; sumTubeVolume: number; maxMultiplicity: number; avgMultiplicity: number }
+              | undefined
+            if (m) {
+              const out = await runSkill<{ reading: string }>('explain_result', {
+                occupiedVolume: m.occupiedVolume,
+                sumTubeVolume: m.sumTubeVolume,
+                maxMultiplicity: m.maxMultiplicity,
+                avgMultiplicity: m.avgMultiplicity,
+                packing: (kakeya.get('kakeya.packing').value as number) ?? 0,
+                delta: (kakeya.get('kakeya.delta').value as number) ?? 0,
+              })
+              agentStore.finish(out.reading)
+            }
+          } else {
+            await runSkill(action.skill, action.args)
+          }
+          agentStore.setStatus(i, 'done')
+        }
+        message(`Agent 完成：${plan.title}（实验纸与对比卡已生长）`)
+      } catch (err) {
+        message(`Agent 出错：${String((err as Error).message).slice(0, 80)}`)
+        agentStore.finish(null)
+      }
+    },
+    [message],
+  )
+
   useEffect(() => {
     const unsubscribe = deskBus.subscribe((a) => {
       if (a.type === 'add-node' && a.node) {
         const node = a.node
         setNodes((cur) => {
-          const exists = cur.some((n) => n.id === node.id)
-          if (exists) {
+          if (cur.some((n) => n.id === node.id)) {
             kakeya.setParam('desk.focusNode', { nodeId: node.id, nonce: Date.now() })
             return cur
           }
-          // avoid dropping a new node on top of existing cards
           const origin = originBelow(cur)
           return [...cur, { ...node, position: node.position.x === 0 && node.position.y === 0 ? origin : node.position }]
         })
       } else if (a.type === 'focus-node' && a.nodeId) {
         kakeya.setParam('desk.focusNode', { nodeId: a.nodeId, nonce: Date.now() })
+      } else if (a.type === 'expand-lab') {
+        setNodes((cur) => {
+          const exists = cur.some((n) => n.id === 'exp-3d')
+          if (exists) {
+            kakeya.setParam('desk.focusNode', { nodeId: 'exp-3d', nonce: Date.now() })
+            return cur
+          }
+          const { nodes: added, edges: addedEdges } = buildLabNodes({ x: -160, y: 680 })
+          setEdges((es) => [...es, ...addedEdges])
+          return [...cur, ...added]
+        })
+        message('实验已展开到 Lab Canvas（参数就长在实验纸里）')
+      } else if (a.type === 'expand-library') {
+        setNodes((cur) => {
+          const exists = cur.some((n) => n.id === 'paper-main')
+          if (exists) {
+            kakeya.setParam('desk.focusNode', { nodeId: 'paper-main', nonce: Date.now() })
+            return cur
+          }
+          const { nodes: added, edges: addedEdges } = buildLibraryNodes({ x: -160, y: 1560 })
+          setEdges((es) => [...es, ...addedEdges])
+          return [...cur, ...added]
+        })
+        message('研究材料已铺开（定理/公式/概念/来源）')
+      } else if (a.type === 'run-plan' && a.plan) {
+        void runPlan(a.plan as ExperimentPlan)
       }
     })
     return unsubscribe
-  }, [])
-
-  const onExpand = useCallback((packId: string) => {
-    const pack = EXPANSION_PACKS.find((p) => p.id === packId)
-    if (!pack) return
-    setNodes((cur) => {
-      const { nodes: added, edges: addedEdges } = packToNodes(
-        pack,
-        originBelow(cur),
-        new Set(cur.map((n) => n.id)),
-      )
-      if (addedEdges.length) {
-        setEdges((es) => {
-          const ids = new Set(es.map((e) => e.id))
-          const fresh = addedEdges.filter((e) => !ids.has(e.id))
-          return fresh.length ? [...es, ...fresh] : es
-        })
-      }
-      return added.length ? [...cur, ...added] : cur
-    })
-  }, [])
-
-  /** experiment > explanation: auto-fork A, compute B via skill, compare card */
-  const onCompareSticky = useCallback(async () => {
-    const forkA = snapshotCurrentFork('A · 当前参数')
-    forkStore.add(forkA)
-    const deltaExp = (kakeya.get('kakeya.deltaExp').value as number) ?? 4
-    const nTubes = (kakeya.get('kakeya.nTubes').value as number) ?? 96
-    const res = (kakeya.get('kakeya.voxelRes').value as number) ?? 48
-    const delta = 2 ** -deltaExp
-    const sim = await runSkill<{
-      tubeCount: number
-      metrics: { occupiedVolume: number; sumTubeVolume: number; maxMultiplicity: number; avgMultiplicity: number; res: number }
-    }>('simulate.kakeya_tubes', { delta, nTubes, packing: 1, res })
-    const metrics = sim.metrics
-    const forkB: ForkSnapshot = {
-      ...forkA,
-      id: `fork-${Date.now().toString(36)}-b`,
-      label: 'B · packing=1（sticky，技能直接计算）',
-      params: { ...forkA.params, 'kakeya.packing': 1 },
-      metrics: {
-        delta,
-        nTubes,
-        packing: 1,
-        res: metrics.res,
-        occupiedVolume: metrics.occupiedVolume,
-        sumTubeVolume: metrics.sumTubeVolume,
-        maxMultiplicity: metrics.maxMultiplicity,
-        avgMultiplicity: metrics.avgMultiplicity,
-      },
-      synthetic: true,
-    }
-    forkStore.add(forkB)
-    addForkNode(forkA, 2210, 320)
-    addForkNode(forkB, 2210, 700)
-    requestAddNode({
-      id: `compare-${forkA.id}-${forkB.id}`,
-      type: 'compare',
-      position: { x: 2560, y: 320 },
-      data: { aId: forkA.id, bId: forkB.id },
-    })
-  }, [])
+  }, [runPlan, message])
 
   return (
     <RuntimeProvider runtime={kakeya}>
@@ -252,20 +228,14 @@ export function DeskCanvas() {
           minZoom={0.12}
           maxZoom={4}
           fitView
-          fitViewOptions={{ padding: 0.1, maxZoom: 0.85 }}
+          fitViewOptions={{ padding: 0.16, maxZoom: 0.9 }}
           nodesConnectable={false}
           deleteKeyCode={null}
           multiSelectionKeyCode="Shift"
           panOnDrag={!selectMode}
           selectionOnDrag={selectMode}
         >
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={26}
-            size={1.5}
-            color="#d8cfc0"
-            bgColor="#faf6ee"
-          />
+          <Background variant={BackgroundVariant.Dots} gap={26} size={1.5} color="#d8cfc0" bgColor="#faf6ee" />
           <MiniMap
             pannable
             zoomable
@@ -282,11 +252,14 @@ export function DeskCanvas() {
             selectMode={selectMode}
             onToggleSelectMode={() => {
               setSelectMode((s) => !s)
-              message(selectMode ? '已切回平移模式（拖动=平移画布）' : '框选模式：在空白处拖动框选节点，然后点"成组所选"')
+              message(selectMode ? '已切回平移模式' : '框选模式：空白处拖动框选节点')
             }}
           />
-          <QuestionBar onExpand={onExpand} onCompareSticky={onCompareSticky} message={message} />
-          {note && <Panel position="top-right" className="question-note">{note}</Panel>}
+          {note && (
+            <Panel position="top-right" className="question-note">
+              {note}
+            </Panel>
+          )}
         </ReactFlow>
       </div>
     </RuntimeProvider>

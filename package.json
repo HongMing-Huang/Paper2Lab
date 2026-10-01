@@ -10,13 +10,14 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "precompute": "node scripts/precompute-kakeya.mjs"
+    "precompute": "c++ -std=c++17 -O3 -pthread scripts/precompute_kakeya.cpp -o scripts/precompute_kakeya && ./scripts/precompute_kakeya > src/data/kakeya-precomputed.json"
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",
     "@react-three/drei": "^10.7.0",
     "@react-three/fiber": "^9.8.0",
     "@xyflow/react": "^12.12.0",
+    "comlink": "^4.4.2",
     "mathlive": "^0.110.0",
     "pdfjs-dist": "^4.10.38",
     "react": "^19.2.0",

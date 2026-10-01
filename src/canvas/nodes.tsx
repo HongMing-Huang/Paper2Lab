@@ -1,6 +1,6 @@
 // Research-desk card nodes. Every card states its provenance
 // (PAPER / CALCULATED / AI INFERENCE); numbers come only from runtime cells.
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useCell, useRuntime } from '../runtime/react'
 import {
@@ -39,9 +39,15 @@ import {
   restoreFork,
   requestAddNode,
   snapshotCurrentFork,
+  deskBus,
   type ForkSnapshot,
 } from '../paper/forks'
 import type { VoxelMetrics } from '../kakeya/voxels3d'
+import { ParamChip } from './controls/ParamChip'
+import { MicroscopeOverlay } from './MicroscopeOverlay'
+import { PaperModeNode } from './PaperModeNode'
+import { voxelPreviewCell } from '../paper/kakeyaGraph'
+import { measureFamily } from '../workers/voxelClient'
 
 // ---- shared frame ----------------------------------------------------------
 
@@ -252,32 +258,47 @@ export function ParamsNode() {
 export function Experiment3DNode() {
   const tubes = useCell(tubesCell)
   const vox = useCell(voxelCell)
+  const preview = useCell(voxelPreviewCell)
   const delta = useCell(deltaCell)
   const sep = useCell(minSepCell)
   const showVox = useCell<number>('desk.showVoxels')
+  const [micro, setMicro] = useState(false)
+  const settled = vox.status === 'resolved'
+  const m = settled ? vox.value : preview.value
+  const readNum = (id: string) => () => (kakeya.get(id).value as number) ?? 0
   return (
     <Sheet
-      label="EXPERIMENT · 3D δ-TUBES"
+      label="EXPERIMENT · 3D δ-TUBES（实验纸）"
       stale={vox.stale || tubes.stale}
-      width={420}
+      width={460}
     >
+      <div className="exp-chips nodrag">
+        <ParamChip label="δ" paramId="kakeya.deltaExp" read={readNum('kakeya.deltaExp')} min={3} max={5.5} step={0.25} display={(v) => `2^−${v.toFixed(2)}`} />
+        <ParamChip label="packing" paramId="kakeya.packing" read={readNum('kakeya.packing')} min={0} max={1} step={0.05} />
+        <ParamChip label="N" paramId="kakeya.nTubes" read={readNum('kakeya.nTubes')} min={16} max={256} step={8} digits={0} />
+        <ParamToggle label="" paramId="desk.showVoxels" labels={['tubes', 'voxels']} />
+      </div>
       <div className="exp-subtitle">
         δ = {delta.value?.toFixed(4)} · 方向 = Fibonacci 半球面 · minSep/δ ={' '}
-        {sep.value && delta.value ? (sep.value / delta.value).toFixed(2) : '…'}
+        {sep.value && delta.value ? (sep.value / delta.value).toFixed(2) : '…'} · 抓住管群拖动 = packing
       </div>
-      <Tubes3DView
-        tubes={tubes.value ?? []}
-        visGrid={vox.value?.visGrid}
-        visMaxM={vox.value?.maxMultiplicity}
-        showVoxels={!!showVox.value}
-        height={330}
-      />
-      <div className="metric-row">
-        {vox.value ? (
+      <div onDoubleClick={() => setMicro(true)} title="双击进入 Microscope">
+        <Tubes3DView
+          tubes={tubes.value ?? []}
+          visGrid={vox.value?.visGrid}
+          visMaxM={vox.value?.maxMultiplicity}
+          showVoxels={!!showVox.value}
+          height={330}
+          packingDrag
+        />
+      </div>
+      <div className={`metric-row${settled ? '' : ' is-preview'}`}>
+        {m ? (
           <>
-            |⋃T| = {vox.value.occupiedVolume.toFixed(4)} · Σ|T| = {vox.value.sumTubeVolume.toFixed(4)} ·
-            重叠率 = {((1 - unionEfficiency(vox.value)) * 100).toFixed(1)}% · max m = {vox.value.maxMultiplicity} ·
-            avg m = {vox.value.avgMultiplicity.toFixed(2)}（res³ = {vox.value.res}³ 体素，Worker 计算）
+            |⋃T| = {m.occupiedVolume.toFixed(4)} · Σ|T| = {m.sumTubeVolume.toFixed(4)} ·
+            重叠率 = {((1 - unionEfficiency(m)) * 100).toFixed(1)}% · max m = {m.maxMultiplicity} ·
+            avg m = {m.avgMultiplicity.toFixed(2)}
+            {settled ? `（res³ = ${m.res}³ Worker 精算）` : '（preview res 32³，松手精算）'}
           </>
         ) : (
           '计算中…'
@@ -295,7 +316,7 @@ export function Experiment3DNode() {
             requestAddNode({
               id: `forkcard-${fork.id}`,
               type: 'fork',
-              position: { x: 1760, y: 880 },
+              position: { x: 2400, y: 880 },
               data: { forkId: fork.id },
             })
           }}
@@ -305,11 +326,12 @@ export function Experiment3DNode() {
         <button
           type="button"
           className="link-btn"
-          onClick={() => requestAddNode({ id: 'trace-evidence', type: 'trace', position: { x: 2210, y: -40 }, data: {} })}
+          onClick={() => requestAddNode({ id: 'trace-evidence', type: 'trace', position: { x: 2860, y: -40 }, data: {} })}
         >
           ⤳ 证据链
         </button>
       </div>
+      {micro && <MicroscopeOverlay onClose={() => setMicro(false)} />}
     </Sheet>
   )
 }
@@ -334,6 +356,30 @@ export function ChartUnionNode() {
   const sweep = useCell(sweepCell)
   const deltaExp = useCell<number>(pDeltaExp)
   const packing = useCell<number>(pPacking)
+  const forks = useForks()
+  const [forkPoints, setForkPoints] = useState<CurvePoint[]>([])
+  const forkKey = forks.map((f) => `${f.id}:${f.metrics?.occupiedVolume ?? 0}`).join('|')
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const out: CurvePoint[] = []
+      for (const f of forks.slice(-3)) {
+        if (!f.metrics) continue
+        for (const n of [16, 32, 64, 96, 128, 192]) {
+          const m = await measureFamily(f.metrics.delta, n, f.metrics.packing, 36)
+          if (cancelled) return
+          out.push({ x: n, y: m.occupiedVolume, series: `fork · ${f.label}`, runId: f.id })
+        }
+      }
+      if (!cancelled) setForkPoints(out)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forkKey])
+
   const live = sweep.value ?? []
   const pre = useMemo<CurvePoint[]>(() => {
     const e = Math.min(5, Math.max(4, Math.round(deltaExp.value ?? 4)))
@@ -341,14 +387,21 @@ export function ChartUnionNode() {
       Math.abs(c - (packing.value ?? 0)) < Math.abs(best - (packing.value ?? 0)) ? c : best, 0)
     return (precomputed.series as Array<Record<string, number>>)
       .filter((r) => r.deltaExp === e && r.packing === p)
-      .map((r) => ({ x: r.n, y: r.occupiedVolume, series: 'precomputed（离线脚本）' }))
+      .map((r) => ({ x: r.n, y: r.occupiedVolume, series: 'precomputed（离线脚本）', runId: 'precomputed' }))
   }, [deltaExp.value, packing.value])
-  const points = [...live, ...pre]
+  const points = [...live.map((p) => ({ ...p, runId: 'main' })), ...pre, ...forkPoints]
+
+  const onPointClick = useCallback((runId: string) => {
+    if (runId === 'main') deskBus.emit({ type: 'focus-node', nodeId: 'exp-3d' })
+    else if (runId === 'precomputed') deskBus.emit({ type: 'focus-node', nodeId: 'chart-union' })
+    else deskBus.emit({ type: 'focus-node', nodeId: `forkcard-${runId}` })
+  }, [])
+
   return (
-    <Sheet label="CHART · |⋃T| 随 N 增长" badge="CALCULATED" stale={sweep.stale} width={380}>
-      <UnionCurveChart points={points} xLabel="N（管数）" height={210} />
+    <Sheet label="CHART · |⋃T| 随 N 增长（点数据点⇒定位实验）" badge="CALCULATED" stale={sweep.stale} width={400}>
+      <UnionCurveChart points={points} xLabel="N（管数）" height={210} onPointClick={onPointClick} />
       <div className="card-caption">
-        实线=本页 Worker 实时扫描（res 40³）；朱砂点=离线脚本 res 96–128³（scripts/precompute-kakeya.ts，可复现）。
+        实线=本页 Worker 实时扫描；朱砂点=离线预计算；其余=fork 分支曲线。**点击任意数据点 → 画布定位到产生该结果的实验纸**（Data→Experiment）。
       </div>
     </Sheet>
   )
@@ -717,6 +770,7 @@ export function GroupNode({ data }: NodeProps) {
 }
 
 export const deskNodeTypes = {
+  paperMode: PaperModeNode,
   paperPage: PaperPageNode,
   theorem: TheoremNode,
   concept: ConceptNode,

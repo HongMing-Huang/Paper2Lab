@@ -6,6 +6,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Tube3 } from '../../kakeya/tubes'
 import type { VoxelResult } from '../../kakeya/voxels3d'
+import { useRuntime } from '../../runtime/react'
 
 const MAX_TUBES = 512
 const MAX_VOXELS = 32 ** 3
@@ -132,7 +133,8 @@ function TubesScene({
 
 /**
  * Embeddable 3D scene of δ-tubes inside the unit cube.
- * `interactive` adds drag-rotate + wheel-zoom (nodes pass nodrag/nowheel).
+ * `packingDrag` lets the user grab the tube family and drag vertically —
+ * reverse-syncing the packing parameter through the runtime (UI⇄model).
  */
 export function Tubes3DView({
   tubes,
@@ -141,6 +143,7 @@ export function Tubes3DView({
   showVoxels = false,
   spin = 0.25,
   height = 320,
+  packingDrag = false,
 }: {
   tubes: Tube3[]
   visGrid?: VoxelResult['visGrid']
@@ -148,12 +151,35 @@ export function Tubes3DView({
   showVoxels?: boolean
   spin?: number
   height?: number
+  packingDrag?: boolean
 }) {
+  const rt = useRuntime()
+  const dragState = useRef<{ y: number; packing: number } | null>(null)
   return (
     <div
-      className="tubes3d nodrag nowheel"
+      className={`tubes3d nodrag nowheel${packingDrag ? ' grabbable' : ''}`}
       style={{ height }}
-      onPointerDown={(e) => e.stopPropagation()}
+      title={packingDrag ? '在管上上下拖动 = 改变 packing；双击（实验纸）= Microscope' : undefined}
+      onPointerDown={(e) => {
+        e.stopPropagation()
+        if (!packingDrag) return
+        const p = (rt.get('kakeya.packing').value as number) ?? 0
+        dragState.current = { y: e.clientY, packing: p }
+        ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      }}
+      onPointerMove={(e) => {
+        const s = dragState.current
+        if (!s) return
+        const dy = e.clientY - s.y // drag up ⇒ pack
+        const v = Math.min(1, Math.max(0, s.packing - dy / 140))
+        rt.setParam('kakeya.packing', Math.round(v * 20) / 20)
+      }}
+      onPointerUp={() => {
+        dragState.current = null
+      }}
+      onPointerCancel={() => {
+        dragState.current = null
+      }}
     >
       <Canvas
         dpr={[1, 2]}

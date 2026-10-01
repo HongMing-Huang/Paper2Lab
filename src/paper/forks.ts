@@ -115,9 +115,10 @@ export function restoreFork(f: ForkSnapshot) {
 // ---- desk event bus: nodes request canvas actions without prop drilling ----
 
 export interface DeskAction {
-  type: 'add-node' | 'focus-node'
+  type: 'add-node' | 'focus-node' | 'expand-lab' | 'expand-library' | 'run-plan'
   node?: Node
   nodeId?: string
+  plan?: unknown
 }
 
 const actionListeners = new Set<(a: DeskAction) => void>()

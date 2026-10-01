@@ -5,10 +5,11 @@ import { Runtime } from '../runtime/cell'
 import { fibonacciDirections, minAngularSeparation, type Vec3 } from '../kakeya/directions'
 import { makeTubes, type Tube3 } from '../kakeya/tubes'
 import { perronTree, type PerronResult } from '../kakeya/perron'
-import type { VoxelResult } from '../kakeya/voxels3d'
-import { computeVoxels, computeVoxelsSync, isWorkerAvailable } from '../workers/voxelClient'
+import { computeVoxelCoverage, type VoxelMetrics, type VoxelResult } from '../kakeya/voxels3d'
+import { isWorkerAvailable, measureFamily, measureVoxelCover } from '../workers/voxelClient'
 
 export const VIS_RES = 16 // 3D occupancy grid resolution (divides all voxelRes choices)
+export const PREVIEW_RES = 32 // drag-time synchronous preview grid (AGENTS.md §2)
 
 export const kakeya = new Runtime()
 
@@ -38,18 +39,33 @@ export const tubesCell = kakeya.derive<Tube3[]>(
   ([dirs, delta, packing]) => makeTubes(dirs as Vec3[], delta as number, packing as number),
 )
 
-// heavy finite-scale compute — Web Worker, stale-while-recompute
+// drag-time preview: synchronous low-res measurement so numbers move with the
+// pointer (exact result below settles after pointer-up via the Worker)
+export const voxelPreviewCell = kakeya.derive<VoxelMetrics>(
+  'kakeya.voxelPreview',
+  [tubesCell],
+  ([tubes]) => {
+    const { visGrid: _v, ...metrics } = computeVoxelCoverage(tubes as Tube3[], PREVIEW_RES, 0)
+    return metrics
+  },
+)
+
+// exact (CALCULATED) measurement — Comlink RPC into the Web Worker
 export const voxelCell = kakeya.asyncDerive<VoxelResult>(
   'kakeya.voxel',
   [tubesCell, pVoxelRes],
   ([tubes, res]) =>
-    (isWorkerAvailable() ? computeVoxels : computeVoxelsSync)(
+    (isWorkerAvailable() ? measureVoxelCover : computeVoxelsSyncFallback)(
       tubes as Tube3[],
       res as number,
       VIS_RES,
     ),
   { debounceMs: 140 },
 )
+
+async function computeVoxelsSyncFallback(tubes: Tube3[], res: number, visRes: number): Promise<VoxelResult> {
+  return computeVoxelCoverage(tubes, res, visRes)
+}
 
 export const perronCell = kakeya.derive<PerronResult>(
   'perron.tree',
@@ -68,13 +84,20 @@ export const sweepCell = kakeya.asyncDerive<CurvePoint[]>(
   async ([delta, packing]) => {
     const points: CurvePoint[] = []
     for (const n of SWEEP_NS) {
-      const tubes = makeTubes(fibonacciDirections(n), delta as number, packing as number)
-      const r = await computeVoxelsSync(tubes, 40, 0)
+      const r = await measureFamily(delta as number, n, packing as number, 40)
       points.push({ x: n, y: r.occupiedVolume, series: 'live（本页计算）' })
     }
     return points
   },
   { debounceMs: 260 },
+)
+
+// fine-scale tube family for Microscope Mode (same params, δ→δ/4) — derived,
+// never a copy of state (AGENTS.md §1)
+export const fineTubesCell = kakeya.derive<Tube3[]>(
+  'kakeya.fineTubes',
+  [dirsCell, pPacking],
+  ([dirs, packing]) => makeTubes(dirs as Vec3[], 2 ** -6, packing as number, 20250224 + 1),
 )
 
 // ---- desk coordination params (event-bus style; nonce objects) -------------

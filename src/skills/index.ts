@@ -1,7 +1,7 @@
 // The seven skill families, wired to the deterministic kernels.
 // Numbers only ever come from these kernels; `infer` emits AI_INFERENCE text
 // that quotes CALCULATED values and never poses as a theorem.
-import { registerSkill } from './types'
+import { getEvidenceLog, getSkill, registerSkill, runSkill, type SkillDeclaration, type SkillFamily } from './types'
 import { fibonacciDirections, minAngularSeparation } from '../kakeya/directions'
 import { makeTubes, type Tube3 } from '../kakeya/tubes'
 import { computeVoxelCoverage, type VoxelMetrics } from '../kakeya/voxels3d'
@@ -9,8 +9,9 @@ import { perronTree } from '../kakeya/perron'
 import { computeVoxels, isWorkerAvailable } from '../workers/voxelClient'
 import { isPyodideWorkerAvailable, runPythonJson } from '../workers/pyodideClient'
 import { WHATIFS } from '../paper/wangZahl'
-import { kakeya } from '../paper/kakeyaGraph'
-import { getEvidenceLog } from './types'
+import { kakeya, SWEEP_NS, focusPaperAnchor } from '../paper/kakeyaGraph'
+import { measureFamily } from '../workers/voxelClient'
+import { snapshotCurrentFork, forkStore, type ForkSnapshot } from '../paper/forks'
 
 const num = (description: string) => ({ type: 'number' as const, description })
 const str = (description: string) => ({ type: 'string' as const, description })
@@ -403,3 +404,129 @@ registerSkill({
     }
   },
 })
+
+// ---- v3 canonical agent skills（AGENTS.md §4 的 11 个 id） -------------------
+
+/** register an alternate id for an existing skill (canonical naming) */
+function alias(existingId: string, canonicalId: string, familyOverride?: SkillFamily) {
+  const s = getSkill(existingId) as SkillDeclaration
+  registerSkill({
+    ...s,
+    id: canonicalId,
+    family: familyOverride ?? s.family,
+  })
+}
+
+alias('inspect.configuration', 'inspect_source')
+alias('simulate.kakeya_tubes', 'simulate_geometry')
+alias('compare.configurations', 'compare_experiments')
+alias('infer.observation', 'explain_result')
+alias('trace.evidence', 'trace_evidence')
+
+registerSkill({
+  id: 'change_parameter',
+  family: 'simulate',
+  title: '修改参数',
+  description: '通过 Reactive Runtime 修改单一 source-of-truth 参数（自动失效下游）',
+  input_schema: { type: 'object', required: ['param', 'value'], properties: { param: str('参数 id'), value: num('新值') } },
+  output_schema: { type: 'object', properties: { param: str('参数'), value: num('新值'), applied: { type: 'boolean', description: '是否生效' } } },
+  runtime: 'main',
+  evidence_type: 'CALCULATED',
+  dependencies: ['runtime/cell.ts', 'paper/kakeyaGraph.ts'],
+  run: ({ param, value }: { param: string; value: number }) => {
+    kakeya.setParam(param, value)
+    return { param, value, applied: true }
+  },
+})
+
+registerSkill({
+  id: 'fork_experiment',
+  family: 'simulate',
+  title: 'Fork 实验',
+  description: '冻结当前参数 + committed 指标 + cell 版本戳为可恢复分支',
+  input_schema: { type: 'object', properties: { label: str('分支名') } },
+  output_schema: { type: 'object', properties: { forkId: str('分支 id') } },
+  runtime: 'main',
+  evidence_type: 'CALCULATED',
+  dependencies: ['paper/forks.ts'],
+  run: ({ label }: { label?: string }): ForkSnapshot => {
+    const fork = snapshotCurrentFork(label ?? `⑂ ${new Date().toLocaleTimeString('zh-CN', { hour12: false })}`)
+    forkStore.add(fork)
+    return fork
+  },
+})
+
+registerSkill({
+  id: 'measure_volume',
+  family: 'measure',
+  title: '测量并集体积',
+  description: '对给定管族测量 occupied/union 体积（Comlink Worker）',
+  input_schema: { type: 'object', required: ['delta', 'nTubes', 'packing', 'res'], properties: { delta: num('δ'), nTubes: num('N'), packing: num('packing'), res: num('网格') } },
+  output_schema: { type: 'object', properties: { occupiedVolume: num('|⋃T|') } },
+  runtime: 'worker',
+  evidence_type: 'CALCULATED',
+  dependencies: ['workers/voxelClient.ts (Comlink)'],
+  run: (i: { delta: number; nTubes: number; packing: number; res: number }) => measureFamily(i.delta, i.nTubes, i.packing, i.res),
+})
+
+registerSkill({
+  id: 'measure_multiplicity',
+  family: 'measure',
+  title: '测量 multiplicity',
+  description: '每个 voxel 被多少 tube 覆盖（max/avg；直方图见 VoxelMetrics）',
+  input_schema: { type: 'object', required: ['tubes', 'res'], properties: { tubes: { type: 'array', description: 'Tube3[]' }, res: num('网格') } },
+  output_schema: { type: 'object', properties: { maxMultiplicity: num('max m'), avgMultiplicity: num('avg m') } },
+  runtime: 'worker',
+  evidence_type: 'CALCULATED',
+  dependencies: ['kakeya/voxels3d.ts', 'workers/voxelClient.ts'],
+  run: async ({ tubes, res }: { tubes: unknown; res: number }) => {
+    const m = await runSkill<VoxelMetrics>('measure.coverage', { tubes, res })
+    return { maxMultiplicity: m.maxMultiplicity, avgMultiplicity: m.avgMultiplicity, histogram: m.histogram }
+  },
+})
+
+registerSkill({
+  id: 'run_scale_sweep',
+  family: 'simulate',
+  title: '尺度扫描',
+  description: '对多个 N 重复测量，生成 |⋃T|–N scaling 曲线（每个点绑定 runId）',
+  input_schema: { type: 'object', properties: { packing: num('packing（默认当前）'), runId: str('数据点绑定的实验 id') } },
+  output_schema: { type: 'object', properties: { points: { type: 'array', description: '{x,y,series,runId}[]' } } },
+  runtime: 'worker',
+  evidence_type: 'CALCULATED',
+  dependencies: ['workers/voxelClient.ts (Comlink)', 'kakeya/directions.ts'],
+  run: async ({ packing, runId }: { packing?: number; runId?: string }) => {
+    const delta = (kakeya.get('kakeya.delta').value as number) ?? 0.0625
+    const p = packing ?? (kakeya.get('kakeya.packing').value as number) ?? 0
+    const points = []
+    for (const n of SWEEP_NS) {
+      const m = await measureFamily(delta, n, p, 36)
+      points.push({ x: n, y: m.occupiedVolume, series: 'live', runId: runId ?? 'main' })
+    }
+    return { points }
+  },
+})
+
+registerSkill({
+  id: 'open_proof',
+  family: 'inspect',
+  title: '打开论文原文',
+  description: '定位定理/引文在 PDF 中的位置并高亮（Source Drawer）',
+  input_schema: { type: 'object', properties: { theoremId: str('THEORES 条目 id') } },
+  output_schema: { type: 'object', properties: { opened: { type: 'boolean', description: '是否已定位' } } },
+  runtime: 'main',
+  evidence_type: 'PAPER',
+  dependencies: ['paper/wangZahl.ts', 'paper/kakeyaGraph.ts (paper.anchor)'],
+  run: ({ theoremId }: { theoremId?: string }) => {
+    const t = THEOREM_IDS[theoremId ?? 'thm-1.2'] ?? THEOREM_IDS['thm-1.2']
+    focusPaperAnchor(t.page, t.needle)
+    return { opened: true, theoremId: t.id }
+  },
+})
+
+const THEOREM_IDS: Record<string, { id: string; page: number; needle: string }> = {
+  'thm-1.1': { id: 'thm-1.1', page: 3, needle: 'Every Kakeya set in R' },
+  'thm-1.2': { id: 'thm-1.2', page: 3, needle: 'rectangular prism of dimensions' },
+  'def-kakeya-set': { id: 'def-kakeya-set', page: 3, needle: 'unit line segment pointing in every direction' },
+  'def-wolff-axioms': { id: 'def-wolff-axioms', page: 3, needle: 'said to satisfy the Wolff axioms' },
+}

@@ -1,185 +1,94 @@
-# AGENTS.md — Paper2Lab 最高开发约束
+# AGENTS.md — Paper2Lab 最高开发约束（v3）
 
 > 本文件是整个项目的最高开发约束。**每次开发前必须先读本文件**；形成新的长期设计或技术决策后**立即更新本文件**。任何与本文件冲突的临时决定都不允许直接落地，必须先修订本文件。
 
 ---
 
-## 1. 产品目标
+## 0. 产品宪法（v3 重写，防止退化回卡片墙）
 
-Paper2Lab 是一个比赛 Demo：把论文变成**真正可操作的 Reactive Paper**。
+1. **Canvas 是"研究过程的历史"，不是静态知识图谱。**节点因用户的研究动作而生长；禁止一次性铺开十几张静态卡片。
+2. **能转成实验的问题，Agent 必须创建实验，不能只回答文字。**Agent 输出结构化 Action（fork/change_parameter/measure/compare/observe），不是长文本。
+3. **参数必须直接存在于公式和实验纸内部。**禁止独立 Dashboard 参数面板；δ、packing 是公式里可拖动的数字、是 3D 里可抓取的对象。
+4. **科学节点必须 Reactive。**参数单一 source of truth；禁止在 UI 回调里手工同步 3D/图/文字。
+5. **所有计算节点必须声明 Evidence 类型**：PAPER（论文原文）/ CALCULATED（本地确定性程序）/ AI INFERENCE（模型解释）。三者不可混用；AI 不产生数值；有限尺度实验不得表述为"证明了定理"。
+6. **Kakeya P0 闭环**：`manipulate → compute → visualize → observe → fork → compare → trace`。每个环节必须有可演示的交互。
+7. **交互优先级**：experiment > computation > visualization > explanation。
 
-- 论文像一张铺开的真实科研纸张，存在于可自由缩放、拖拽、平移、浏览的**无限画布（科研桌面）**上。
-- 论文里的**公式、参数、图、实验、结论都是活的对象**：用户改变变量（如 δ）后，相关 3D 几何、真实计算结果、图表和解释**同步变化**。
-- **不是**"AI 读论文聊天工具"：用户提问后，AI 不返回聊天回答，而是在纸面上展开 Concept / Theorem / Formula / Experiment / Chart / Observation / Source 等研究对象，并自动形成空间关系。
-- **不是**流程图、Dashboard 或普通白板：没有流程图箭头语言，只有"真实科研纸张 + 无限桌面"。
+## 1. 三层交互模式（共享同一 Runtime，禁止复制状态）
 
-### Hero Demo（第一版，也是兜底方案）
+| 模式 | 形态 | 进入方式 |
+|---|---|---|
+| **Paper Mode** | 一张真实论文：问题、定理、公式、内嵌 Live Experiment；公式里的 δ=0.0625 是可拖动数字 | 初始视图（只有 Question + Theorem + Live Experiment） |
+| **Lab Canvas** | "展开实验"后实验纸脱离纸面进入无限画布：可移动/缩放/Fork/Compare/成组 | 论文中"展开实验"按钮 |
+| **Microscope Mode** | 双击 3D 进入沉浸全屏：尺度 1→ρ→δ 连续 zoom，粗 tube 渐透明、细 tube 展开 | 双击实验纸 3D 区域；Esc 退出回到原实验纸 |
 
-**王虹 & Joshua Zahl《Volume estimates for unions of convex sets, and the Kakeya set conjecture in three dimensions》**（arXiv:2502.17655，2025，证明 R³ Kakeya 集猜想：dim = 3）。本地 PDF：`public/papers/wang-zahl-kakeya3d.pdf`。
+## 2. Reactive Research Runtime（核心）
 
-必须真实实现：
+- 已实现（`src/runtime/`）：param/derive/asyncDerive + useCell；拓扑序失效重算；stale-while-recompute；generation 防乱序；DAG by construction。
+- **v3 新增：节点状态机** `idle → stale → computing → resolved → error`（cell.status），UI 必须可视化：拖动中旧数字淡出（CSS opacity 过渡）、图表随 preview 数据移动、exact 计算完成后新 Observation 才出现。
+- **拖动交互契约（必须）**：drag → 低分辨率 preview 计算（同步、~16³ 网格）→ 3D/数字连续变化；pointer up → 高分辨率 Worker exact 计算 → CALCULATED 正式结果。preview 结果标注 "preview"，exact 才是正式证据。
+- **双向 UI⇄模型**：3D 里抓取 tube 簇移动 → 反向写回 packing 参数（模型更新 UI，UI 也更新模型）。图表点击数据点 → 定位产生它的实验（Data→Experiment）。
 
-| 要素 | 实现方式 |
-|---|---|
-| 2D 针旋转 | Perron 树（2^k 子三角形 + α-平移合并）+ 针动画 + Pál join 说明（PAPER 事实标注） |
-| 3D δ-tubes | React Three Fiber `instancedMesh`，Fibonacci 球面方向，半径随 δ |
-| Separated→Packed | tube 起点（origin）插值动画 + 真实体积指标变化 |
-| δ 参数调整 | Runtime param，单一 source of truth |
-| 有限尺度 cube/voxel 计算 | Web Worker 栅格化覆盖计算（确定性代码） |
-| occupied volume / multiplicity | Worker 输出真实指标 + 直方图 |
-| 随参数实时变化的曲线 | Observable Plot（live sweep + 离线预计算系列） |
-| theorem/source 引用 | 论文原文引用 + pdf.js 定位高亮 |
+## 3. 计算架构（两条路径）
 
-**禁止用 LLM 伪造任何数学结果。**所有数字必须来自确定性代码（见 §5）。
+1. **Kakeya Hero Demo：TypeScript + Web Worker（Comlink RPC 封装）**——最低延迟。Skills：generateDirections / generateTubes / interpolatePacking / measureVoxelCover / measureMultiplicity / measureUnionVolume / runScaleSweep。
+2. **大尺度：离线预计算 `scripts/precompute_kakeya.cpp`**——C++17 `-O3 -pthread`，输出 JSON 记录参数、算法版本、checksum。浏览器小尺度实时、大尺度读预计算（参考 bojieli/kakeya-explainer 的教训：δ=1/1000 达数十亿格子，不可傻算）。
+3. **PythonScientificRuntime（为下一篇论文预留）**：独立 Worker + Comlink + Pyodide（numpy/scipy），接口先行（ensureNumpy/runPython/solveIVP 风格），**不得拖慢 Kakeya Demo**；Kakeya 路径禁止走 Pyodide。
+4. 本地 LLM（web-llm/transformers.js）：非 P0，仅接口调研。
 
-## 2. 视觉规范
+## 4. Scientific Skills Agent
 
-- 背景：暖白纸张 `#faf6ee` + 极淡点阵（React Flow `<Background variant="dots">`，dot `#d8cfc0`）。
-- 卡片 = "贴在桌面上的纸张"：论文剪页、公式纸、实验记录、图表贴纸。浅细边框 `#d9d0bf`、轻微投影、3px 圆角、衬线字体（Iowan Old Style / Palatino / Songti SC）。
-- 墨色文字 `#2b2620`，次级 `#6b6154`；朱砂红 `#9a3b2e` 用于 PAPER 标注与高亮，蓝墨 `#2f5d8a` 用于 CALCULATED/图表。
-- 每张卡片左上角有小标签（CONCEPT / THEOREM / FORMULA / EXPERIMENT / CHART / OBSERVATION / SOURCE / PARAMETER）+ 来源徽章（PAPER / CALCULATED / AI INFERENCE，见 §5）。
-- 边（edges）不是流程图箭头：默认几乎不可见的浅色细虚线，或仅 hover/选中时显示。
-- 交互：无限缩放/平移、节点自由拖放、双击/点击 Source → `fitView` 聚焦论文对应区域。
+统一 Skill Registry（11 个 canonical id）：`inspect_source / change_parameter / fork_experiment / simulate_geometry / measure_volume / measure_multiplicity / run_scale_sweep / compare_experiments / explain_result / trace_evidence / open_proof`。Agent = 问题 → 结构化 Action 列表（本地确定性 planner；LLM 可选替换 planner，不进 P0）。示例："如果方向数减少一半呢？" → fork → change_parameter(nTubes 96→48) → measure → compare with parent → observe。执行后画布自动长出第二张实验纸 + Comparison Paper。
 
-## 2.5 交互契约（Interaction Contract）v2
+## 5. 视觉规范
 
-- 用户动作优先级：**experiment > computation > visualization > explanation**。
-- **可运行的科研问题绝不允许只给文本回答**：每个回答必须伴随可执行实验/计算结果（数字、图表、几何）。
-- 画布是主产品面：节点必须像真实科研纸张（剪页/公式纸/实验记录），不是 workflow 卡片。
-- **P0 画布能力**：pan、zoom、selection（Shift 框选/多选）、**grouping（成组）**、**experiment forks（实验分叉）**、**spatial comparison（空间对比）**。
+- 暖白纸面 `#faf6ee` + 极淡点阵（dot `#d8cfc0`）；衬线字体。
+- 节点=论文页/实验记录纸/图表页/便签，**不是 Workflow Node**：无默认箭头边、无 flowchart 配色；边为注释式细虚线或不可见。
+- 状态可视化：stale=数字淡出+琥珀点、computing=呼吸动画、resolved=新内容淡入。
+- 证据徽章：PAPER（朱砂）/ CALCULATED（蓝墨）/ AI INFERENCE（灰虚线）。
 
-## 2.6 Scientific Skills 注册表（v2 新增）
+## 6. 技术栈与版本（锁定，升级须先 Spike）
 
-所有科研能力必须注册为**显式技能**（`src/skills/`），七族：`inspect / simulate / measure / compare / infer / trace / verify`。每个技能声明：
+react 19.3 / vite 7 / @xyflow/react 12.12 / three 0.186 + fiber 9.8 + drei 10.7 / @observablehq/plot 0.6.17 / mathlive 0.110 / pdfjs-dist 4.10（`?url` worker + convertToViewportRectangle）/ **comlink（新增）** / vitest 3。Pyodide 走 CDN v0.27.7 懒加载进 module worker（npm 打包在 Vite 下 loadPackage 失败——克隆 eqs/pyodide-vite 实证）。R3F 节点内嵌需 `nodrag/nowheel` + `eventPrefix="client"`。
 
-```ts
-interface SkillDeclaration {
-  id: string                    // 如 'measure.coverage'
-  family: 七族之一
-  input_schema: JsonSchemaLike  // { type:'object', properties, required }
-  output_schema: JsonSchemaLike
-  runtime: 'main' | 'worker' | 'pyodide-worker'
-  evidence_type: 'PAPER' | 'CALCULATED' | 'AI_INFERENCE'   // 不可混用
-  dependencies: string[]        // 依赖的内核模块/cell/其他技能
-  run(input): Promise<output>
-}
-```
-
-- 技能通过 `runSkill(id, input)` 调用，每次运行写入 **EvidenceLog**（输入、输出、时间、cell 版本戳），供证据链卡溯源。
-- `infer` 族输出固定为 AI_INFERENCE；`simulate/measure/compare/verify` 固定 CALCULATED；`inspect/trace` 可引用 PAPER 锚点。
-
-## 2.7 本地计算与 Pyodide 政策
-
-- 科研计算优先**本地确定性执行**；耗时计算放 Web Worker。
-- **Pyodide**：调研结论（2026-10-01，gh 搜索 + 克隆 eqs/pyodide-vite 到 ~/Desktop/paper2lab-research/ 实测研究）——npm 打包的 pyodide 在 Vite 下 `loadPackage('numpy')` 因 wheel 完整性校验失败；**采用官方推荐 CDN + indexURL 方式**：专用 module worker 内懒加载 `https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs`。
-- Pyodide 技能是**可选运行时**：离线/加载失败时技能返回 `available: false`（UI 明示），绝不报错阻塞 Demo；数值正确性**永不依赖** Pyodide 或 LLM。
-- 本地 LLM 推理可选，仅用于 `infer` 族的解释文本；无 key 时用确定性模板。
-
-
-## 3. 技术架构
-
-版本基线（2026-10 调研后锁定；升级须先在 Spike 验证并更新此处）：
-
-| 层 | 选型 | 版本 | 理由 |
-|---|---|---|---|
-| 框架 | React + Vite + TS | react 19.2 / vite 7 / ts 5.9 | fiber v9 peer 要求 react ≥19 <19.4 |
-| 画布 | @xyflow/react | ^12.12 | 无限画布事实标准；自定义节点 + nodrag/nowheel + Background dots + fitView 聚焦 |
-| 3D | three + @react-three/fiber + drei | 0.186 / 9.8 / 10.7 | InstancedMesh 千级 tube / 十万级 voxel；`eventPrefix="client"` 修正变换容器内指针 |
-| 图表 | @observablehq/plot | ^0.6 | 科研图表语法（binX 直方图、line+dot），数据驱动重绘 |
-| 公式 | mathlive | ^4 | MathField 公式交互 |
-| PDF | pdfjs-dist | ^4.10 | 本地论文渲染 + TextContent 坐标定位高亮（v4 + Vite `?url` worker，稳定） |
-| 反应式 | **自研轻量 DAG Runtime**（~200 行） | — | marimo 思想：param/derive/asyncDerive + useCell；无现成库同时满足显式命名 cell + 拓扑序 + Worker 异步 stale-while-recompute（调研结论：jotai 图是隐式的，signals 无异步） |
-| 测试 | vitest | ^3 | 数学内核单测（面积/体积不变量） |
-
-关键实现约束：
-
-- **Reactive Research Runtime**（`src/runtime/`）：一个参数只有一个 source of truth。`param(name, init)` / `derive(name, deps, fn)` / `asyncDerive(name, deps, fn)`（Worker 计算，stale-while-recompute，version 防乱序 commit）/ `useCell`（useSyncExternalStore）。参数变化 → 拓扑序重算受影响 cell。**禁止在 Slider 回调里手工分别更新多个组件。**
-- **有限尺度计算放 Web Worker**（`src/workers/`）；较大尺度用 `scripts/precompute-kakeya.mjs` 离线预计算（seeded 可复现）→ `src/data/kakeya-precomputed.json`。
-- 节点内的交互元素（slider、3D 拖拽、滚动 PDF）必须带 `nodrag`（必要时 `nowheel`）；R3F `<Canvas>` 需 `eventPrefix="client"` + pointerdown capture `stopPropagation`，防止拖动 3D 时拖走节点/画布。
-- 3D 场景节点数控制在个位数（WebGL context 成本）；`dpr={[1,2]}`，静止时 `frameloop="demand"`。
-
-## 4. 科研真实性原则（不可妥协）
-
-所有内容必须三选一标注来源徽章：
-
-1. **PAPER** — 论文事实：只来自 `public/papers/wang-zahl-kakeya3d.pdf` 原文（或明确给出的文献引用），卡片注明引用（定理号/页码/章节），可跳转定位。
-2. **CALCULATED** — 数字：只来自确定性代码（`src/kakeya/` 内核、Worker、预计算脚本），注明计算方式与参数；LLM 不得产生或改写任何数字。
-3. **AI INFERENCE** — AI 只负责解释与提出 What-if 实验；任何 AI 推断都不能冒充论文结论或数学证明，卡片必须显式标注，且引用的数值必须指向 CALCULATED cell。
-
-无 LLM API key 时：降级为本地确定性 expansion packs（预 authored 论文知识图），不阻塞 Demo。
-
-## 5. 目录结构
+## 7. 目录结构
 
 ```
-AGENTS.md                 ← 本文件（最高约束）
-public/papers/            ← 论文 PDF（本地，避免 CORS）
-scripts/precompute-kakeya.mjs  ← 离线预计算（可复现）
-spikes/                   ← 技术 Spike 页面（保留供回溯）
+AGENTS.md / README.md / docs/research/tech-survey.md
+public/papers/wang-zahl-kakeya3d.pdf
+scripts/precompute_kakeya.cpp        ← C++17 -O3 -pthread 大尺度预计算
 src/
-  runtime/                ← Reactive Research Runtime（DAG cells）
-  kakeya/                 ← 数学内核（纯函数，无 React 依赖）
-    directions.ts         ← Fibonacci 球面 δ-分离方向
-    tubes.ts              ← tube 生成（separated/sticky/packing 插值）
-    voxels3d.ts           ← 有限尺度覆盖计算（occupied volume/multiplicity）
-    perron.ts             ← Perron 树构造 + 栅格化面积
-    metrics.ts            ← 直方图等指标整理
-  workers/voxel.worker.ts ← Worker 入口
-  canvas/                 ← 无限画布与节点组件
-    DeskCanvas.tsx, nodes/*.tsx
-  paper/wangZahl.ts       ← 论文知识：定理引文、公式、概念、expansion packs
-  styles/paper.css        ← 纸张视觉系统
-  data/                   ← 预计算 JSON
-tests: 与内核同目录 *.test.ts（vitest）
+  runtime/     Reactive Runtime（状态机版）
+  kakeya/      数学内核（directions/tubes/voxels3d/perron/metrics）
+  workers/     voxel.worker（Comlink）、python.worker（Pyodide，接口）
+  skills/      Skill Registry（11 canonical）+ planner（问题→Actions）
+  canvas/      Paper Mode 页、Lab 节点、Microscope overlay、图表反向导航
+  paper/       wangZahl 知识（引文+锚点）、kakeyaGraph（cell 图）、forks
+  styles/paper.css
 ```
 
-## 6. 允许复用（禁止重复造轮子）
+## 8. 允许复用 / 禁止事项
 
-无限画布/节点系统 → xyflow；3D → three/R3F/drei；图表 → Observable Plot；公式 → MathLive；PDF → pdf.js；依赖图思想 → marimo（借鉴设计，自研轻量实现）。**不得重新实现上述基础设施。**
+复用：xyflow、three/R3F、Plot、MathLive、pdf.js、Comlink、marimo 思想（不嵌入）、kakeya-explainer 算法思想。
+禁止：聊天机器人形态；知识图谱卡片墙；Slider→"运行"按钮模式；Dashboard 参数面板；LLM 产生数值；把有限尺度实验说成证明；复制三模式间的状态。
 
-## 7. 禁止事项
+## 9. Git 与流程
 
-- 禁止把产品做成聊天窗口 / Dashboard / 流程图工具。
-- 禁止 LLM 生成数学数字或"证明"；禁止把 AI 推断标成论文结论。
-- 禁止在组件回调里手工联动多个组件（必须走 Runtime）。
-- 禁止引入未在本文件登记的大型依赖（先 Spike、后登记、再使用）。
-- 禁止只写代码不运行：每阶段必须实际运行页面、查 Console、测交互。
-- 禁止删除/绕过本文件。
+提交前缀 research/feat/fix/perf/test/docs/chore；每个稳定决策同步本文件；每阶段浏览器实测（Console + 交互）后才算完成。
 
-## 8. Git 规范
+## 10. 当前状态（随进度更新）
 
-- 提交前缀：`research:`（调研/Spike）、`feat:`、`fix:`、`perf:`、`test:`、`docs:`、`chore:`。
-- 重要功能独立 commit；AGENTS.md 的状态更新随对应功能一起提交或单独 `docs:` 提交。
+v1/v2 已完成（详见 git log 与 Linear P-CLI-3 CLI-29..45）。v3 进行中：
 
-## 9. 当前完成状态（随进度更新）
-
-v1（2026-10-01 上午）：
-
-- [x] 技术调研（xyflow / marimo / R3F / Plot+MathLive+pdf.js / 论文数学事实 / Perron 树构造）— 结论在 §3
-- [x] 脚手架 + Git + Linear 项目（Paper2Lab / P-CLI-3）
-- [x] Kakeya 数学内核 + vitest（voxel 体积与解析胶囊值 6% 内标定；Perron 面积单调性）
-- [x] Reactive Runtime（param/derive/asyncDerive + useCell；stale-while-recompute + generation 防乱序）
-- [x] Spike 实测（#spike 路由）后合入产品；无限纸面 + 18 类节点
-- [x] pdf.js 定位高亮（封面页锚点 p.3 + 多空格折叠匹配）；提问→expansion packs；离线预计算
-- [x] 端到端验收（δ/packing 联动、Σ|T|≈N·πδ²、Console 干净）
-
-v2（2026-10-01，交互契约 + Skills + P0 画布）：
-
-- [x] 交互契约落地：未知问题自动运行对比实验（绝不纯文本回答）；chip"对比 separated vs sticky"
-- [x] Scientific Skills 注册表：7 族 10 技能，schema/runtime/evidence_type/dependencies 声明；runSkill 校验 + EvidenceLog（cell 版本戳）
-- [x] 实验 Fork：快照（参数+committed 指标+版本戳）/恢复（仅 setParam）/对比卡（Δ+相对变化，实测 max m +773%）
-- [x] 证据链卡：参数→cell→技能→PAPER 全链（15 项，带版本与 stale）；verify.invariants 5 项全过；verify.pyodide_numpy 在浏览器真实跑通（NumPy MC 交叉验证，CDN Pyodide v0.27.7 in worker，离线降级 available:false）
-- [x] 画布 P0：Shift 多选 + 框选模式开关（panOnDrag/selectionOnDrag 切换）；成组/拆组（纯函数坐标变换，4 项单测含 round-trip）
-- [x] v2 浏览器回归：干净页面 Console 0 错误；40/40 vitest；build 通过
-- [x] **交叉验证实战**：verify.pyodide_numpy（独立 NumPy MC）发现解析胶囊公式的球冠半球笔误（(4/3)πδ³ 误写为 /2）；进一步厘清两个测量量——轴对齐管端盖在立方体外（in-cube = πδ²），斜向管 = 完整胶囊。修复后三方一致：NumPy MC 0.01333 ≈ 解析 0.01329 ≈ voxel 内核（relErr 0.27%）。此事例是"独立验证技能"价值的标准演示。
-
-## 10. 下一阶段任务（比赛迭代方向）
-
-1. 视觉打磨：卡片入场动画、桌面纹理、minimap 主题化。
-2. Runtime DAG 可视化升级（连线图替代列表）+ 技能面板（浏览/调用全部已注册技能）。
-3. Pyodide 技能扩展（SciPy 拟合 |⋃T|~N 标度律）；本地 LLM 接入 infer 族（可选）。
-4. 交互 3D 机位；移动端适配。
-5. 更多 expansion packs（Wolff hairbrush、σ/ω 断言）。
-
----
-
-*Linear 项目：Paper2Lab（P-CLI-3）。数学事实来源：arXiv:2502.17655（Wang–Zahl）；Perron 树构造来源：Besicovitch/Perron（经典），实现按 Wigderson–Yuval 讲义与 Alan Chang MathCamp 讲义的合并引理（面积 ≤ (α^2k + 2(1−α))·A）。*
+- [ ] docs/research/tech-survey.md（含实际源码阅读）
+- [ ] Runtime 状态机 idle/stale/computing/resolved/error + 状态可视化
+- [ ] Comlink 封装 voxel worker
+- [ ] Skills 重命名到 11 canonical + Agent planner（问题→Actions→自动实验纸）
+- [ ] Paper Mode 初始视图（Question+Theorem+Live Experiment）+ 公式内拖动 δ + 展开实验
+- [ ] 拖动 preview（16³ 同步）/ 松手 exact（高分辨率 Worker）
+- [ ] 3D 抓取 tube 簇 → packing 反向同步
+- [ ] Microscope Mode（双击 3D、zoom 展开细尺度、Esc 返回）
+- [ ] 图表反向导航（点 curve 上的点定位实验；fork 自动加 Original/B 曲线）
+- [ ] scripts/precompute_kakeya.cpp（-O3 -pthread、checksum、JSON）+ 接入图表
+- [ ] PythonScientificRuntime 接口（独立 worker，不进 Kakeya 路径）
+- [ ] 浏览器全链验收：manipulate→compute→visualize→observe→fork→compare→trace

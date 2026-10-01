@@ -13,10 +13,14 @@
 
 export type CellId = string
 
+/** research-node lifecycle (AGENTS.md §2): idle → stale → computing → resolved | error */
+export type CellStatus = 'idle' | 'stale' | 'computing' | 'resolved' | 'error'
+
 export interface CellSnapshot<T = unknown> {
   value: T | undefined
   hasValue: boolean
   stale: boolean
+  status: CellStatus
   version: number
   error: unknown
 }
@@ -43,12 +47,25 @@ interface CellDef {
   generation: number
   debounceMs: number
   debounceTimer?: ReturnType<typeof setTimeout>
+  launched: boolean
   subscribers: Set<() => void>
   snapshot: CellSnapshot
   order: number
 }
 
-const EMPTY: CellSnapshot = { value: undefined, hasValue: false, stale: false, version: 0, error: undefined }
+const EMPTY: CellSnapshot = { value: undefined, hasValue: false, stale: false, status: 'idle', version: 0, error: undefined }
+
+function statusOf(def: CellDef): CellStatus {
+  if (def.error) return 'error'
+  if (def.kind === 'param') return 'resolved'
+  if (def.stale) {
+    // async cells: stale while debouncing, computing once launched
+    if (def.kind === 'async' && def.launched) return 'computing'
+    return 'stale'
+  }
+  if (!def.hasValue) return 'idle'
+  return 'resolved'
+}
 
 export class Runtime {
   private cells = new Map<CellId, CellDef>()
@@ -145,7 +162,7 @@ export class Runtime {
     this.cells.set(id, {
       id, kind, deps, fn, debounceMs,
       value: undefined, hasValue: false, stale: false, version: 0, error: undefined,
-      generation: 0, subscribers: new Set(), snapshot: EMPTY, order: this.nextOrder++,
+      generation: 0, launched: false, subscribers: new Set(), snapshot: EMPTY, order: this.nextOrder++,
     })
     for (const dep of deps) {
       let set = this.dependents.get(dep)
@@ -171,6 +188,7 @@ export class Runtime {
     for (const def of affected) {
       def.stale = true
       def.error = undefined
+      def.launched = false
       this.publish(def)
     }
     // pass repeatedly: each cell runs at most once per invalidation, after all
@@ -197,11 +215,13 @@ export class Runtime {
         def.value = (def.fn as SyncFn<unknown>)(inputs)
         def.hasValue = true
         def.stale = false
+        def.launched = false
         def.version++
         def.error = undefined
       } catch (err) {
         def.error = err
         def.stale = false
+        def.launched = false
         def.hasValue = false // do not silently keep stale value on hard error
       }
       this.publish(def)
@@ -211,6 +231,8 @@ export class Runtime {
     if (def.debounceTimer !== undefined) clearTimeout(def.debounceTimer)
     const launch = () => {
       def.debounceTimer = undefined
+      def.launched = true
+      this.publish(def) // status → computing
       const generation = ++def.generation
       const inputs = def.deps.map((d) => this.cells.get(d)!.value)
       void Promise.resolve((def.fn as AsyncFn<unknown>)(inputs))
@@ -220,6 +242,7 @@ export class Runtime {
           def.value = value
           def.hasValue = true
           def.stale = false
+          def.launched = false
           def.version++
           def.error = undefined
           this.publish(def)
@@ -229,6 +252,7 @@ export class Runtime {
           if (def.generation !== generation) return
           def.error = err
           def.stale = false
+          def.launched = false
           this.publish(def)
         })
     }
@@ -244,6 +268,7 @@ export class Runtime {
       value: def.value,
       hasValue: def.hasValue,
       stale: def.stale,
+      status: statusOf(def),
       version: def.version,
       error: def.error,
     }

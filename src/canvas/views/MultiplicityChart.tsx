@@ -53,19 +53,24 @@ export function MultiplicityChart({
   return <div ref={ref} className="chart-frame" />
 }
 
-/** |⋃T| curve vs N (or δ) — live sweep + precomputed series comparison */
+/** |⋃T| curve vs N (or δ) — live sweep + precomputed + fork series.
+ *  Clicking a dot navigates back to the experiment that produced it
+ *  (Data → Experiment; onPointClick receives the point's runId). */
 export function UnionCurveChart({
   points,
   xLabel,
   height = 200,
+  onPointClick,
 }: {
   points: CurvePoint[]
   xLabel: string
   height?: number
+  onPointClick?: (runId: string, screen: { x: number; y: number }) => void
 }) {
   const [ref, width] = useContainerWidth<HTMLDivElement>()
   useEffect(() => {
     if (!ref.current || width < 40 || points.length === 0) return
+    const seriesNames = [...new Set(points.map((p) => p.series))]
     const fig = Plot.plot({
       width,
       height,
@@ -75,20 +80,34 @@ export function UnionCurveChart({
       marginLeft: 48,
       x: { label: xLabel, grid: true },
       y: { label: '|⋃T|（occupied volume）', grid: true, domain: [0, 1] },
-      color: {
-        domain: ['live（本页计算）', 'precomputed（离线脚本）'],
-        range: ['#2f5d8a', '#9a3b2e'],
-      },
+      color: { domain: seriesNames.length > 1 ? seriesNames : [seriesNames[0] ?? ''], unknown: '#2f5d8a' },
       marks: [
         Plot.lineY(points, { x: 'x', y: 'y', stroke: 'series', curve: 'catmull-rom' }),
-        Plot.dot(points, { x: 'x', y: 'y', fill: 'series', r: 2.5 }),
+        Plot.dot(points, {
+          x: 'x',
+          y: 'y',
+          fill: 'series',
+          r: 3,
+          channels: { runId: 'runId' },
+          tip: true,
+        }),
       ],
       style: { color: '#2b2620', fontSize: '11px', background: 'transparent' },
     })
+    if (onPointClick) {
+      // Plot figures expose .on(type, channels, listener) at runtime; the TS
+      // return union doesn't carry it, hence the local cast
+      const plotWithOn = fig as unknown as {
+        on: (type: string, channels: unknown, listener: (e: PointerEvent, d: { runId?: string }) => void) => void
+      }
+      plotWithOn.on('pointerdown', { runId: 'runId' }, (event, d) => {
+        if (d?.runId) onPointClick(d.runId, { x: event.clientX, y: event.clientY })
+      })
+    }
     ref.current.replaceChildren(fig)
     return () => {
       fig.remove()
     }
-  }, [points, width, xLabel, height, ref])
-  return <div ref={ref} className="chart-frame" />
+  }, [points, width, xLabel, height, ref, onPointClick])
+  return <div ref={ref} className="chart-frame chart-clickable" />
 }
