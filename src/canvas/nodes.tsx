@@ -389,7 +389,11 @@ export function ChartUnionNode() {
       .filter((r) => r.deltaExp === e && r.packing === p)
       .map((r) => ({ x: r.n, y: r.occupiedVolume, series: 'precomputed（离线脚本）', runId: 'precomputed' }))
   }, [deltaExp.value, packing.value])
-  const points = [...live.map((p) => ({ ...p, runId: 'main' })), ...pre, ...forkPoints]
+  // stable identity so the chart effect doesn't loop (points is an effect dep)
+  const points = useMemo<CurvePoint[]>(
+    () => [...live.map((p) => ({ ...p, runId: 'main' })), ...pre, ...forkPoints],
+    [live, pre, forkPoints],
+  )
 
   const onPointClick = useCallback((runId: string) => {
     if (runId === 'main') deskBus.emit({ type: 'focus-node', nodeId: 'exp-3d' })
@@ -401,7 +405,7 @@ export function ChartUnionNode() {
     <Sheet label="CHART · |⋃T| 随 N 增长（点数据点⇒定位实验）" badge="CALCULATED" stale={sweep.stale} width={400}>
       <UnionCurveChart points={points} xLabel="N（管数）" height={210} onPointClick={onPointClick} />
       <div className="card-caption">
-        实线=本页 Worker 实时扫描；朱砂点=离线预计算；其余=fork 分支曲线。**点击任意数据点 → 画布定位到产生该结果的实验纸**（Data→Experiment）。
+        {points.length} 数据点 · 实线=本页 Worker 实时扫描；朱砂点=离线预计算（C++）；其余=fork 分支。点击任意数据点 → 定位产生它的实验（Data→Experiment）。
       </div>
     </Sheet>
   )

@@ -333,7 +333,12 @@ math-field.sandbox-field { width: 100%; min-height: 52px; font-size: 17px; }
 .microscope-foot input { flex: 0 0 320px; accent-color: var(--accent-blue); }
 .microscope-scale-label { font-size: 11px; color: var(--ink-soft); letter-spacing: 0.1em; }
 
-/* 图表可点 */
-.chart-clickable svg { cursor: pointer; }
+/* 图表可点（命中层：每点一个透明按钮） */
+.chart-clickable { position: relative; }
+.chart-hit {
+  position: absolute; width: 15px; height: 15px; border-radius: 50%;
+  background: transparent; border: none; padding: 0; cursor: pointer; z-index: 5;
+}
+.chart-hit:hover { background: rgba(154, 59, 46, 0.18); outline: 1.5px solid rgba(154, 59, 46, 0.6); }
 .tubes3d.grabbable { cursor: grab; }
 .tubes3d.grabbable:active { cursor: grabbing; }

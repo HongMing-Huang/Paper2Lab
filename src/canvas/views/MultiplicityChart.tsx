@@ -1,5 +1,5 @@
 // Observable Plot figures — throw-away-and-recreate pattern (official recipe).
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import * as Plot from '@observablehq/plot'
 import type { HistRow, CurvePoint } from '../../kakeya/metrics'
 import { useContainerWidth } from '../useContainerWidth'
@@ -55,7 +55,8 @@ export function MultiplicityChart({
 
 /** |⋃T| curve vs N (or δ) — live sweep + precomputed + fork series.
  *  Clicking a dot navigates back to the experiment that produced it
- *  (Data → Experiment; onPointClick receives the point's runId). */
+ *  (Data → Experiment). Plot 0.6 merges dots into a single path, so hits are
+ *  served by an absolutely-positioned HTML layer computed via fig.scale(). */
 export function UnionCurveChart({
   points,
   xLabel,
@@ -68,8 +69,13 @@ export function UnionCurveChart({
   onPointClick?: (runId: string, screen: { x: number; y: number }) => void
 }) {
   const [ref, width] = useContainerWidth<HTMLDivElement>()
+  const [hits, setHits] = useState<Array<{ left: number; top: number; runId?: string; label: string }>>([])
+
   useEffect(() => {
-    if (!ref.current || width < 40 || points.length === 0) return
+    if (!ref.current || width < 40 || points.length === 0) {
+      setHits((prev) => (prev.length ? [] : prev))
+      return
+    }
     const seriesNames = [...new Set(points.map((p) => p.series))]
     const fig = Plot.plot({
       width,
@@ -80,35 +86,67 @@ export function UnionCurveChart({
       marginLeft: 48,
       x: { label: xLabel, grid: true },
       y: { label: '|⋃T|（occupied volume）', grid: true, domain: [0, 1] },
-      color: { domain: seriesNames.length > 1 ? seriesNames : [seriesNames[0] ?? ''], unknown: '#2f5d8a' },
+      color: { domain: seriesNames, unknown: '#2f5d8a' },
       marks: [
         Plot.lineY(points, { x: 'x', y: 'y', stroke: 'series', curve: 'catmull-rom' }),
-        Plot.dot(points, {
-          x: 'x',
-          y: 'y',
-          fill: 'series',
-          r: 3,
-          className: 'sweep-dot',
-          tip: true,
-        }),
+        Plot.dot(points, { x: 'x', y: 'y', fill: 'series', r: 3.5, tip: true }),
       ],
       style: { color: '#2b2620', fontSize: '11px', background: 'transparent' },
     })
-    if (onPointClick) {
-      // Plot 0.6 has no plot.on(); mark elements carry their datum on __data__,
-      // so we delegate pointerdown on the rendered dots (className-filtered)
-      fig.querySelectorAll('.sweep-dot').forEach((el) => {
-        el.addEventListener('pointerdown', (e: Event) => {
-          const pe = e as PointerEvent
-          const d = (e.currentTarget as SVGElement & { __data__?: CurvePoint }).__data__
-          if (d?.runId) onPointClick(d.runId, { x: pe.clientX, y: pe.clientY })
-        })
-      })
-    }
     ref.current.replaceChildren(fig)
+    // hit layer: one button per point, positioned via the plot's exposed
+    // scales (fig.scale(name) returns { apply, invert, ... })
+    const withScales = fig as unknown as {
+      scale?: (name: string) => { apply?: (v: number) => number } | undefined
+    }
+    const applyOf = (name: string): ((v: number) => number) | undefined => {
+      try {
+        const exposed = withScales.scale?.(name)
+        return exposed?.apply ? (v) => exposed.apply!(v) : undefined
+      } catch {
+        return undefined
+      }
+    }
+    const sx = applyOf('x')
+    const sy = applyOf('y')
+    if (sx && sy && onPointClick) {
+      const next = points.map((p) => ({
+        left: 48 + sx(p.x),
+        top: 8 + sy(p.y),
+        runId: p.runId,
+        label: `${p.series} · N=${p.x} · |⋃T|=${p.y.toFixed(4)}${p.runId ? ` · ${p.runId}` : ''}`,
+      }))
+      // idempotent commit — avoids a render→effect→setState loop
+      setHits((prev) =>
+        prev.length === next.length &&
+        prev.every((h, i) => Math.abs(h.left - next[i].left) < 0.5 && Math.abs(h.top - next[i].top) < 0.5 && h.runId === next[i].runId)
+          ? prev
+          : next,
+      )
+    } else {
+      setHits((prev) => (prev.length ? [] : prev))
+    }
     return () => {
       fig.remove()
     }
   }, [points, width, xLabel, height, ref, onPointClick])
-  return <div ref={ref} className="chart-frame chart-clickable" />
+
+  return (
+    <div ref={ref} className="chart-frame chart-clickable" style={{ position: 'relative' }}>
+      {hits.map(
+        (h: { left: number; top: number; runId?: string; label: string }, i: number) =>
+          h.runId &&
+          onPointClick && (
+            <button
+              key={i}
+              type="button"
+              className="chart-hit nodrag nowheel"
+              style={{ left: h.left - 7, top: h.top - 7 }}
+              title={h.label}
+              onPointerDown={(e) => onPointClick(h.runId!, { x: e.clientX, y: e.clientY })}
+            />
+          ),
+      )}
+    </div>
+  )
 }
