@@ -89,7 +89,8 @@ v1/v2 已完成（git log + Linear P-CLI-3 CLI-29..45）。v3（2026-10-01）：
 - [x] 图表反向导航：HTML 命中层（Plot 0.6 dot 合并单 path，用 fig.scale(name).apply 定位）；点 title 溯源 runId；fork 自动加分支曲线（实测 +6 点）
 - [x] scripts/precompute_kakeya.cpp（-O3 -pthread，atomic uint16 multiplicity，JSON+FNV-1a checksum）：27 行/1.3s/223% CPU，packing=1⇒maxM=N 精确
 - [x] PythonScientificRuntime 接口（Comlink+CDN Pyodide worker：ensureRuntime/runPythonJson/solveIVP），不进 Kakeya 路径
-- [x] 浏览器全链验收：manipulate→compute→visualize→observe→fork→compare→trace + Console 0 错误；40/40 vitest；build ✓
+- [x] 浏览器全链验收：manipulate→compute→visualize→observe→fork→compare→trace + Console 0 错误；**50/50 vitest**；build ✓
+- [x] **生产包（vite build + preview）全链复验**：Paper Mode→Agent（N=48 后 exact 0.4091/1.53×/7）→Lab 9 节点→图表 22 数据点（current 标记随动）→显微镜开/关→Console 0 错误；Paper Mode 截图视觉验收（论文观感、公式正常、芯片协调）
 
 ## 11. 下一阶段（比赛迭代方向）
 
