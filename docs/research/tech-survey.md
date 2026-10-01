@@ -35,6 +35,13 @@
 - 好：`MotionFrame(path_deg)` 参数化 + 每帧全路径重采样（无状态轨迹，scrub 不失同步）；np.add.at 密度栅格 + 99.5 分位归一。
 - 差（反面教材）：Perron 三角形是手调扇形——**没有** 2^k 细分、没有平移合并、没有面积验证；"coverage 100%" 是硬编码字符串。我们的实现以 Wigderson/Chang 讲义的合并引理为准并有单调性单测。
 
+### marimo（读 `marimo/_ast/visitor.py`、`_runtime/dataflow/{graph,edges,cycles}.py`、`_runtime/runner/{cell_runner,scheduler}.py`、`_runtime/runtime.py`）
+- **图推导**：`ScopedVisitor`（visitor.py:234）静态抽取 defs/refs/del-refs；cell 局部名加 `_{cell_id}x` mangling（L316–325）。edges.py:118–262：def→引用者为 child、ref→定义者为 parent、del→引用者的 child。
+- **stale/拓扑/环/禁用**：cycles.py:32–56 逐新边检测环（get_path）；graph.py:296–310 set_stale=后代传递闭包；dataflow/__init__.py:96–131 Kahn+堆（注册序破并列）；cell_runner.py:232–273 计算 roots∪stale 祖先−错误 cell 再拓扑排序；scheduler.py:121–147 重排队按拓扑序、取消级联到后代。禁用 cell 的后代标记 disabled-transitively。
+- **UI 绑定**：runtime.py:1932–2117 set_ui_element_value → `component._update(value)` 后走普通名字图重跑 **引用者**，创建者 cell 永不重触发（自环抑制）——与我们的 ParamSlider/ParamChip 只写 param 不触发自身渲染等价。
+- **无隐藏状态**：cell 编译为函数（compiler.py:257+）、临时名运行后弹出（hooks_post_execution.py:511–527）、重跑前 `_invalidate_cell_state` 清 defs/UI。
+- **与我们 TS runtime 的对照**：拓扑失效（stale 闭包+Kahn）**同构** ✓；差异：marimo 用单 FIFO SequentialScheduler 串行保正确，我们用 **generation 计数防乱序提交**（异步原生等价物）；marimo 的"UI 写值不触发创建 cell"对应我们"setParam 不触发 param cell 自身重算"。
+
 ### web-llm / transformers.js（README+docs）
 - web-llm：`CreateMLCEngine` + `response_format` 语法约束 JSON；1–4B q4 是笔记本甜点；首载 0.5–5GB。
 - transformers.js：无语法约束解码，JSON 需 zod+jsonrepair 兜底。⇒ 未来 Agent 选 web-llm。
