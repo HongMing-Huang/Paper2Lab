@@ -41,7 +41,7 @@ registerSkill({
   run: ({ delta, nTubes, packing }: { delta: number; nTubes: number; packing: number }): InspectOutput => {
     const dirs = fibonacciDirections(nTubes)
     const sep = minAngularSeparation(dirs)
-    const perTube = Math.PI * delta * delta + (4 / 3) * Math.PI * delta ** 3 / 2
+    const perTube = Math.PI * delta * delta + (4 / 3) * Math.PI * delta ** 3 // capsule: cylinder + full sphere
     return {
       delta,
       nTubes,
@@ -391,7 +391,7 @@ registerSkill({
       'r2 = (q * q).sum(axis=1)',
       'hits = float((r2 <= delta * delta).mean())',
       'mc = hits * box ** 3',
-      'analytic = float(np.pi * delta ** 2 + (4/3) * np.pi * delta ** 3 / 2)',
+      'analytic = float(np.pi * delta ** 2 + (4 / 3) * np.pi * delta ** 3)',
       'rel = float(abs(mc - analytic) / analytic)',
       'json.dumps({"mc": mc, "analytic": analytic, "relErr": rel, "pass": bool(rel < 0.03), "samples": n})',
     ].join('\n')

@@ -95,7 +95,10 @@ export function computeVoxelCoverage(
     maxMultiplicity: maxM,
     avgMultiplicity: occupied > 0 ? sumTubeVoxels / occupied : 0,
     histogram,
-    analyticPerTube: Math.PI * delta * delta * 1 + (4 / 3) * Math.PI * (delta ** 3) / 2,
+    // capsule = cylinder πδ²·L + a FULL sphere of radius δ (two hemispherical
+    // caps); an earlier version used half the sphere and was caught by the
+    // independent NumPy/Pyodide Monte-Carlo cross-check (verify.pyodide_numpy)
+    analyticPerTube: Math.PI * delta * delta + (4 / 3) * Math.PI * delta ** 3,
   }
 
   if (visRes > 0 && visRes <= res && res % visRes === 0) {

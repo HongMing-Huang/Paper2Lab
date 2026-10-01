@@ -119,10 +119,10 @@ export const FORMULAS: FormulaItem[] = [
   },
   {
     id: 'f-capsule',
-    tex: '|T| = \\pi\\delta^{2}\\cdot 1 + \\tfrac{2}{3}\\pi\\delta^{3}',
-    caption: '本 Demo 胶囊几何的解析体积（voxel 引擎标定用）',
+    tex: '|T| = \\pi\\delta^{2}\\cdot 1 + \\tfrac{4}{3}\\pi\\delta^{3}',
+    caption: '胶囊几何体积：圆柱 + 完整球冠（CALCULATED）',
     provenance: 'CALCULATED',
-    note: '单元测试断言 voxel 计算与该解析值偏差 < 6%',
+    note: '两个测量量须区分：轴对齐管的端盖落在立方体外，|T ∩ 立方体| = πδ²；斜向管端盖在内，= πδ²+⁴⁄₃πδ³。早期版本把球冠体积写成半球——由 verify.pyodide_numpy 的独立 NumPy 蒙特卡洛交叉验证发现并修正（两条单测分别标定两种情形）。',
   },
   {
     id: 'f-perron-bound',

@@ -9,16 +9,26 @@ const axisTube = (dir: [number, number, number]): Tube3 => ({
 })
 
 describe('computeVoxelCoverage', () => {
-  it('single tube volume matches the analytic capsule πδ²·1 + ⅔πδ³', () => {
-    const r = computeVoxelCoverage([axisTube([0, 0, 1])], 50)
-    const analytic = Math.PI * 0.01 + (4 / 3) * Math.PI * 0.001 / 2
-    expect(r.analyticPerTube).toBeCloseTo(analytic, 8)
-    // finite-resolution estimate: within 6%
-    expect(Math.abs(r.occupiedVolume - analytic) / analytic).toBeLessThan(0.06)
+  it('axis tube (segment spans the cube height): in-cube volume is the cylinder πδ²·1 — the caps fall outside the cube', () => {
+    // for a z-aligned unit segment centred in the unit cube, every cube point
+    // projects inside the segment, so |T ∩ [0,1]³| = πδ² exactly (the two
+    // hemispherical caps lie outside the grid). res 400 converges to −0.1%.
+    const r = computeVoxelCoverage([axisTube([0, 0, 1])], 120)
+    const cylinder = Math.PI * 0.01
+    const capsule = Math.PI * 0.01 + (4 / 3) * Math.PI * 0.001
+    expect(r.analyticPerTube).toBeCloseTo(capsule, 8)
+    expect(Math.abs(r.occupiedVolume - cylinder) / cylinder).toBeLessThan(0.035)
     expect(r.maxMultiplicity).toBe(1)
     expect(r.avgMultiplicity).toBeCloseTo(1, 12)
     expect(r.sumTubeVolume).toBeCloseTo(r.occupiedVolume, 12)
-    expect(r.histogram[0] + r.histogram[1]).toBe(50 ** 3)
+    expect(r.histogram[0] + r.histogram[1]).toBe(120 ** 3)
+  })
+
+  it('diagonal tube (caps inside the cube): in-cube volume is the full capsule πδ²·1 + ⁴⁄₃πδ³', () => {
+    const inv = 1 / Math.sqrt(3)
+    const r = computeVoxelCoverage([axisTube([inv, inv, inv])], 120)
+    const capsule = Math.PI * 0.01 + (4 / 3) * Math.PI * 0.001
+    expect(Math.abs(r.occupiedVolume - capsule) / capsule).toBeLessThan(0.045)
   })
 
   it('two crossing tubes: max multiplicity 2, union < 2× single', () => {

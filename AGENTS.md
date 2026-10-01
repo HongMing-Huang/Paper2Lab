@@ -169,7 +169,8 @@ v2（2026-10-01，交互契约 + Skills + P0 画布）：
 - [x] 实验 Fork：快照（参数+committed 指标+版本戳）/恢复（仅 setParam）/对比卡（Δ+相对变化，实测 max m +773%）
 - [x] 证据链卡：参数→cell→技能→PAPER 全链（15 项，带版本与 stale）；verify.invariants 5 项全过；verify.pyodide_numpy 在浏览器真实跑通（NumPy MC 交叉验证，CDN Pyodide v0.27.7 in worker，离线降级 available:false）
 - [x] 画布 P0：Shift 多选 + 框选模式开关（panOnDrag/selectionOnDrag 切换）；成组/拆组（纯函数坐标变换，4 项单测含 round-trip）
-- [x] v2 浏览器回归：干净页面 Console 0 错误；39/39 vitest；build 通过
+- [x] v2 浏览器回归：干净页面 Console 0 错误；40/40 vitest；build 通过
+- [x] **交叉验证实战**：verify.pyodide_numpy（独立 NumPy MC）发现解析胶囊公式的球冠半球笔误（(4/3)πδ³ 误写为 /2）；进一步厘清两个测量量——轴对齐管端盖在立方体外（in-cube = πδ²），斜向管 = 完整胶囊。修复后三方一致：NumPy MC 0.01333 ≈ 解析 0.01329 ≈ voxel 内核（relErr 0.27%）。此事例是"独立验证技能"价值的标准演示。
 
 ## 10. 下一阶段任务（比赛迭代方向）
 
