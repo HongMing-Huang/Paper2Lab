@@ -28,7 +28,7 @@
 - **v3 新增：节点状态机** `idle → stale → computing → resolved → error`（cell.status），UI 必须可视化：拖动中旧数字淡出（CSS opacity 过渡）、图表随 preview 数据移动、exact 计算完成后新 Observation 才出现。
 - **拖动交互契约（必须）**：drag → 低分辨率 preview 计算（同步、~16³ 网格）→ 3D/数字连续变化；pointer up → 高分辨率 Worker exact 计算 → CALCULATED 正式结果。preview 结果标注 "preview"，exact 才是正式证据。
 - **双向 UI⇄模型**：3D 里抓取 tube 簇移动 → 反向写回 packing 参数（模型更新 UI，UI 也更新模型）。图表点击数据点 → 定位产生它的实验（Data→Experiment）。
-- **v4：可追溯性与硬编码禁令**——任何用户可见数值/图必须来自 **ExperimentRun**（`src/experiments/protocol.ts`：runId/spec(params·seed·res)/engine+version/durationMs/evidence=CALCULATED），datapoint 一律携带 runId。除 PAPER 引文与登记配置常量（SEED/VIS_RES/PREVIEW_RES/SWEEP_RES/FINE_DELTA/NeedleSweep GRID·BOX·NEEDLE_HALF/ODE 初值）外禁止内嵌数值；审计清单 `docs/audit/hardcoded-values.md`（A1–A8 已修复）。有限尺度实验不得写成 theorem proof。**Agent（含 Qwen/本地 LLM）只能输出结构化 ExperimentPlan**（toolSchema：白名单+validatePlan+JSON Schema）与 explain_result 的 AI_INFERENCE 文本，禁止产生 CALCULATED 数值（planSmugglesNumbers 拦截）。
+- **v4：可追溯性与硬编码禁令**——任何用户可见数值/图必须来自 **ExperimentRun**（`src/experiments/protocol.ts`：runId/spec(params·seed·res)/engine+version/durationMs/evidence=CALCULATED），datapoint 一律携带 runId。**图、3D、Metric、Observation 全部只订阅 Run**（3D 订阅 `tubesRunCell` 的 kakeya.geometry envelope）。除 PAPER 引文与登记配置常量（SEED/VIS_RES/PREVIEW_RES/SWEEP_RES/FINE_DELTA/NeedleSweep GRID·BOX·NEEDLE_HALF/ODE 初值）外禁止内嵌数值；审计清单 `docs/audit/hardcoded-values.md`（A1–A8 已修复）。有限尺度实验不得写成 theorem proof。**Agent（含 Qwen/本地 LLM）只能输出结构化 ExperimentPlan**（toolSchema：白名单+validatePlan+JSON Schema）与 explain_result 的 AI_INFERENCE 文本，禁止产生 CALCULATED 数值（planSmugglesNumbers 拦截）。**v4b：`src/skills/llmPlanner.ts`**——可选 OpenAI 兼容（Qwen）端点：凭据仅从环境变量读取（浏览器 VITE_ 前缀 / node process.env，无字面量），JSON-mode 提示内嵌 tool schema，输出过 validatePlan+smuggle 门，未配置/失败回退确定性 planner。
 
 ## 3. 计算架构（两条路径）
 
