@@ -25,6 +25,7 @@ import { originBelow, packToNodes } from './expansions'
 import { EXPANSION_PACKS, findPack } from '../paper/wangZahl'
 import { deskBus, forkStore, requestAddNode, snapshotCurrentFork, type ForkSnapshot } from '../paper/forks'
 import { runSkill } from '../skills/types'
+import { buildGroup, dissolveGroup } from './grouping'
 import '../skills'
 
 kakeya.param('desk.showVoxels', 0)
@@ -44,52 +45,25 @@ function FocusListener() {
 }
 
 /** group/ungroup toolbar — P0 canvas capability */
-function DeskToolbar({ message }: { message: (m: string) => void }) {
+function DeskToolbar({
+  message,
+  selectMode,
+  onToggleSelectMode,
+}: {
+  message: (m: string) => void
+  selectMode: boolean
+  onToggleSelectMode: () => void
+}) {
   const { getNodes, setNodes } = useReactFlow()
 
   const groupSelected = useCallback(() => {
     const selected = getNodes().filter((n) => n.selected && n.type !== 'group')
     if (selected.length < 2) {
-      message('请先按住 Shift 框选/多选至少两个节点')
+      message('请先按住 Shift 框选/多选至少两个节点（或开启框选模式）')
       return
     }
-    let minX = Infinity
-    let minY = Infinity
-    let maxX = -Infinity
-    let maxY = -Infinity
-    for (const n of selected) {
-      const w = n.measured?.width ?? 320
-      const h = n.measured?.height ?? 240
-      minX = Math.min(minX, n.position.x)
-      minY = Math.min(minY, n.position.y)
-      maxX = Math.max(maxX, n.position.x + w)
-      maxY = Math.max(maxY, n.position.y + h)
-    }
-    const pad = 26
     const groupId = `group-${Date.now().toString(36)}`
-    const groupPos = { x: minX - pad, y: minY - pad }
-    const selectedIds = new Set(selected.map((n) => n.id))
-    setNodes((ns) => [
-      ...ns.map((n) =>
-        selectedIds.has(n.id)
-          ? {
-              ...n,
-              parentId: groupId,
-              extent: 'parent' as const,
-              position: { x: n.position.x - groupPos.x, y: n.position.y - groupPos.y },
-            }
-          : n,
-      ),
-      {
-        id: groupId,
-        type: 'group',
-        position: groupPos,
-        data: { label: '分组' },
-        style: { width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 },
-        selectable: true,
-        draggable: true,
-      },
-    ])
+    setNodes((ns) => buildGroup(ns, selected.map((n) => n.id), groupId).nodes)
     message(`已创建分组（${selected.length} 个节点）`)
   }, [getNodes, setNodes, message])
 
@@ -99,22 +73,19 @@ function DeskToolbar({ message }: { message: (m: string) => void }) {
       message('请先选中一个分组（点分组边框）')
       return
     }
-    const groupIds = new Set(groups.map((g) => g.id))
     setNodes((ns) => {
-      const released = ns.map((n) => {
-        if (n.parentId && groupIds.has(n.parentId)) {
-          const parent = ns.find((g) => g.id === n.parentId)!
-          return { ...n, parentId: undefined, extent: undefined, position: { x: parent.position.x + n.position.x, y: parent.position.y + n.position.y } }
-        }
-        return n
-      })
-      return released.filter((n) => !groupIds.has(n.id))
+      let out = ns
+      for (const g of groups) out = dissolveGroup(out, g.id)
+      return out
     })
     message('已拆散分组')
   }, [getNodes, setNodes, message])
 
   return (
     <Panel position="bottom-left" className="desk-toolbar">
+      <button type="button" className={selectMode ? 'on-mode' : ''} onClick={onToggleSelectMode}>
+        ▭ 框选模式{selectMode ? '（开）' : ''}
+      </button>
       <button type="button" onClick={groupSelected}>📎 成组所选</button>
       <button type="button" onClick={ungroupSelected}>✂️ 拆组</button>
     </Panel>
@@ -183,6 +154,7 @@ export function DeskCanvas() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
   const [edges, setEdges] = useState<Edge[]>(initialEdges)
   const [note, setNote] = useState<string | null>(null)
+  const [selectMode, setSelectMode] = useState(false)
   const message = useCallback((m: string) => setNote(m), [])
 
   // nodes request canvas actions through the desk bus (no prop drilling)
@@ -284,6 +256,8 @@ export function DeskCanvas() {
           nodesConnectable={false}
           deleteKeyCode={null}
           multiSelectionKeyCode="Shift"
+          panOnDrag={!selectMode}
+          selectionOnDrag={selectMode}
         >
           <Background
             variant={BackgroundVariant.Dots}
@@ -303,7 +277,14 @@ export function DeskCanvas() {
           />
           <Controls showInteractive={false} position="bottom-right" />
           <FocusListener />
-          <DeskToolbar message={message} />
+          <DeskToolbar
+            message={message}
+            selectMode={selectMode}
+            onToggleSelectMode={() => {
+              setSelectMode((s) => !s)
+              message(selectMode ? '已切回平移模式（拖动=平移画布）' : '框选模式：在空白处拖动框选节点，然后点"成组所选"')
+            }}
+          />
           <QuestionBar onExpand={onExpand} onCompareSticky={onCompareSticky} message={message} />
           {note && <Panel position="top-right" className="question-note">{note}</Panel>}
         </ReactFlow>

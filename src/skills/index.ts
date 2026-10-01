@@ -376,7 +376,7 @@ registerSkill({
     if (!isPyodideWorkerAvailable()) {
       return { available: false, reason: '当前环境无 Worker' }
     }
-    const n = samples ?? 600_000
+    const n = samples ?? 1_500_000 // δ=0.0625 needs ≳1M samples for σ_rel ≲1%
     const py = [
       'import numpy as np, json',
       `delta = ${delta}`,

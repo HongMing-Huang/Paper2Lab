@@ -152,27 +152,32 @@ tests: 与内核同目录 *.test.ts（vitest）
 
 ## 9. 当前完成状态（随进度更新）
 
+v1（2026-10-01 上午）：
+
 - [x] 技术调研（xyflow / marimo / R3F / Plot+MathLive+pdf.js / 论文数学事实 / Perron 树构造）— 结论在 §3
-- [x] 脚手架 + Git + Linear 项目（Paper2Lab / P-CLI-3，CLI-29..40）
-- [x] Kakeya 数学内核 + 22 项 vitest（voxel 体积与解析胶囊值 6% 内标定；Perron 面积单调性）
+- [x] 脚手架 + Git + Linear 项目（Paper2Lab / P-CLI-3）
+- [x] Kakeya 数学内核 + vitest（voxel 体积与解析胶囊值 6% 内标定；Perron 面积单调性）
 - [x] Reactive Runtime（param/derive/asyncDerive + useCell；stale-while-recompute + generation 防乱序）
-- [x] Spike 实测（#spike 路由；RF×R3F×Plot×pdf.js×Worker 组合在浏览器验证后合入产品）
-- [x] 无限纸面画布 + 14 类节点（paper/theorem/formula/concept/source/params/experiment3d/chart×2/perron/observation/whatif/sandbox/runtimeGraph）
-- [x] 3D δ-tubes 实验（InstancedMesh 512 管 + voxel 视图）+ Worker 联动 + 指标卡
-- [x] Perron 2D 实验 + 针旋转动画（RAF + 直接 DOM 写入）
-- [x] Observable Plot 图表（multiplicity 直方图 + |⋃T| sweep 曲线，live + 离线预计算双系列）
-- [x] pdf.js 论文页 + 定位高亮（注意：arXiv PDF 有封面页，定理锚点在 p.3；文本匹配需折叠多空格并维护 per-char→item 映射）
-- [x] 提问 → expansion packs（关键词路由，无聊天框；AI 只解释/What-if）
-- [x] 离线预计算脚本（scripts/precompute-kakeya.ts，Node 原生 strip-types，复用同一内核）
-- [x] 端到端验收：δ/packing 拖动 → 3D+指标+图表+观察联动（Σ|T|≈N·πδ² 与解析吻合；packing=1 时 max m=N）；定位原文高亮；Console 无错误（仅 three 内部 Clock 弃用 warn）
+- [x] Spike 实测（#spike 路由）后合入产品；无限纸面 + 18 类节点
+- [x] pdf.js 定位高亮（封面页锚点 p.3 + 多空格折叠匹配）；提问→expansion packs；离线预计算
+- [x] 端到端验收（δ/packing 联动、Σ|T|≈N·πδ²、Console 干净）
+
+v2（2026-10-01，交互契约 + Skills + P0 画布）：
+
+- [x] 交互契约落地：未知问题自动运行对比实验（绝不纯文本回答）；chip"对比 separated vs sticky"
+- [x] Scientific Skills 注册表：7 族 10 技能，schema/runtime/evidence_type/dependencies 声明；runSkill 校验 + EvidenceLog（cell 版本戳）
+- [x] 实验 Fork：快照（参数+committed 指标+版本戳）/恢复（仅 setParam）/对比卡（Δ+相对变化，实测 max m +773%）
+- [x] 证据链卡：参数→cell→技能→PAPER 全链（15 项，带版本与 stale）；verify.invariants 5 项全过；verify.pyodide_numpy 在浏览器真实跑通（NumPy MC 交叉验证，CDN Pyodide v0.27.7 in worker，离线降级 available:false）
+- [x] 画布 P0：Shift 多选 + 框选模式开关（panOnDrag/selectionOnDrag 切换）；成组/拆组（纯函数坐标变换，4 项单测含 round-trip）
+- [x] v2 浏览器回归：干净页面 Console 0 错误；39/39 vitest；build 通过
 
 ## 10. 下一阶段任务（比赛迭代方向）
 
 1. 视觉打磨：卡片入场动画、桌面纹理、minimap 主题化。
-2. Runtime 图可视化升级（DAG 连线图，替代列表）。
-3. 更多 expansion packs（Wolff hairbrush、σ/ω 断言等）与第二个 what-if 实验的参数预置。
-4. 交互 3D：OrbitControls（需处理与节点拖拽的事件冲突）或预设机位切换。
-5. 移动端 / 触控板手势适配。
+2. Runtime DAG 可视化升级（连线图替代列表）+ 技能面板（浏览/调用全部已注册技能）。
+3. Pyodide 技能扩展（SciPy 拟合 |⋃T|~N 标度律）；本地 LLM 接入 infer 族（可选）。
+4. 交互 3D 机位；移动端适配。
+5. 更多 expansion packs（Wolff hairbrush、σ/ω 断言）。
 
 ---
 

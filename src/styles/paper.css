@@ -239,6 +239,7 @@ math-field.sandbox-field { width: 100%; min-height: 52px; font-size: 17px; }
   border: 1px solid var(--rule); border-radius: 3px; padding: 3px 10px; cursor: pointer;
 }
 .desk-toolbar button:hover { color: var(--accent); border-color: rgba(154, 59, 46, 0.4); }
+.desk-toolbar button.on-mode { color: var(--paper); background: var(--accent-blue); border-color: var(--accent-blue); }
 .chip-run { color: var(--accent); border-color: rgba(154, 59, 46, 0.45); }
 
 .react-flow__node.selected > .sheet { outline: 1.5px solid rgba(154, 59, 46, 0.55); outline-offset: 2px; }

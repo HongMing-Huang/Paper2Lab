@@ -18,12 +18,19 @@ pnpm precompute   # 重新生成离线预计算数据（可复现，seeded）
 
 ## 你能在纸面上做什么
 
-- **拖参数**（PARAMETERS 卡）：δ（管半径）、packing（separated→sticky）、N（管数）、voxel 网格 —— 所有派生对象自动重算。
+- **拖参数**（PARAMETERS 卡）：δ（管半径）、packing（separated→sticky）、N（管数）、voxel 网格 —— 所有派生对象自动重算（Reactive Runtime 单一数据源）。
 - **3D 实验**：Fibonacci 半球面 δ-分离方向生成 δ-tubes（React Three Fiber + InstancedMesh），可切 voxel 占用视图（按 multiplicity 着色）。
 - **真实数字**：occupied volume / multiplicity 直方图 / max·avg multiplicity 由 Web Worker 有限尺度栅格化计算；更大尺度用离线脚本预计算（同一数学内核，可复现）。
 - **2D Perron 树**：2^k 子三角形 α-重叠合并 + 单位针旋转动画，实测面积随参数变化。
 - **回溯论文**：THEOREM 卡引用原文，点"在论文中定位此句"→ 论文页翻到对应位置并高亮原文。
-- **提问**：顶部输入问题 → 不弹聊天框，而是在纸面上展开 Concept/Theorem/Formula/Experiment/Chart/Observation/Source。
+- **提问**：顶部输入问题 → 不弹聊天框，而是在纸面上展开研究对象；未知主题会直接运行 separated vs sticky 对比实验（可运行问题绝不止文本）。
+- **实验 Fork**（v2）：任何时刻"⑂ Fork 此刻实验"冻结参数+指标+版本戳；Fork 卡可一键恢复参数；"⚖️ 对比"chip 自动双 fork + 空间对比表（Δ 与相对变化）。
+- **证据链**（v2）：TRACE 卡展示 参数→cell→技能→PAPER 锚点 的完整链条（带版本号）；可运行 verify.invariants（确定性不变量校验）与 verify.pyodide_numpy（CDN Pyodide + NumPy 蒙特卡洛交叉验证，离线优雅降级）。
+- **画布 P0**（v2）：无限平移缩放、Shift/框选模式多选、📎 成组 / ✂️ 拆组（坐标变换有单测）。
+
+## Scientific Skills（v2）
+
+所有科研能力注册为显式技能（`src/skills/`）：`inspect / simulate / measure / compare / infer / trace / verify`，各声明 input/output schema、runtime（main/worker/pyodide-worker）、evidence_type（PAPER/CALCULATED/AI_INFERENCE，不混用）与依赖。每次运行写入 EvidenceLog（含 runtime cell 版本戳），供证据链溯源。
 
 ## 科研真实性
 
