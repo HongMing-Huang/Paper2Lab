@@ -530,3 +530,56 @@ const THEOREM_IDS: Record<string, { id: string; page: number; needle: string }> 
   'def-kakeya-set': { id: 'def-kakeya-set', page: 3, needle: 'unit line segment pointing in every direction' },
   'def-wolff-axioms': { id: 'def-wolff-axioms', page: 3, needle: 'said to satisfy the Wolff axioms' },
 }
+
+// ---- objective-named primitive skills（generateDirections/generateTubes/interpolatePacking） ----
+
+registerSkill({
+  id: 'generate_directions',
+  family: 'simulate',
+  title: '生成方向样本',
+  description: 'Fibonacci 半球面方向采样（确定性、无 RNG）',
+  input_schema: { type: 'object', required: ['n'], properties: { n: num('方向数') } },
+  output_schema: { type: 'object', properties: { minSepDeg: num('最小角距（度）') } },
+  runtime: 'main',
+  evidence_type: 'CALCULATED',
+  dependencies: ['kakeya/directions.ts'],
+  run: ({ n }: { n: number }) => {
+    const dirs = fibonacciDirections(n)
+    return { count: n, minSepRad: minAngularSeparation(dirs), minSepDeg: (minAngularSeparation(dirs) * 180) / Math.PI }
+  },
+})
+
+registerSkill({
+  id: 'generate_tubes',
+  family: 'simulate',
+  title: '生成 δ-tubes',
+  description: '按 δ 与 packing 生成管族（含 spread origins 的确定性种子）',
+  input_schema: { type: 'object', required: ['delta', 'n', 'packing'], properties: { delta: num('δ'), n: num('N'), packing: num('packing'), seed: num('种子') } },
+  output_schema: { type: 'object', properties: { tubeCount: num('管数') } },
+  runtime: 'main',
+  evidence_type: 'CALCULATED',
+  dependencies: ['kakeya/tubes.ts', 'kakeya/directions.ts'],
+  run: ({ delta, n, packing, seed }: { delta: number; n: number; packing: number; seed?: number }) => {
+    const tubes = makeTubes(fibonacciDirections(n), delta, packing, seed)
+    // summary only — full arrays stay in the runtime cell for the 3D view
+    return { tubeCount: tubes.length, delta, packing, sample: { dir: tubes[0]?.dir, center: tubes[0]?.center } }
+  },
+})
+
+registerSkill({
+  id: 'interpolate_packing',
+  family: 'simulate',
+  title: 'Separated → Packed 连续插值',
+  description: '给定 packing ∈ [0,1]，计算 spread→sticky 的中点插值位置（方向不变）',
+  input_schema: { type: 'object', required: ['packing'], properties: { packing: num('0 separated … 1 sticky') } },
+  output_schema: { type: 'object', properties: { regime: str('构型分类') } },
+  runtime: 'main',
+  evidence_type: 'CALCULATED',
+  dependencies: ['kakeya/tubes.ts'],
+  run: ({ packing }: { packing: number }) => ({
+    packing,
+    regime: packing >= 0.6 ? 'sticky' : packing >= 0.25 ? 'intermediate' : 'separated',
+    stickyCenter: { x: 0.5, y: 0.5, z: 0.5 },
+    note: '方向保持 Fibonacci 半球面 δ-分离；仅中点向 (½,½,½) 插值',
+  }),
+})

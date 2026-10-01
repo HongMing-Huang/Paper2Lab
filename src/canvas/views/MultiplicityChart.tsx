@@ -132,21 +132,26 @@ export function UnionCurveChart({
   }, [points, width, xLabel, height, ref, onPointClick])
 
   return (
-    <div ref={ref} className="chart-frame chart-clickable" style={{ position: 'relative' }}>
-      {hits.map(
-        (h: { left: number; top: number; runId?: string; label: string }, i: number) =>
-          h.runId &&
-          onPointClick && (
-            <button
-              key={i}
-              type="button"
-              className="chart-hit nodrag nowheel"
-              style={{ left: h.left - 7, top: h.top - 7 }}
-              title={h.label}
-              onPointerDown={(e) => onPointClick(h.runId!, { x: e.clientX, y: e.clientY })}
-            />
-          ),
-      )}
+    <div className="chart-frame chart-clickable" style={{ position: 'relative' }}>
+      {/* fig lives in its own sub-container: replaceChildren() on data change
+          must not wipe the React-rendered hit buttons */}
+      <div ref={ref} />
+      <div className="chart-hits">
+        {hits.map(
+          (h: { left: number; top: number; runId?: string; label: string }, i: number) =>
+            h.runId &&
+            onPointClick && (
+              <button
+                key={i}
+                type="button"
+                className="chart-hit nodrag nowheel"
+                style={{ left: h.left - 7, top: h.top - 7 }}
+                title={h.label}
+                onPointerDown={(e) => onPointClick(h.runId!, { x: e.clientX, y: e.clientY })}
+              />
+            ),
+        )}
+      </div>
     </div>
   )
 }

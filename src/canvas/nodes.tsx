@@ -46,7 +46,7 @@ import type { VoxelMetrics } from '../kakeya/voxels3d'
 import { ParamChip } from './controls/ParamChip'
 import { MicroscopeOverlay } from './MicroscopeOverlay'
 import { PaperModeNode } from './PaperModeNode'
-import { voxelPreviewCell } from '../paper/kakeyaGraph'
+import { voxelPreviewCell, pNTubes } from '../paper/kakeyaGraph'
 import { measureFamily } from '../workers/voxelClient'
 
 // ---- shared frame ----------------------------------------------------------
@@ -356,6 +356,9 @@ export function ChartUnionNode() {
   const sweep = useCell(sweepCell)
   const deltaExp = useCell<number>(pDeltaExp)
   const packing = useCell<number>(pPacking)
+  const nTubes = useCell<number>(pNTubes)
+  const exact = useCell(voxelCell)
+  const preview = useCell(voxelPreviewCell)
   const forks = useForks()
   const [forkPoints, setForkPoints] = useState<CurvePoint[]>([])
   const forkKey = forks.map((f) => `${f.id}:${f.metrics?.occupiedVolume ?? 0}`).join('|')
@@ -390,9 +393,19 @@ export function ChartUnionNode() {
       .map((r) => ({ x: r.n, y: r.occupiedVolume, series: 'precomputed（离线脚本）', runId: 'precomputed' }))
   }, [deltaExp.value, packing.value])
   // stable identity so the chart effect doesn't loop (points is an effect dep)
+  const liveY = exact.status === 'resolved' ? exact.value?.occupiedVolume : preview.value?.occupiedVolume
   const points = useMemo<CurvePoint[]>(
-    () => [...live.map((p) => ({ ...p, runId: 'main' })), ...pre, ...forkPoints],
-    [live, pre, forkPoints],
+    () => [
+      ...live.map((p) => ({ ...p, runId: 'main' })),
+      ...pre,
+      ...forkPoints,
+      // the CURRENT experiment's point — moves live during drags (preview)
+      // and settles on the Worker's exact value afterwards
+      ...(nTubes.value && liveY !== undefined
+        ? [{ x: nTubes.value, y: liveY, series: 'current（当前实验）', runId: 'main' }]
+        : []),
+    ],
+    [live, pre, forkPoints, nTubes.value, liveY],
   )
 
   const onPointClick = useCallback((runId: string) => {
