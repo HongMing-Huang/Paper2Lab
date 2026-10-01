@@ -143,9 +143,7 @@ export function DeskCanvas() {
             }
           } else if (action.skill === 'explain_result') {
             await awaitSettled('kakeya.voxel')
-            const m = kakeya.get('kakeya.voxel').value as
-              | { occupiedVolume: number; sumTubeVolume: number; maxMultiplicity: number; avgMultiplicity: number }
-              | undefined
+            const m = (kakeya.get('kakeya.voxel').value as { result?: { occupiedVolume: number; sumTubeVolume: number; maxMultiplicity: number; avgMultiplicity: number } } | undefined)?.result
             if (m) {
               const out = await runSkill<{ reading: string }>('explain_result', {
                 occupiedVolume: m.occupiedVolume,

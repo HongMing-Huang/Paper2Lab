@@ -6,10 +6,13 @@ import { fibonacciDirections, minAngularSeparation, type Vec3 } from '../kakeya/
 import { makeTubes, type Tube3 } from '../kakeya/tubes'
 import { perronTree, type PerronResult } from '../kakeya/perron'
 import { computeVoxelCoverage, type VoxelMetrics, type VoxelResult } from '../kakeya/voxels3d'
+import { ENGINES, executeSpec, type ExperimentRun } from '../experiments/protocol'
 import { isWorkerAvailable, measureFamily, measureVoxelCover } from '../workers/voxelClient'
 
 export const VIS_RES = 16 // 3D occupancy grid resolution (divides all voxelRes choices)
 export const PREVIEW_RES = 32 // drag-time synchronous preview grid (AGENTS.md §2)
+export const SWEEP_RES = 40 // live sweep grid resolution (Comlink worker)
+export const FINE_DELTA = 2 ** -6 // microscope finest scale (demo configuration)
 
 export const kakeya = new Runtime()
 
@@ -40,25 +43,47 @@ export const tubesCell = kakeya.derive<Tube3[]>(
 )
 
 // drag-time preview: synchronous low-res measurement so numbers move with the
-// pointer (exact result below settles after pointer-up via the Worker)
-export const voxelPreviewCell = kakeya.derive<VoxelMetrics>(
+// pointer (exact result below settles after pointer-up via the Worker).
+// Presentation-only envelope — preview res is NOT evidence (kind says so).
+export const voxelPreviewCell = kakeya.derive<ExperimentRun<VoxelMetrics>>(
   'kakeya.voxelPreview',
-  [tubesCell],
-  ([tubes]) => {
+  [tubesCell, pDeltaExp, pPacking],
+  ([tubes, deltaExp, packing]) => {
     const { visGrid: _v, ...metrics } = computeVoxelCoverage(tubes as Tube3[], PREVIEW_RES, 0)
-    return metrics
+    return {
+      runId: `preview-${(deltaExp as number).toFixed(2)}-${(packing as number).toFixed(2)}`,
+      spec: { kind: 'kakeya.preview', params: { deltaExp: deltaExp as number, packing: packing as number }, seed: 0, res: PREVIEW_RES },
+      status: 'resolved' as const,
+      result: metrics,
+      engine: ENGINES.kakeyaPreview.engine,
+      engineVersion: ENGINES.kakeyaPreview.version,
+      durationMs: 0,
+      evidence: 'CALCULATED' as const,
+      createdAt: Date.now(),
+    }
   },
 )
 
-// exact (CALCULATED) measurement — Comlink RPC into the Web Worker
-export const voxelCell = kakeya.asyncDerive<VoxelResult>(
+// exact (CALCULATED) measurement — Comlink RPC into the Web Worker, wrapped
+// in a full ExperimentRun (params/engine/duration/seed/evidence/runId)
+export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelResult>>(
   'kakeya.voxel',
-  [tubesCell, pVoxelRes],
-  ([tubes, res]) =>
-    (isWorkerAvailable() ? measureVoxelCover : computeVoxelsSyncFallback)(
-      tubes as Tube3[],
-      res as number,
-      VIS_RES,
+  [tubesCell, pVoxelRes, pDeltaExp, pPacking, pNTubes],
+  async ([tubes, res, deltaExp, packing, nTubes]) =>
+    executeSpec(
+      {
+        kind: 'kakeya.voxel',
+        params: { deltaExp: deltaExp as number, packing: packing as number, nTubes: nTubes as number },
+        seed: 20250224,
+        res: res as number,
+      },
+      ENGINES.kakeyaWorker,
+      () =>
+        (isWorkerAvailable() ? measureVoxelCover : computeVoxelsSyncFallback)(
+          tubes as Tube3[],
+          res as number,
+          VIS_RES,
+        ),
     ),
   { debounceMs: 140 },
 )
@@ -82,12 +107,20 @@ export const sweepCell = kakeya.asyncDerive<CurvePoint[]>(
   'kakeya.sweep',
   [deltaCell, pPacking],
   async ([delta, packing]) => {
-    const points: CurvePoint[] = []
-    for (const n of SWEEP_NS) {
-      const r = await measureFamily(delta as number, n, packing as number, 40)
-      points.push({ x: n, y: r.occupiedVolume, series: 'live（本页计算）' })
-    }
-    return points
+    const run = await executeSpec(
+      { kind: 'kakeya.sweep', params: { deltaExp: -Math.log2(delta as number), packing: packing as number }, seed: 20250224, res: SWEEP_RES },
+      ENGINES.kakeyaWorker,
+      async () => {
+        const points: CurvePoint[] = []
+        for (const n of SWEEP_NS) {
+          const r = await measureFamily(delta as number, n, packing as number, SWEEP_RES)
+          points.push({ x: n, y: r.occupiedVolume, series: 'live（本页计算）', runId: '' })
+        }
+        return points
+      },
+    )
+    // every datapoint of this sweep carries the run's id (Data → Experiment)
+    return run.result!.map((p) => ({ ...p, runId: run.runId }))
   },
   { debounceMs: 260 },
 )
@@ -97,7 +130,7 @@ export const sweepCell = kakeya.asyncDerive<CurvePoint[]>(
 export const fineTubesCell = kakeya.derive<Tube3[]>(
   'kakeya.fineTubes',
   [dirsCell, pPacking],
-  ([dirs, packing]) => makeTubes(dirs as Vec3[], 2 ** -6, packing as number, 20250224 + 1),
+  ([dirs, packing]) => makeTubes(dirs as Vec3[], FINE_DELTA, packing as number, 20250224 + 1),
 )
 
 // ρ intermediate scale (δ/2) — the microscope's 1 → ρ → δ continuum (AGENTS §1)

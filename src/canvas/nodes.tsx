@@ -46,7 +46,8 @@ import type { VoxelMetrics } from '../kakeya/voxels3d'
 import { ParamChip } from './controls/ParamChip'
 import { MicroscopeOverlay } from './MicroscopeOverlay'
 import { PaperModeNode } from './PaperModeNode'
-import { voxelPreviewCell, pNTubes } from '../paper/kakeyaGraph'
+import { voxelPreviewCell, pNTubes, PREVIEW_RES, SWEEP_RES, SWEEP_NS } from '../paper/kakeyaGraph'
+import { PERRON_TRIANGLE_AREA } from '../kakeya/perron'
 import { measureFamily } from '../workers/voxelClient'
 import { solutionCell } from '../paper/odeGraph'
 import { OdeChart } from './views/OdeChart'
@@ -266,7 +267,8 @@ export function Experiment3DNode() {
   const showVox = useCell<number>('desk.showVoxels')
   const [micro, setMicro] = useState(false)
   const settled = vox.status === 'resolved'
-  const m = settled ? vox.value : preview.value
+  const run = settled ? vox.value : preview.value
+  const m = run?.result
   const readNum = (id: string) => () => (kakeya.get(id).value as number) ?? 0
   return (
     <Sheet
@@ -287,8 +289,8 @@ export function Experiment3DNode() {
       <div onDoubleClick={() => setMicro(true)} title="双击进入 Microscope">
         <Tubes3DView
           tubes={tubes.value ?? []}
-          visGrid={vox.value?.visGrid}
-          visMaxM={vox.value?.maxMultiplicity}
+          visGrid={vox.value?.result?.visGrid}
+          visMaxM={vox.value?.result?.maxMultiplicity}
           showVoxels={!!showVox.value}
           height={330}
           packingDrag
@@ -300,7 +302,9 @@ export function Experiment3DNode() {
             |⋃T| = {m.occupiedVolume.toFixed(4)} · Σ|T| = {m.sumTubeVolume.toFixed(4)} ·
             重叠率 = {((1 - unionEfficiency(m)) * 100).toFixed(1)}% · max m = {m.maxMultiplicity} ·
             avg m = {m.avgMultiplicity.toFixed(2)}
-            {settled ? `（res³ = ${m.res}³ Worker 精算）` : '（preview res 32³，松手精算）'}
+            {settled
+              ? `（${run?.engine}@${run?.engineVersion} · ${run?.durationMs}ms · res³=${m.res}³ · run ${run?.runId}）`
+              : `（preview res ${PREVIEW_RES}³，松手精算）`}
           </>
         ) : (
           '计算中…'
@@ -341,7 +345,7 @@ export function Experiment3DNode() {
 export function ChartMultiplicityNode() {
   const vox = useCell(voxelCell)
   const rows = useMemo(
-    () => (vox.value ? histogramRows(vox.value).filter((r) => r.count > 0) : []),
+    () => (vox.value?.result ? histogramRows(vox.value.result).filter((r) => r.count > 0) : []),
     [vox.value],
   )
   return (
@@ -371,8 +375,8 @@ export function ChartUnionNode() {
       const out: CurvePoint[] = []
       for (const f of forks.slice(-3)) {
         if (!f.metrics) continue
-        for (const n of [16, 32, 64, 96, 128, 192]) {
-          const m = await measureFamily(f.metrics.delta, n, f.metrics.packing, 36)
+        for (const n of SWEEP_NS) {
+          const m = await measureFamily(f.metrics.delta, n, f.metrics.packing, SWEEP_RES)
           if (cancelled) return
           out.push({ x: n, y: m.occupiedVolume, series: `fork · ${f.label}`, runId: f.id })
         }
@@ -395,7 +399,9 @@ export function ChartUnionNode() {
       .map((r) => ({ x: r.n, y: r.occupiedVolume, series: 'precomputed（离线脚本）', runId: 'precomputed' }))
   }, [deltaExp.value, packing.value])
   // stable identity so the chart effect doesn't loop (points is an effect dep)
-  const liveY = exact.status === 'resolved' ? exact.value?.occupiedVolume : preview.value?.occupiedVolume
+  const liveY =
+    exact.status === 'resolved' ? exact.value?.result?.occupiedVolume : preview.value?.result?.occupiedVolume
+  const liveRunId = exact.status === 'resolved' ? exact.value?.runId : 'preview'
   const points = useMemo<CurvePoint[]>(
     () => [
       ...live.map((p) => ({ ...p, runId: 'main' })),
@@ -404,16 +410,17 @@ export function ChartUnionNode() {
       // the CURRENT experiment's point — moves live during drags (preview)
       // and settles on the Worker's exact value afterwards
       ...(nTubes.value && liveY !== undefined
-        ? [{ x: nTubes.value, y: liveY, series: 'current（当前实验）', runId: 'main' }]
+        ? [{ x: nTubes.value, y: liveY, series: 'current（当前实验）', runId: liveRunId }]
         : []),
     ],
-    [live, pre, forkPoints, nTubes.value, liveY],
+    [live, pre, forkPoints, nTubes.value, liveY, liveRunId],
   )
 
   const onPointClick = useCallback((runId: string) => {
-    if (runId === 'main') deskBus.emit({ type: 'focus-node', nodeId: 'exp-3d' })
+    if (runId === 'preview' || runId.startsWith('kakeya-voxel')) deskBus.emit({ type: 'focus-node', nodeId: 'exp-3d' })
     else if (runId === 'precomputed') deskBus.emit({ type: 'focus-node', nodeId: 'chart-union' })
-    else deskBus.emit({ type: 'focus-node', nodeId: `forkcard-${runId}` })
+    else if (runId.startsWith('kakeya-sweep')) deskBus.emit({ type: 'focus-node', nodeId: 'chart-union' })
+    else if (runId.startsWith('fork-')) deskBus.emit({ type: 'focus-node', nodeId: `forkcard-${runId}` })
   }, [])
 
   return (
@@ -452,7 +459,7 @@ export function ObservationNode() {
   useEffect(() => {
     if (vox.version > 0) setFlash(vox.version) // the new observation "appears" when exact compute lands
   }, [vox.version])
-  const v = vox.value
+  const v = vox.value?.result
   const regime = (packing.value ?? 0) >= 0.6 ? 'packed/sticky' : (packing.value ?? 0) >= 0.25 ? '中间态' : 'separated'
   return (
     <Sheet label="OBSERVATION" stale={vox.stale} width={360}>
@@ -471,7 +478,7 @@ export function ObservationNode() {
           </li>
           <li>
             Perron 树（k={perron.value?.k ?? '…'}, α={perron.value?.alpha.toFixed(2) ?? '…'}）：实测面积{' '}
-            {perron.value?.computedArea.toFixed(4) ?? '…'}（原三角形 0.5774，理论上界{' '}
+            {perron.value?.computedArea.toFixed(4) ?? '…'}（原三角形 {PERRON_TRIANGLE_AREA.toFixed(4)}，理论上界{' '}
             {perron.value?.boundArea.toFixed(4) ?? '…'}）。
           </li>
         </ul>
@@ -577,12 +584,17 @@ export function ForkNode({ data }: NodeProps) {
         {fork.synthetic ? ' · 由技能直接计算' : ' · 快照自桌面'}
       </div>
       {fork.metrics ? (
-        <ul className="obs-list">
+        <>
+          <div className="card-caption" title="可追溯性：该分支数值来源的 ExperimentRun">
+            {fork.engine ? `${fork.engine} · ${fork.durationMs ?? '?'}ms · run ${fork.runId ?? '—'}` : 'run 元数据待补'}
+          </div>
+          <ul className="obs-list">
           <li>δ = {fork.metrics.delta.toFixed(4)} · N = {fork.metrics.nTubes} · packing = {fork.metrics.packing.toFixed(2)}</li>
           <li>|⋃T| = {fork.metrics.occupiedVolume.toFixed(4)}</li>
           <li>Σ|T| = {fork.metrics.sumTubeVolume.toFixed(4)}</li>
           <li>max m = {fork.metrics.maxMultiplicity} · avg m = {fork.metrics.avgMultiplicity.toFixed(2)}</li>
-        </ul>
+          </ul>
+        </>
       ) : (
         <div className="card-note dim">暂无 committed 指标（Worker 尚未完成）。</div>
       )}
@@ -820,12 +832,15 @@ export function OdeSheetNode() {
           Kakeya 演示不受影响（其计算永不依赖 Pyodide）。
         </div>
       ) : (
-        <OdeChart points={sol.value ?? []} stale={sol.stale} />
+        <OdeChart points={sol.value?.result ?? []} stale={sol.stale} />
       )}
-      <div className="card-caption">
-        首次打开需从 CDN 加载 Pyodide+SciPy（约 10s）。结果为确定性 CALCULATED；
-        这张纸证明 Parameter → Pyodide → scipy.solve_ivp → Result → Chart 的平台通路。
-      </div>
+      {sol.value && (
+        <div className="card-caption">
+          {sol.value.engine}@{sol.value.engineVersion} · {sol.value.durationMs}ms · run{' '}
+          {sol.value.runId} · 首次打开需从 CDN 加载 Pyodide+SciPy。结果为确定性 CALCULATED；
+          这张纸证明 Parameter → Pyodide → scipy.solve_ivp → Result → Chart 的平台通路。
+        </div>
+      )}
     </Sheet>
   )
 }

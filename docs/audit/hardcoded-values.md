@@ -1,0 +1,31 @@
+# 硬编码数值审计清单（v4，2026-10-01）
+
+> 规则（AGENTS.md §2.8）：除**论文原文（PAPER 引文）**与**明确标注的 seed/demo configuration** 外，最终用户可见的数值结果不得来自硬编码；一切数值与图必须可追溯到 ExperimentRun。
+
+## A. 违规项（本轮修复）
+
+| # | 位置 | 内容 | 处置 |
+|---|---|---|---|
+| A1 | `src/paper/wangZahl.ts:186`（WHATIFS w-halve-delta） | 叙述性数值 "~δ² 缩为 1/4 … ~×1/4"（预测结果写成数字） | 改写为定性描述（无具体数值），保留 AI INFERENCE 标签 |
+| A2 | `PaperModeNode.tsx:73` / `nodes.tsx:303` | 徽章文案硬编码 "res 32³"（与 PREVIEW_RES 常量脱钩，改常量即撒谎） | 读取 `PREVIEW_RES` 常量插值 |
+| A3 | `PaperModeNode.tsx:202` | "面积由 96² 栅格实测"（硬编码 GRID） | 读取 NeedleSweep 导出的 GRID 常量 |
+| A4 | `NeedleSweep.tsx:128` | "/ 2.25"（盒面积字面量） | `box*box` 计算 |
+| A5 | `nodes.tsx:474`（ObservationNode） | "原三角形 0.5774" 字面量 | `PERRON_TRIANGLE_AREA.toFixed(4)`（已有常量） |
+| A6 | `ChartUnionNode` caption | "res 40³" 字面量 | 读取导出的 `SWEEP_RES` 常量 |
+| A7 | `MicroscopeOverlay.tsx:102` | `fineDelta = 2**-6` 与 kakeyaGraph.fineTubes 的 `2**-6` 重复字面量 | 共享 `FINE_DELTA` 常量 |
+| A8 | `ChartUnionNode` caption | "res 96–128³"（预计算 res 范围写死） | 由 precomputed JSON 派生 min/max |
+
+## B. 允许项（分类依据）
+
+| 类别 | 项 | 说明 |
+|---|---|---|
+| PAPER | Perron 三角形面积 1/√3、Theorem 引文、公式 | 论文数学事实/原文 |
+| seed/demo config | `SEED=20250224`、`VIS_RES=16`、`PREVIEW_RES=32`、`SWEEP_RES=40`、`FINE_DELTA=2⁻⁶`、NeedleSweep `GRID/box/half`、ODE `y0=[1,0.5],t1=30,steps=240`、Fibonacci 方向数、packing∈[0,1] | 实验配置（非结果），集中声明且被 UI 引用 |
+| 解释阈值 | ObservationNode regime 0.25/0.6、interpolate_packing 同 | AI_INFERENCE 启发式的配置阈值（非测量结果），已在审计中登记 |
+| 论文知识库 | THEOREMS/CONCEPTS/EXPANSION_PACKS 文本 | PAPER/AI_INFERENCE 标注的非数值内容 |
+| 离线预计算 | `src/data/kakeya-precomputed.json` | C++ 产物（参数+algorithmVersion+FNV-1a checksum），非手写 |
+
+## C. 修复后约束
+
+- 图表 datapoint 一律携带 `runId`（已实现）；Observation/Metric 显示 engine、durationMs、seed、runId（本轮 ExperimentRun 协议落地）。
+- 新增数值必须来自：Worker 精算 / C++ 预计算 / Pyodide / PAPER 引文 / 登记的配置常量。

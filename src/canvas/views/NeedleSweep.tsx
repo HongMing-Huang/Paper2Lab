@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 
 const GRID = 96 // coverage grid resolution (unit box is [-0.75, 0.75]²)
+const BOX = 1.5 // demo configuration: world span
+const NEEDLE_HALF = 0.25 // demo configuration: needle half-length in frame
+
+export { GRID, BOX, NEEDLE_HALF }
 
 export function NeedleSweep({
   size = 260,
@@ -28,9 +32,9 @@ export function NeedleSweep({
     canvas.height = size * dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     const grid = gridRef.current
-    const box = 1.5 // world span [-0.75, 0.75]
+    const box = BOX
     const toPx = (w: number) => ((w + box / 2) / box) * size
-    const half = 0.25 // needle half-length (unit needle scaled into the frame)
+    const half = NEEDLE_HALF
 
     let raf = 0
     let last = performance.now()
@@ -125,7 +129,7 @@ export function NeedleSweep({
           ↺ 重置
         </button>
         <span className="needle-metric">
-          swept 面积（栅格实测）= <strong>{swept.toFixed(4)}</strong> / 2.25
+          swept 面积（栅格实测）= <strong>{swept.toFixed(4)}</strong> / {(BOX * BOX).toFixed(2)}
         </span>
       </div>
     </div>

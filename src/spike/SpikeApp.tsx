@@ -42,8 +42,8 @@ function Spike3DNode() {
       <div className="sheet-label">SPIKE · 3D δ-TUBES — δ = {delta.value?.toFixed(4)} {vox.stale ? '· computing…' : ''}</div>
       <Tubes3DView
         tubes={tubes.value ?? []}
-        visGrid={vox.value?.visGrid}
-        visMaxM={vox.value?.maxMultiplicity}
+        visGrid={vox.value?.result?.visGrid}
+        visMaxM={vox.value?.result?.maxMultiplicity}
         showVoxels={!!showVox.value}
         height={300}
       />
@@ -54,7 +54,7 @@ function Spike3DNode() {
 function SpikeChartNode() {
   const vox = useCell(voxelCell)
   const rows = useMemo(
-    () => (vox.value ? histogramRows(vox.value).filter((r) => r.count > 0) : []),
+    () => (vox.value?.result ? histogramRows(vox.value.result).filter((r) => r.count > 0) : []),
     [vox.value],
   )
   return (
@@ -62,7 +62,7 @@ function SpikeChartNode() {
       <div className="sheet-label">SPIKE · MULTIPLICITY {vox.stale ? '· computing…' : ''}</div>
       <MultiplicityChart rows={rows} stale={vox.stale} />
       <div className="metric-row">
-        |⋃T| = {(vox.value?.occupiedVolume ?? 0).toFixed(4)} · Σ|T| = {(vox.value?.sumTubeVolume ?? 0).toFixed(4)} · max m = {vox.value?.maxMultiplicity ?? 0}
+        |⋃T| = {(vox.value?.result?.occupiedVolume ?? 0).toFixed(4)} · Σ|T| = {(vox.value?.result?.sumTubeVolume ?? 0).toFixed(4)} · max m = {vox.value?.result?.maxMultiplicity ?? 0}
       </div>
     </div>
   )

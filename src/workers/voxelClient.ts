@@ -27,6 +27,46 @@ export async function measureVoxelCover(tubes: Tube3[], res: number, visRes: num
   return getRemote().measureVoxelCover(tubes, res, visRes)
 }
 
+export async function measureUnionVolume(tubes: Tube3[], res: number): Promise<{ occupiedVolume: number; res: number }> {
+  if (!isWorkerAvailable()) {
+    const { computeVoxelCoverage } = await import('../kakeya/voxels3d')
+    const r = computeVoxelCoverage(tubes, res, 0)
+    return { occupiedVolume: r.occupiedVolume, res }
+  }
+  return getRemote().measureUnionVolume(tubes, res)
+}
+
+export async function measureMultiplicity(
+  tubes: Tube3[],
+  res: number,
+): Promise<{ histogram: number[]; maxMultiplicity: number; avgMultiplicity: number }> {
+  if (!isWorkerAvailable()) {
+    const { computeVoxelCoverage } = await import('../kakeya/voxels3d')
+    const r = computeVoxelCoverage(tubes, res, 0)
+    return { histogram: r.histogram, maxMultiplicity: r.maxMultiplicity, avgMultiplicity: r.avgMultiplicity }
+  }
+  return getRemote().measureMultiplicity(tubes, res)
+}
+
+export async function runScaleSweep(
+  delta: number,
+  packing: number,
+  ns: number[],
+  res: number,
+): Promise<Array<{ n: number; occupiedVolume: number; maxMultiplicity: number; avgMultiplicity: number }>> {
+  if (!isWorkerAvailable()) {
+    const { computeVoxelCoverage } = await import('../kakeya/voxels3d')
+    const { fibonacciDirections } = await import('../kakeya/directions')
+    const { makeTubes } = await import('../kakeya/tubes')
+    return ns.map((n) => {
+      const r = computeVoxelCoverage(makeTubes(fibonacciDirections(n), delta, packing), res, 0)
+      return { n, occupiedVolume: r.occupiedVolume, maxMultiplicity: r.maxMultiplicity, avgMultiplicity: r.avgMultiplicity }
+    })
+  }
+  return getRemote().runScaleSweep(delta, packing, ns, res)
+}
+
+/** measureFamily kept as a convenience alias (single N sweep point) */
 export async function measureFamily(
   delta: number,
   nTubes: number,
@@ -45,7 +85,14 @@ export async function measureFamily(
       avgMultiplicity: r.avgMultiplicity,
     }
   }
-  return getRemote().measureFamily(delta, nTubes, packing, res)
+  const tubes = await getRemote().generateTubes(delta, nTubes, packing)
+  const r = await getRemote().measureVoxelCover(tubes as Tube3[], res, 0)
+  return {
+    occupiedVolume: r.occupiedVolume,
+    sumTubeVolume: r.sumTubeVolume,
+    maxMultiplicity: r.maxMultiplicity,
+    avgMultiplicity: r.avgMultiplicity,
+  }
 }
 
 // legacy aliases (v2 call sites)

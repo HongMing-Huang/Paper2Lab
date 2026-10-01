@@ -183,7 +183,7 @@ export const WHATIFS: WhatIfItem[] = [
   {
     id: 'w-halve-delta',
     question: '把 δ 减半会怎样？',
-    body: '方向数 N 不变时，每管体积 ~δ² 缩为 1/4；若管仍基本不重叠，occupied volume ≈ N·πδ² 也应 ~×1/4。试把 δ 从 2⁻⁴ 调到 2⁻⁵，观察 |⋃T| 曲线与重叠率的变化。',
+    body: '方向数不变时，单管体积随 δ² 缩小；若管仍基本不重叠，|⋃T| 应按同量级缩小。试把 δ 调小一档，观察 |⋃T| 曲线与重叠率的变化（数值以页面 CALCULATED 为准）。',
     apply: [{ param: 'kakeya.deltaExp', value: 5 }],
   },
   {

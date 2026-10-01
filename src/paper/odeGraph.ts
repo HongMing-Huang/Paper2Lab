@@ -5,6 +5,7 @@
 // (one Reactive Research Runtime for the whole desk — no per-paper state copy).
 import { kakeya } from './kakeyaGraph'
 import { getPythonRuntime } from '../workers/pythonClient'
+import { ENGINES, executeSpec, type ExperimentRun } from '../experiments/protocol'
 
 export const pAlpha = kakeya.param('lv.alpha', 1.1) // prey growth
 export const pBeta = kakeya.param('lv.beta', 0.4) // predation rate
@@ -17,29 +18,34 @@ export interface OdePoint {
   series: string
 }
 
-/** scipy.integrate.solve_ivp solution — CALCULATED, runtime: pyodide-worker */
-export const solutionCell = kakeya.asyncDerive<OdePoint[]>(
+/** scipy.integrate.solve_ivp solution — CALCULATED, engine: pyodide-scipy */
+export const solutionCell = kakeya.asyncDerive<ExperimentRun<OdePoint[]>>(
   'lv.solution',
   [pAlpha, pBeta, pGamma, pDelta],
-  async ([a, b, c, d]) => {
-    const rhs = [
-      `a, b, c, d = ${a}, ${b}, ${c}, ${d}`,
-      'def f(t, y):',
-      '    return [a*y[0] - b*y[0]*y[1], -c*y[1] + d*y[0]*y[1]]',
-    ].join('\n')
-    const out = (await getPythonRuntime().solveIVP({
-      t0: 0,
-      t1: 30,
-      y0: [1.0, 0.5],
-      rhs,
-      steps: 240,
-    })) as { t: number[]; y: number[][] }
-    const points: OdePoint[] = []
-    for (let i = 0; i < out.t.length; i++) {
-      points.push({ t: out.t[i], v: out.y[0][i], series: '猎物 x（prey）' })
-      points.push({ t: out.t[i], v: out.y[1][i], series: '捕食者 y（predator）' })
-    }
-    return points
-  },
+  async ([a, b, c, d]) =>
+    executeSpec(
+      { kind: 'lv.ode', params: { alpha: a as number, beta: b as number, gamma: c as number, delta: d as number }, seed: 0 },
+      ENGINES.pyodide,
+      async () => {
+        const rhs = [
+          `a, b, c, d = ${a}, ${b}, ${c}, ${d}`,
+          'def f(t, y):',
+          '    return [a*y[0] - b*y[0]*y[1], -c*y[1] + d*y[0]*y[1]]',
+        ].join('\n')
+        const out = (await getPythonRuntime().solveIVP({
+          t0: 0,
+          t1: 30,
+          y0: [1.0, 0.5],
+          rhs,
+          steps: 240,
+        })) as { t: number[]; y: number[][] }
+        const points: OdePoint[] = []
+        for (let i = 0; i < out.t.length; i++) {
+          points.push({ t: out.t[i], v: out.y[0][i], series: '猎物 x（prey）' })
+          points.push({ t: out.t[i], v: out.y[1][i], series: '捕食者 y（predator）' })
+        }
+        return points
+      },
+    ),
   { debounceMs: 300 },
 )

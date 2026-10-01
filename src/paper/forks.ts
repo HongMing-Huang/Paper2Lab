@@ -24,6 +24,10 @@ export interface ForkSnapshot {
   metrics: ForkMetrics | null
   perron: { k: number; alpha: number; computedArea: number; boundArea: number; triangleArea: number } | null
   cellVersions: Record<string, number>
+  /** traceability: the ExperimentRun this fork's metrics came from (AGENTS §2.8) */
+  runId?: string
+  engine?: string
+  durationMs?: number
   /** true when the snapshot was produced by direct skill computation rather than read off the live desk */
   synthetic?: boolean
 }
@@ -70,7 +74,8 @@ export function snapshotCurrentFork(label: string): ForkSnapshot {
   const versions: Record<string, number> = {}
   for (const c of kakeya.describe()) versions[c.id] = c.version
 
-  const vox = cellValue<import('../kakeya/voxels3d').VoxelMetrics>('kakeya.voxel')
+  const voxRun = cellValue<import('../experiments/protocol').ExperimentRun<import('../kakeya/voxels3d').VoxelResult>>('kakeya.voxel')
+  const vox = voxRun?.result
   const delta = cellValue<number>('kakeya.delta') ?? 0
   const metrics: ForkMetrics | null = vox
     ? {
@@ -104,6 +109,9 @@ export function snapshotCurrentFork(label: string): ForkSnapshot {
     metrics,
     perron,
     cellVersions: versions,
+    runId: voxRun?.runId,
+    engine: voxRun ? `${voxRun.engine}@${voxRun.engineVersion}` : undefined,
+    durationMs: voxRun?.durationMs,
   }
 }
 

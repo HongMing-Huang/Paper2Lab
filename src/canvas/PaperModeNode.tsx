@@ -10,7 +10,9 @@ import {
   voxelPreviewCell,
   pNeedleOn,
   kakeya,
+  PREVIEW_RES,
 } from '../paper/kakeyaGraph'
+import { GRID as NEEDLE_GRID } from './views/NeedleSweep'
 import { deskBus, requestAddNode } from '../paper/forks'
 import { PAPER_META, THEOREMS } from '../paper/wangZahl'
 import { FormulaView } from './views/FormulaView'
@@ -54,7 +56,8 @@ function LiveNumbers() {
   const exact = useCell(voxelCell)
   const preview = useCell(voxelPreviewCell)
   const settled = exact.status === 'resolved'
-  const m = settled ? exact.value : preview.value
+  const run = settled ? exact.value : preview.value
+  const m = run?.result
   return (
     <div className={`live-numbers ${settled ? 'num-exact' : 'num-preview'}`}>
       <div className="live-num">
@@ -70,7 +73,9 @@ function LiveNumbers() {
         <span className="live-num-value">{m ? String(m.maxMultiplicity) : '…'}</span>
       </div>
       <span className={`live-badge${settled ? ' exact' : ''}`}>
-        {settled ? 'CALCULATED · res³ Worker 精算' : 'preview · res 32³（松手后 Worker 精算）'}
+        {settled
+          ? `CALCULATED · ${run?.engine}@${run?.engineVersion} · ${run?.durationMs}ms · run ${run?.runId}`
+          : `preview · res ${PREVIEW_RES}³（松手后 Worker 精算）`}
       </span>
     </div>
   )
@@ -199,7 +204,7 @@ export function PaperModeNode() {
             <div className="act-needle">
               <NeedleSweep size={252} />
               <p className="paper-note dim">
-                单位针旋转并留下扫过区域（蓝）。面积由 96² 栅格实测——Kakeya 问题的最小模型。
+                单位针旋转并留下扫过区域（蓝）。面积由 {NEEDLE_GRID}² 栅格实测——Kakeya 问题的最小模型。
                 进第二幕，把针加厚成管、指向所有方向。
               </p>
               <ParamToggle label="Perron 树针动画（Lab 内严格版）" paramId={pNeedleOn.id} />

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useCell } from '../runtime/react'
-import { tubesCell, fineTubesCell, midTubesCell, deltaCell } from '../paper/kakeyaGraph'
+import { tubesCell, fineTubesCell, midTubesCell, deltaCell, FINE_DELTA } from '../paper/kakeyaGraph'
 import type { Tube3 } from '../kakeya/tubes'
 
 const MAX_TUBES = 512
@@ -99,7 +99,6 @@ function MicroscopeScene({ zoom, setZoom }: { zoom: number; setZoom: (z: number)
 export function MicroscopeOverlay({ onClose }: { onClose: () => void }) {
   const [zoom, setZoom] = useState(0)
   const delta = useCell(deltaCell)
-  const fineDelta = 2 ** -6
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -114,7 +113,7 @@ export function MicroscopeOverlay({ onClose }: { onClose: () => void }) {
       ? `尺度 1（粗管 δ=${(delta.value ?? 0).toFixed(4)}）`
       : zoom < 0.67
         ? `尺度 ρ（中管 δ/2=${((delta.value ?? 0) / 2).toFixed(4)}）`
-        : `尺度 δ/4（细管 δ=${fineDelta.toFixed(4)}）`
+        : `尺度 δ/4（细管 δ=${FINE_DELTA.toFixed(4)}）`
 
   return (
     <div className="microscope-overlay">
