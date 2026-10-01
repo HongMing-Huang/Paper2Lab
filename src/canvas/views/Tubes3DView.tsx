@@ -165,7 +165,11 @@ export function Tubes3DView({
         if (!packingDrag) return
         const p = (rt.get('kakeya.packing').value as number) ?? 0
         dragState.current = { y: e.clientY, packing: p }
-        ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+        try {
+          ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+        } catch {
+          // synthetic events have no active pointer; bubbling still delivers moves
+        }
       }}
       onPointerMove={(e) => {
         const s = dragState.current

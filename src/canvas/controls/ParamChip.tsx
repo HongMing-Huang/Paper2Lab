@@ -31,7 +31,11 @@ export function ParamChip({
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       e.stopPropagation()
-      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      try {
+        ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      } catch {
+        // synthetic test events have no active pointer — drag still works via bubbling
+      }
       state.current = { startX: e.clientX, startValue: read() }
       setDragging(true)
     },
