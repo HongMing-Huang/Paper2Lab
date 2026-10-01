@@ -55,6 +55,8 @@ export const tubesRunCell = kakeya.derive<ExperimentRun<Tube3[]>>(
     durationMs: 0,
     evidence: 'CALCULATED' as const,
     createdAt: Date.now(),
+    startedAt: Date.now(),
+    errors: [],
   }),
 )
 
@@ -76,6 +78,8 @@ export const voxelPreviewCell = kakeya.derive<ExperimentRun<VoxelMetrics>>(
       durationMs: 0,
       evidence: 'CALCULATED' as const,
       createdAt: Date.now(),
+      startedAt: Date.now(),
+      errors: [],
     }
   },
 )
@@ -121,6 +125,8 @@ export const perronCell = kakeya.derive<ExperimentRun<PerronResult>>(
     durationMs: 0,
     evidence: 'CALCULATED' as const,
     createdAt: Date.now(),
+      startedAt: Date.now(),
+      errors: [],
   }),
 )
 

@@ -11,9 +11,11 @@ import threading
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
+from server.agent import router as agent_router
 from server.ingest_core import convert_pdf
 
-app = FastAPI(title="Paper2Lab ingestion", version="0.1")
+app = FastAPI(title="Paper2Lab ingestion + research orchestrator", version="0.2")
+app.include_router(agent_router)
 
 # Docling models are heavy and not thread-safe → serialize conversions
 _convert_lock = threading.Lock()

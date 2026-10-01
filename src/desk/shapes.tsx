@@ -2,9 +2,10 @@
 // lifted formula, interactive experiment, comparison chart, source chip.
 // Visual language = warm paper sheets on a research desk — no flowchart
 // chrome, no default whiteboard look.
-import { useMemo } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { convertLatexToMarkup } from 'mathlive'
 import {
+  BindingUtil,
   HTMLContainer,
   Rectangle2d,
   ShapeUtil,
@@ -12,7 +13,9 @@ import {
   useEditor,
   useValue,
   type TLAnyShapeUtilConstructor,
+  type TLBinding,
   type TLShape,
+  type TLShapeId,
 } from '@tldraw/tldraw'
 import { useDesk, useExplorer, useExplorerIds } from './context'
 import { deskBus } from './deskBus'
@@ -21,12 +24,12 @@ import { FormulaWithChips } from './FormulaWithChips'
 import { FormulaChart, SERIES_COLORS } from './FormulaChart'
 import { analyzeFormula } from '../formula/analyze'
 import { explorerStore } from './explorerStore'
+import { agentState } from './agentState'
 
 // ---- shape props registry (module augmentation) ---------------------------
 
 declare module '@tldraw/tldraw' {
-  export interface TLGlobalShapePropsMap {
-    'p2l-paper': {
+  export interface TLGlobalShapePropsMap {    'p2l-paper': {
       docId: string
       page: number
       w: number
@@ -61,6 +64,9 @@ declare module '@tldraw/tldraw' {
       w: number
       h: number
     }
+  }
+  export interface TLGlobalBindingPropsMap {
+    'p2l-trace': Record<string, never>
   }
 }
 
@@ -138,6 +144,9 @@ class PaperShapeUtil extends ShapeUtil<PaperShape> {
   getDefaultProps(): PaperShape['props'] {
     return { docId: '', page: 1, w: 560, h: 726, keyAnchorId: '', highlightAnchorId: '' }
   }
+  override canBind(): boolean {
+    return true
+  }
   getGeometry(shape: PaperShape) {
     return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true })
   }
@@ -196,6 +205,9 @@ class FormulaShapeUtil extends ShapeUtil<FormulaShape> {
   getDefaultProps(): FormulaShape['props'] {
     return { anchorId: '', latex: '', explorerId: '', w: 300, h: 150 }
   }
+  override canBind(): boolean {
+    return true
+  }
   getGeometry(shape: FormulaShape) {
     return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true })
   }
@@ -222,6 +234,10 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
     [editor, shape.id],
   )
   const run = explorer?.run ?? null
+  // orchestrator phase rendered on the paper itself (RUNNING → LOCAL COMPUTE → CALCULATED)
+  const agent = useSyncExternalStore(agentState.subscribe, agentState.getSnapshot, agentState.getSnapshot)
+  const phase =
+    agent.explorerId === p.explorerId && agent.phase.kind !== 'idle' ? agent.phase : null
   // memo key by param VALUES: the store mutates params in place, so identity
   // alone would never refresh the chart (or worse, recreate curves on every
   // render — jsxgraph's fade-in then leaves them at opacity 0)
@@ -233,6 +249,41 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
     return [{ label: 'y(x)', color: SERIES_COLORS[0], f }]
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramsKey, explorer?.compiled, explorer?.spec.independent.name])
+
+  // Direct Geometry (AGENTS.md v6 §9.2): drag point A on the curve → bisection
+  // inverts the measured (x, y) back into the FIRST parameter (graph→param).
+  const anchor = useMemo(() => {
+    const ex = explorer
+    if (!ex?.compiled || ex.spec.parameters.length === 0) return undefined
+    const x0 =
+      ex.spec.independent.range[0] +
+      (ex.spec.independent.range[1] - ex.spec.independent.range[0]) * 0.25
+    return {
+      x: x0,
+      onDrag: (x: number, y: number) => {
+        const p = ex.spec.parameters[0]
+        const indep = ex.spec.independent.name
+        const at = (v: number) => ex.compiled!.run({ ...ex.params, [p.name]: v, [indep]: x })
+        const yLo = at(p.min)
+        const yHi = at(p.max)
+        // bracket check (works for either monotone direction)
+        if (!Number.isFinite(yLo) || !Number.isFinite(yHi)) return
+        if ((yLo - y) * (yHi - y) > 0) return
+        let lo = p.min
+        let hi = p.max
+        for (let i = 0; i < 40; i++) {
+          const mid = (lo + hi) / 2
+          if ((at(mid) - y) * (yLo - y) > 0) lo = mid
+          else hi = mid
+        }
+        const snapped = Math.round(((lo + hi) / 2) / p.step) * p.step
+        explorerStore.setParams(ex.id, {
+          [p.name]: Math.min(p.max, Math.max(p.min, snapped)),
+        })
+      },
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [explorer?.id, explorer?.compiled, explorer?.spec.independent.name, explorer?.spec.parameters])
 
   return (
     <HTMLContainer style={{ pointerEvents: 'all' }}>
@@ -259,9 +310,18 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
             range={explorer?.spec.independent.range ?? [-5, 5]}
             width={p.w - 48}
             height={200}
+            anchor={anchor}
           />
         </Interactive>
         <div className="desk-run-badge">
+          {phase && (
+            <span className={`desk-agent-phase st-${phase.kind}`}>
+              {phase.kind === 'plan' && 'PLAN'}
+              {phase.kind === 'running' && 'RUNNING'}
+              {phase.kind === 'computed' && `LOCAL COMPUTE · ${phase.durationMs}ms → CALCULATED`}
+              {phase.kind === 'error' && 'ERROR'}
+            </span>
+          )}
           {run && run.result ? (
             <>
               <span className={`calc-badge${run.engine.includes('js') ? ' exact' : ''}`}>
@@ -309,7 +369,10 @@ class ExperimentShapeUtil extends ShapeUtil<ExperimentShape> {
   static override type = 'p2l-experiment' as const
   static override props = { anchorId: T.string, latex: T.string, explorerId: T.string, w: T.number, h: T.number }
   getDefaultProps(): ExperimentShape['props'] {
-    return { anchorId: '', latex: '', explorerId: '', w: 460, h: 360 }
+    return { anchorId: '', latex: '', explorerId: '', w: 460, h: 380 }
+  }
+  override canBind(): boolean {
+    return true
   }
   getGeometry(shape: ExperimentShape) {
     return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true })
@@ -393,6 +456,9 @@ class ChartShapeUtil extends ShapeUtil<ChartShape> {
   getDefaultProps(): ChartShape['props'] {
     return { anchorId: '', w: 480, h: 340 }
   }
+  override canBind(): boolean {
+    return true
+  }
   getGeometry(shape: ChartShape) {
     return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true })
   }
@@ -452,5 +518,30 @@ export const deskShapeUtils: TLAnyShapeUtilConstructor[] = [
   ChartShapeUtil,
   SourceShapeUtil,
 ]
+
+/** source-trace binding (AGENTS.md v6 §8): experiment paper → source formula.
+ *  No visual — the relationship record survives moving either shape; the
+ *  Source button uses it to trace back to the paper. */
+type TraceBinding = TLBinding<'p2l-trace'>
+
+class TraceBindingUtil extends BindingUtil<TraceBinding> {
+  static override type = 'p2l-trace' as const
+  getDefaultProps(): TraceBinding['props'] {
+    return {}
+  }
+}
+
+export const deskBindingUtils = [TraceBindingUtil]
+
+/** trace binding lookup: experiment paper → the formula shape it grew from */
+export function sourceBindingTarget(
+  editor: { getBindingsFromShape: (id: TLShapeId, type: string) => unknown[] },
+  fromShapeId: TLShapeId,
+): TLShapeId | null {
+  const bindings = editor.getBindingsFromShape(fromShapeId, 'p2l-trace') as Array<{
+    toId: TLShapeId
+  }>
+  return bindings[0]?.toId ?? null
+}
 
 export type { PaperShape, FormulaShape, ExperimentShape, ChartShape, SourceShape }

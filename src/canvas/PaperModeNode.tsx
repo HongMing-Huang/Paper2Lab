@@ -190,6 +190,21 @@ export function PaperModeNode() {
             >
               ＋ 第二篇论文（Lotka–Volterra · Pyodide/SciPy）
             </button>
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() =>
+                requestAddNode({
+                  id: 'challenge-1',
+                  type: 'challenge',
+                  position: { x: 2400, y: 980 },
+                  data: {},
+                })
+              }
+              title="第三幕：冻结 N 与 δ，比谁能让有限尺度 |⋃T| 更小（用户 vs Agent，同一引擎）"
+            >
+              ▶ Packing Challenge（第三幕 · 用户 vs Agent）
+            </button>
           </section>
         </div>
 

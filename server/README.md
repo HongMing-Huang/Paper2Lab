@@ -36,3 +36,15 @@ server/.venv/bin/python scripts/run_ingest_fixture.py
 
 - matplotlib 全文字页：正文附近的游离 line artist 会让 docling-parse 7.22 丢弃整页词（二分定位）；`pdf.fonttype=42` 必需（Type-3 文本层不可抽）。
 - matplotlib mathtext 公式会被分类为 picture 而非 formula —— 样例 PDF 用 tectonic（真 LaTeX）排版解决。
+
+## Research Orchestrator (AgentScope)
+
+`server/agent.py`（同一 uvicorn 进程）：
+
+- `GET /api/agent/health` → `{ok, backend: "agentscope-qwen" | "sop-deterministic"}`
+- `POST /api/agent/turn` `{sessionId, intent, context, resume?}` → **SSE** 事件流：
+  `plan_created / tool_started / require_execution / experiment_completed / comparison_created / observation_ready / done / error`
+- 计算永远发生在浏览器：agent 需要数值时发 `require_execution`，前端用与 UI 相同的
+  引擎执行注册 skill 并 `resume` 回填（AgentScope `RequireExternalExecutionEvent`/
+  `ExternalExecutionResultEvent` 协议）。无 `DASHSCOPE_API_KEY` 时自动回退确定性 SOP
+  （同事件流）。Qwen 模型可用 `PAPER2LAB_AGENT_MODEL` 指定（默认 qwen-plus）。

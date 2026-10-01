@@ -3,7 +3,7 @@
 // user plays (AGENTS.md §1 v5). Progressive disclosure: paper → key formula
 // marker → Play → interactive figure → fork → comparison — nothing else is
 // pre-created.
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
   Tldraw,
   createShapeId,
@@ -12,7 +12,7 @@ import {
 } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { DeskContext, type DeskPayload } from './context'
-import { deskShapeUtils, type PaperShape } from './shapes'
+import { deskShapeUtils, deskBindingUtils, type PaperShape } from './shapes'
 import { deskBus } from './deskBus'
 import { usePdfPageSize } from './PdfCanvas'
 import { analyzeFormula } from '../formula/analyze'
@@ -20,11 +20,31 @@ import { buildExplorerSpec } from '../formula/spec'
 import { explorerStore } from './explorerStore'
 import { planFormulaActions } from '../skills/formulaPlan'
 import { llmConfigFromEnv } from '../skills/llmPlanner'
+import { runAgentTurn, newAgentSessionId, type DeskAgentContext } from './agentBridge'
+import { agentState } from './agentState'
+import type { CurveRun } from './explorerStore'
 
 /** registered layout config (presentation, not evidence) */
 const PAPER_W = 560
 const PAPER_X = 60
 const PAPER_Y = 0
+
+/** orchestrator phases rendered as paper states — never "AI is thinking…" */
+function AgentPhaseStrip() {
+  const s = useSyncExternalStore(agentState.subscribe, agentState.getSnapshot, agentState.getSnapshot)
+  const p = s.phase
+  if (p.kind === 'idle' && !s.observation) return null
+  let text = ''
+  if (p.kind === 'plan') text = `PLAN · ${p.skill} — ${p.goal.slice(0, 40)}`
+  else if (p.kind === 'running') text = `RUNNING · ${p.tool}`
+  else if (p.kind === 'computed') text = `LOCAL COMPUTE → CALCULATED · run …${p.runId.slice(-4)}`
+  else if (p.kind === 'error') text = `ERROR · ${p.message.slice(0, 60)}`
+  return (
+    <div className={`desk-agent-strip st-${p.kind}`}>
+      {text || 'AI INFERENCE'}
+    </div>
+  )
+}
 
 export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onOpenKakeya: () => void }) {
   const editorRef = useRef<Editor | null>(null)
@@ -35,9 +55,21 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     source: null as TLShapeId | null,
   })
   const experimentIds = useRef<TLShapeId[]>([])
+  const agentSession = useRef(newAgentSessionId())
   const [note, setNote] = useState<string | null>(null)
   const [ask, setAsk] = useState('')
   const size = usePdfPageSize(payload.pdfUrl, 1)
+
+  /** wait for an explorer's observable run to settle (bounded) */
+  const waitForRun = useCallback(async (explorerId: string, timeoutMs = 4000): Promise<CurveRun | null> => {
+    const t0 = Date.now()
+    while (Date.now() - t0 < timeoutMs) {
+      const run = explorerStore.get(explorerId)?.run
+      if (run && run.result) return run
+      await new Promise((r) => setTimeout(r, 120))
+    }
+    return null
+  }, [])
 
   const message = useCallback((m: string) => {
     setNote(m)
@@ -195,6 +227,9 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           },
         })
       }
+      // trace binding: experiment paper → the formula it grew from (survives
+      // moving either shape; Source button follows it back to the paper)
+      editor.createBinding({ type: 'p2l-trace', fromId: expId, toId: fid })
       editor.select(expId)
       editor.centerOnPoint(
         { x: (fshape?.x ?? 0) + 300 + 60 + 230, y: (fshape?.y ?? 120) + 140 },
@@ -257,6 +292,84 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     }
   }, [payload, size, ensureExplorer, message, onOpenKakeya, createForkShape])
 
+  /** browser-side executor for the Research Orchestrator (server/agent.py):
+   *  runs the REAL scientific steps on the same engines the UI uses — the
+   *  agent only ever receives run ids and measured numbers back. */
+  const scientificExecute = useCallback(
+    async (args: { deskKind?: string; steps?: Array<Record<string, unknown>> }) => {
+      const steps = args.steps ?? []
+      const firstId = explorerStore.ids()[0]
+      if (!firstId) return { runs: [], summary: '没有可操作的实验' }
+      const baseRun = explorerStore.get(firstId)?.run ?? null
+      let targetId = firstId
+      const runs: Array<Record<string, unknown>> = []
+      for (const step of steps) {
+        const op = String(step.op)
+        if (op === 'experiment.fork') {
+          const anchorId = payload.decision.keyFormula?.id ?? ''
+          const created = createForkShape(targetId, anchorId)
+          if (created) {
+            targetId = created
+            agentState.set({ explorerId: created })
+          }
+        } else if (op === 'formula.set' || op === 'formula.scale') {
+          const param = String(step.param)
+          const cur = explorerStore.get(targetId)?.params[param] ?? 1
+          const v =
+            op === 'formula.set' ? Number(step.value) : cur * Number(step.value)
+          explorerStore.setParams(targetId, { [param]: v })
+        } else if (op === 'formula.plot') {
+          agentState.set({ phase: { kind: 'running', tool: 'formula.plot' }, explorerId: targetId })
+          const run = await waitForRun(targetId)
+          if (run?.result) {
+            runs.push({
+              runId: run.runId,
+              parentRunId: targetId === firstId ? undefined : baseRun?.runId,
+              metrics: { peak: run.result.peak, integral: run.result.integral },
+              durationMs: run.durationMs,
+            })
+          }
+        } else if (op === 'experiment.compare') {
+          deskBus.emit({ kind: 'compare' })
+        }
+      }
+      const base = baseRun?.result
+        ? `base peak ${baseRun.result.peak.toFixed(3)}（run …${baseRun.runId.slice(-4)}）`
+        : ''
+      const fork = runs[0] as { metrics?: { peak?: number } } | undefined
+      const forkTxt = fork?.metrics?.peak != null ? `fork peak ${fork.metrics.peak.toFixed(3)}` : ''
+      const summary = [base, forkTxt].filter(Boolean).join(' → ') || '实验完成（数字见 Comparison 纸）'
+      return { runs, comparison: runs.length ? { rows: runs } : null, summary }
+    },
+    [payload.decision.keyFormula?.id, createForkShape, waitForRun],
+  )
+
+  const canvasApply = useCallback(
+    async (ops: Array<Record<string, unknown>>) => {
+      let applied = 0
+      for (const o of ops) {
+        const op = String(o.op)
+        if (op === 'compare') {
+          deskBus.emit({ kind: 'compare' })
+          applied++
+        } else if (op === 'highlight-source' && o.anchorId) {
+          deskBus.emit({ kind: 'source', anchorId: String(o.anchorId) })
+          applied++
+        } else if (op === 'fork-paper') {
+          const created = createForkShape(explorerStore.ids()[0], payload.decision.keyFormula?.id ?? '')
+          if (created) applied++
+        } else if (op === 'focus') {
+          const editor = editorRef.current
+          const chart = editor?.getShape(ids.current.chart)
+          if (editor && chart) editor.centerOnPoint({ x: chart.x + 240, y: chart.y + 170 }, { animation: { duration: 400 } })
+          applied++
+        }
+      }
+      return { applied }
+    },
+    [createForkShape, payload.decision.keyFormula?.id],
+  )
+
   const runAsk = useCallback(async () => {
     const q = ask.trim()
     if (!q) return
@@ -267,45 +380,78 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     }
     const src = explorerStore.get(firstId)!
     const paramNames = src.spec.parameters.map((p) => p.name)
-    const cfg = llmConfigFromEnv()
-    const actions = await planFormulaActions(
-      q,
-      paramNames,
-      cfg
-        ? async (qq) =>
-            fetch(`${cfg.endpoint.replace(/\/$/, '')}/chat/completions`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
-              body: JSON.stringify({
-                model: cfg.model,
-                messages: [
-                  {
-                    role: 'system',
-                    content:
-                      'You convert a question about a formula experiment into structured ops. ' +
-                      'Return ONLY a JSON object {"actions":[{op,param,value}]}. ' +
-                      'ops fork|set|scale|rerun|compare; ' +
-                      `param must be one of ${JSON.stringify(paramNames)}. set.value is absolute, scale.value is a factor.`,
-                  },
-                  { role: 'user', content: qq },
-                ],
-                response_format: { type: 'json_object' },
-                temperature: 0,
-              }),
+    const context: DeskAgentContext = {
+      deskKind: 'formula',
+      paperTitle: payload.doc.title,
+      params: paramNames,
+      paramValues: { ...src.params },
+      anchorId: payload.decision.keyFormula?.id ?? null,
+    }
+    agentState.set({ phase: { kind: 'plan', goal: q, skill: 'formula.plot' }, explorerId: firstId, observation: null, plan: null })
+    try {
+      // Research Orchestrator on the server (AgentScope/Qwen or deterministic
+      // SOP) — computation always comes back to THIS browser.
+      await runAgentTurn(q, context, agentSession.current, {
+        scientificExecute,
+        canvasApply,
+        onEvent: (e) => {
+          if (e.type === 'plan_created' && e.plan) {
+            agentState.set({
+              phase: { kind: 'plan', goal: e.plan.goal, skill: e.plan.skill },
+              plan: e.plan,
             })
-              .then((r) => r.json())
-              .then(
-                (d) =>
-                  JSON.parse(
-                    ((d as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]
-                      ?.message?.content ?? 'null'),
-                  ) as unknown,
-              )
-              .then((c) =>
-                Array.isArray(c) ? c : (c as { actions?: unknown[] })?.actions ?? null,
-              )
-        : undefined,
-    )
+            message(`PlayPlan：${e.plan.goal}`)
+          } else if (e.type === 'tool_started') {
+            agentState.set({ phase: { kind: 'running', tool: e.tool ?? '' } })
+          } else if (e.type === 'experiment_completed') {
+            agentState.set({
+              phase: { kind: 'computed', runId: e.runId ?? '', durationMs: e.durationMs ?? 0 },
+            })
+          } else if (e.type === 'observation_ready') {
+            agentState.set({ observation: e.text ?? null })
+            message(e.text ?? '实验完成')
+          }
+        },
+      })
+      setAsk('')
+      return
+    } catch {
+      // server unreachable → deterministic local planner (same action grammar)
+      agentState.reset()
+    }
+
+    const cfg = llmConfigFromEnv()
+    const actions = await planFormulaActions(q, paramNames, cfg ? async (qq) =>
+      fetch(`${cfg.endpoint.replace(/\/$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
+        body: JSON.stringify({
+          model: cfg.model,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You convert a question about a formula experiment into structured ops. ' +
+                'Return ONLY a JSON object {"actions":[{op,param,value}]}. ' +
+                'ops fork|set|scale|rerun|compare; ' +
+                `param must be one of ${JSON.stringify(paramNames)}. set.value is absolute, scale.value is a factor.`,
+            },
+            { role: 'user', content: qq },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0,
+        }),
+      })
+        .then((r) => r.json())
+        .then(
+          (d) =>
+            JSON.parse(
+              ((d as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]
+                ?.message?.content ?? 'null'),
+            ) as unknown,
+        )
+        .then((c) => Array.isArray(c) ? c : (c as { actions?: unknown[] })?.actions ?? null)
+    : undefined)
     if (!actions) {
       message('没听懂 — 试试「如果 a 增大一倍会怎样？」「把 b 设为 3」')
       return
@@ -329,13 +475,14 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     }
     setAsk('')
     message(`Agent：${actions.map((a) => (a.param ? `${a.op} ${a.param}${a.value ? (a.op === 'scale' ? '×' : '=') + a.value : ''}` : a.op)).join(' → ')}`)
-  }, [ask, message, payload.decision.keyFormula?.id])
+  }, [ask, message, payload.decision.keyFormula?.id, payload.doc.title, createForkShape, scientificExecute, canvasApply])
 
   return (
     <DeskContext.Provider value={payload}>
       <div className="desk-root">
         <Tldraw
           shapeUtils={deskShapeUtils}
+          bindingUtils={deskBindingUtils}
           onMount={(editor: Editor) => {
             editorRef.current = editor
             // debug/e2e handle — camera moves for verification scripts only
@@ -371,6 +518,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
             </button>
           </div>
           {note && <div className="desk-note">{note}</div>}
+          <AgentPhaseStrip />
         </Tldraw>
       </div>
     </DeskContext.Provider>

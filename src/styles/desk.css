@@ -460,3 +460,52 @@
   display: flex;
   gap: 6px;
 }
+
+/* agent orchestrator phases (never "AI is thinking…") */
+.desk-agent-strip {
+  position: absolute;
+  bottom: 108px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  padding: 6px 16px;
+  font-family: Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #2f5a8f;
+  background: #eef3fa;
+  border: 1px solid #b9c8dd;
+  border-radius: 3px;
+  pointer-events: none;
+  animation: desk-fade-in-loc 0.25s ease;
+}
+.desk-agent-strip.st-running {
+  color: #a98548;
+  border-color: #dccfa9;
+  background: #f8f2e2;
+  animation: desk-pulse 1.2s ease-in-out infinite;
+}
+.desk-agent-strip.st-computed {
+  color: #3f6b3f;
+  border-color: #a8c2a8;
+  background: #eef5ee;
+}
+@keyframes desk-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.desk-agent-phase {
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  color: #a98548;
+  border: 1px solid #dccfa9;
+  border-radius: 2px;
+  padding: 1px 6px;
+  background: #f8f2e2;
+}
+.desk-agent-phase.st-computed {
+  color: #3f6b3f;
+  border-color: #a8c2a8;
+  background: #eef5ee;
+}

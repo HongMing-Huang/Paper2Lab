@@ -41,6 +41,7 @@ import {
   deskBus,
   type ForkSnapshot,
 } from '../paper/forks'
+import { challengeStore, agentTry } from '../paper/challengeStore'
 import type { VoxelMetrics } from '../kakeya/voxels3d'
 import { ParamChip } from './controls/ParamChip'
 import { MicroscopeOverlay } from './MicroscopeOverlay'
@@ -844,6 +845,144 @@ export function OdeSheetNode() {
   )
 }
 
+// ---- packing challenge (AGENTS.md v6 §9.7) ---------------------------------
+// Same engine for user and agent; every number cites a real ExperimentRun.
+export function ChallengeNode() {
+  useSyncExternalStore(challengeStore.subscribe, () => challengeStore.version)
+  const exact = useCell(voxelCell)
+  const deltaExp = useCell(pDeltaExp)
+  const packing = useCell(pPacking)
+  const nTubes = kakeya.get('kakeya.nTubes').value as number
+  const res = kakeya.get('kakeya.voxelRes').value as number
+  const run = exact.value
+  const current = run?.status === 'resolved' ? run : null
+  const baseline = challengeStore.baseline
+  const userBest = challengeStore.best('user')
+  const agentBest = challengeStore.best('agent')
+  const [progress, setProgress] = useState<string | null>(null)
+
+  const fmt = (v: number | undefined) => (v == null ? '—' : v.toFixed(4))
+
+  return (
+    <Sheet label="PACKING CHALLENGE" badge="CALCULATED" width={330}>
+      <div className="card-note">
+        规则：冻结 方向数 N 与 δ，拖动 3D 里的 tube 族（packing），
+        在有限尺度体素度量下尽量降低 |⋃T|。用户与 Agent 使用<b>完全相同的计算引擎</b>。
+      </div>
+      {!baseline ? (
+        <div className="exp-actions">
+          <button
+            type="button"
+            className="primary-btn nodrag"
+            onClick={() => challengeStore.start(deltaExp.value as number, nTubes, res)}
+          >
+            ▶ 以当前 N={nTubes} · δ=2^-{deltaExp.value} 开局
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="card-caption dim">
+            baseline：N={baseline.nTubes} · δ=2^-{baseline.deltaExp} · res={baseline.res}³ ·
+            当前 packing = {(packing.value as number).toFixed(2)}
+          </div>
+          <ul className="obs-list">
+            <li>
+              CURRENT |⋃T| = <b>{fmt(current?.result?.occupiedVolume)}</b>
+              {current && <span className="dim"> · run …{current.runId.slice(-6)}</span>}
+            </li>
+            <li>
+              BEST（你）= <b>{fmt(userBest?.occupiedVolume)}</b>
+              {userBest && (
+                <span className="dim">
+                  {' '}
+                  · packing {userBest.packing.toFixed(2)} · run …{userBest.runId.slice(-6)}
+                </span>
+              )}
+            </li>
+            <li>
+              BEST（Agent）= <b>{fmt(agentBest?.occupiedVolume)}</b>
+              {agentBest && (
+                <span className="dim">
+                  {' '}
+                  · packing {agentBest.packing.toFixed(2)} · run …{agentBest.runId.slice(-6)}
+                </span>
+              )}
+            </li>
+          </ul>
+          <div className="exp-actions">
+            <button
+              type="button"
+              className="link-btn nodrag"
+              disabled={!current}
+              title="把当前构型的 Worker 精算结果登记为一次尝试"
+              onClick={() => {
+                if (!current?.result) return
+                challengeStore.add({
+                  by: 'user',
+                  deltaExp: current.spec.params.deltaExp,
+                  nTubes: current.spec.params.nTubes,
+                  packing: current.spec.params.packing,
+                  res: current.spec.res ?? baseline.res,
+                  runId: current.runId,
+                  occupiedVolume: current.result.occupiedVolume,
+                  maxMultiplicity: current.result.maxMultiplicity,
+                  durationMs: current.durationMs,
+                  at: Date.now(),
+                })
+              }}
+            >
+              ✓ 提交当前构型
+            </button>
+            <button
+              type="button"
+              className="link-btn nodrag"
+              disabled={challengeStore.agentBusy}
+              onClick={async () => {
+                setProgress('Agent 尝试中…')
+                await agentTry((done, total) => setProgress(`Agent 尝试中… ${done}/${total}`))
+                setProgress(null)
+              }}
+            >
+              🤖 Let Agent Try（同一引擎搜索 packing）
+            </button>
+          </div>
+          {progress && <div className="card-caption">{progress}</div>}
+          {challengeStore.attempts.length > 0 && (
+            <table className="challenge-table">
+              <thead>
+                <tr>
+                  <th>who</th>
+                  <th>packing</th>
+                  <th>|⋃T|</th>
+                  <th>max m</th>
+                  <th>run</th>
+                </tr>
+              </thead>
+              <tbody>
+                {challengeStore.attempts
+                  .slice()
+                  .reverse()
+                  .map((a) => (
+                    <tr key={a.runId}>
+                      <td>{a.by === 'user' ? '你' : 'agent'}</td>
+                      <td>{a.packing.toFixed(2)}</td>
+                      <td>{a.occupiedVolume.toFixed(4)}</td>
+                      <td>{a.maxMultiplicity}</td>
+                      <td title={a.runId}>…{a.runId.slice(-6)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          )}
+          <div className="card-note dim">
+            FINITE-SCALE CALCULATION —— 不构成 Kakeya 定理的证明（论文结论为 PAPER 证据）。
+          </div>
+        </>
+      )}
+    </Sheet>
+  )
+}
+
 export const deskNodeTypes = {
   paperMode: PaperModeNode,
   paperPage: PaperPageNode,
@@ -862,6 +1001,7 @@ export const deskNodeTypes = {
   runtimeGraph: RuntimeGraphNode,
   fork: ForkNode,
   compare: CompareNode,
+  challenge: ChallengeNode,
   trace: TraceNode,
   group: GroupNode,
   odeSheet: OdeSheetNode,

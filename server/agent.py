@@ -1,0 +1,377 @@
+"""Research Orchestrator (AGENTS.md v6 §4) — the single 0.1 agent.
+
+Transport: FastAPI SSE endpoints exposing a normalized event stream
+(plan_created / tool_started / require_execution / experiment_completed /
+comparison_created / observation_ready / done / error). The browser contract
+lives in src/desk/agentBridge.ts — keep both in sync.
+
+Two interchangeable backends behind one protocol:
+- AgentScope backend: AgentScope 2.x ``Agent`` (ReAct) whose scientific/canvas
+  tools are EXTERNAL tools (``is_external_tool=True``). The agent parks on
+  RequireExternalExecutionEvent; we forward the tool call to the browser (the
+  real Scientific Runtime: Cortex / kakeya worker), then resume with
+  ExternalExecutionResultEvent. The LLM therefore cannot fabricate CALCULATED
+  numbers — it only quotes run ids the browser produced. Enabled when
+  DASHSCOPE_API_KEY is present (model via PAPER2LAB_AGENT_MODEL).
+- SOP backend: deterministic fallback with the same event protocol and the
+  same external-execution handoff, so the product runs offline.
+
+Sessions are held server-side (one Agent / SOP history per sessionId).
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import uuid
+from dataclasses import dataclass, field
+from typing import Any, AsyncGenerator
+
+from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/api/agent")
+
+_NUM = r"(-?\d+(?:\.\d+)?)"
+
+
+def _env(name: str) -> str | None:
+    return os.environ.get(name) or None
+
+
+def backend_name() -> str:
+    return "agentscope-qwen" if _env("DASHSCOPE_API_KEY") else "sop-deterministic"
+
+
+def ev(type_: str, **payload: Any) -> dict:
+    return {"type": type_, **payload}
+
+
+# --------------------------------------------------------------------------
+# deterministic SOP backend (fallback; mirrors src/skills/formulaPlan.ts)
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class SopSession:
+    id: str
+    history: list[dict] = field(default_factory=list)
+
+
+_sop_sessions: dict[str, SopSession] = {}
+
+
+def _parse_formula_intent(q: str, params: list[str]) -> list[dict] | None:
+    if not params:
+        return None
+    target = next((p for p in params if re.search(rf"\b{p}\b", q)), params[0])
+
+    m = re.search(rf"(设为|改为|置为|调整为|set(?:\s+to)?)\s*{_NUM}", q)
+    if m:
+        return [
+            {"op": "experiment.fork"},
+            {"op": "formula.set", "param": target, "value": float(m.group(2))},
+            {"op": "formula.plot"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(增大|增加|放大|加倍|翻倍)(一倍|1倍|两倍|2倍)?|double", q):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "formula.scale", "param": target, "value": 2.0},
+            {"op": "formula.plot"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(减少一半|减半|减到一半|缩小一半|halve)", q):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "formula.scale", "param": target, "value": 0.5},
+            {"op": "formula.plot"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(对比|比较|compare)", q):
+        return [{"op": "experiment.compare"}]
+    return None
+
+
+def _parse_kakeya_intent(q: str) -> list[dict] | None:
+    if re.search(r"(方向|方向数|direction|N)", q, re.I) and re.search(r"(减半|一半|halve)", q, re.I):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "kakeya.halve-n"},
+            {"op": "kakeya.measure"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(集中|更聚|packing|提高聚集)", q, re.I):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "kakeya.set", "param": "packing", "value": 0.85},
+            {"op": "kakeya.measure"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(sweep|扫描|随\s*N|增长)", q, re.I):
+        return [{"op": "kakeya.sweep"}, {"op": "experiment.compare"}]
+    return None
+
+
+def sop_plan(intent: str, context: dict) -> dict | None:
+    desk = context.get("deskKind", "formula")
+    if desk == "kakeya":
+        steps = _parse_kakeya_intent(intent)
+    else:
+        steps = _parse_formula_intent(intent, list(context.get("params", [])))
+    if not steps:
+        return None
+    kakeya = desk == "kakeya"
+    return {
+        "planId": f"plan-{uuid.uuid4().hex[:8]}",
+        "goal": f"用真实实验回答：「{intent[:60]}」",
+        "skill": "kakeya.measure" if kakeya else "formula.plot",
+        "skillVersion": "ts-kakeya-worker@v3" if kakeya else "cortex-ce@0.142.0",
+        "renderer": "r3f" if kakeya else "jsxgraph",
+        "metrics": (
+            ["occupiedCells", "unionVolume", "multiplicity"]
+            if kakeya
+            else ["curve", "peak", "integral"]
+        ),
+        "steps": steps,
+        "evidenceBasis": "浏览器 Scientific Runtime（与用户完全相同的引擎）产生的 ExperimentRun",
+        "nonClaims": ["不得声称证明了任何定理（有限尺度数值实验）"],
+    }
+
+
+async def sop_turn(intent: str, context: dict) -> AsyncGenerator[dict, None]:
+    plan = sop_plan(intent, context)
+    if plan is None:
+        yield ev("done", reason="not-an-experiment")
+        return
+    yield ev("plan_created", plan=plan)
+    yield ev(
+        "require_execution",
+        toolCallId=f"tc-{uuid.uuid4().hex[:10]}",
+        replyId="",
+        tool="scientific_execute",
+        args={"deskKind": context.get("deskKind", "formula"), "steps": plan["steps"]},
+    )
+
+
+async def sop_resume(result: dict) -> AsyncGenerator[dict, None]:
+    runs = result.get("runs", [])
+    if runs:
+        for row in runs:
+            yield ev(
+                "experiment_completed",
+                runId=row.get("runId"),
+                metrics=row.get("metrics"),
+                parentRunId=row.get("parentRunId"),
+                durationMs=row.get("durationMs"),
+            )
+    if result.get("comparison"):
+        yield ev("comparison_created", comparison=result["comparison"])
+    yield ev(
+        "observation_ready",
+        text=result.get("summary") or "实验完成——数字见 Comparison 纸（全部来自本地真实计算）。",
+        evidence="AI_INFERENCE",
+    )
+    yield ev("done", reason="completed")
+
+
+# --------------------------------------------------------------------------
+# AgentScope backend (real Qwen when DASHSCOPE_API_KEY is present)
+# --------------------------------------------------------------------------
+
+_agentscope_sessions: dict[str, Any] = {}
+
+_SYSTEM_PROMPT = (
+    "You are Paper2Lab's Research Orchestrator. Users ask questions about a "
+    "scientific paper experiment shown on an infinite research desk.\n"
+    "Rules:\n"
+    "1. NEVER state numeric results from your own knowledge.\n"
+    "2. Call scientific_execute to run the experiment steps in the user's "
+    "browser — it returns real ExperimentRuns (fork → change parameter → "
+    "measure → compare style steps).\n"
+    "3. Optionally call canvas_apply afterwards to grow the desk "
+    "(ops: {'op':'compare'} | {'op':'highlight-source','anchorId':...} | "
+    "{'op':'focus','target':'chart'}).\n"
+    "4. Finish with ONE short sentence citing run ids and the measured "
+    "differences the tool returned. Finite-scale results are never proofs."
+)
+
+
+def _build_agent() -> Any:
+    from agentscope.agent import Agent
+    from agentscope.credential import DashScopeCredential
+    from agentscope.model import DashScopeChatModel
+    from agentscope.permission import PermissionBehavior, PermissionDecision
+    from agentscope.tool import Toolkit
+    from agentscope.tool._base import ToolBase
+
+    class _ExternalTool(ToolBase):
+        """external tool — the browser is the executor; the agent parks."""
+
+        def __init__(self, name: str, description: str, input_schema: dict) -> None:
+            super().__init__()
+            self.is_external_tool = True
+            self.name = name
+            self.description = description
+            self.input_schema = input_schema
+
+        async def check_permissions(self, *_args: Any, **_kwargs: Any) -> PermissionDecision:
+            return PermissionDecision(
+                behavior=PermissionBehavior.ALLOW,
+                message="browser-side scientific execution is always allowed",
+            )
+
+    skill_tool = _ExternalTool(
+        "scientific_execute",
+        (
+            "Run registered Paper2Lab scientific skills in the user's browser "
+            "(the ONLY source of CALCULATED numbers). Input: "
+            "{deskKind:'formula'|'kakeya', steps:[{op,...}]}. Valid ops: "
+            "experiment.fork, formula.set/scale, formula.plot, "
+            "kakeya.halve-n, kakeya.set, kakeya.measure, kakeya.sweep, "
+            "experiment.compare. Returns real ExperimentRuns."
+        ),
+        {
+            "type": "object",
+            "required": ["deskKind", "steps"],
+            "properties": {
+                "deskKind": {"type": "string", "enum": ["formula", "kakeya"]},
+                "steps": {"type": "array", "items": {"type": "object"}},
+            },
+        },
+    )
+    canvas_tool = _ExternalTool(
+        "canvas_apply",
+        (
+            "Apply canvas operations so results appear on the research desk. "
+            "ops: {'op':'compare'} | {'op':'highlight-source','anchorId':...} | "
+            "{'op':'focus','target':'chart'} | {'op':'fork-paper'}."
+        ),
+        {
+            "type": "object",
+            "required": ["ops"],
+            "properties": {"ops": {"type": "array", "items": {"type": "object"}}},
+        },
+    )
+
+    model = DashScopeChatModel(
+        credential=DashScopeCredential(api_key=_env("DASHSCOPE_API_KEY")),
+        model=_env("PAPER2LAB_AGENT_MODEL") or "qwen-plus",
+        stream=True,
+    )
+    return Agent(
+        name="research-orchestrator",
+        system_prompt=_SYSTEM_PROMPT,
+        model=model,
+        toolkit=Toolkit(tools=[skill_tool, canvas_tool]),
+    )
+
+
+def _evt_type(chunk: Any) -> str:
+    t = getattr(chunk, "type", "")
+    return getattr(t, "value", t) or ""
+
+
+async def agentscope_stream(session_id: str, inputs: Any) -> AsyncGenerator[dict, None]:
+    agent = _agentscope_sessions.get(session_id)
+    if agent is None:
+        agent = _build_agent()
+        _agentscope_sessions[session_id] = agent
+
+    saw_external = False
+    final_text = ""
+    async for chunk in agent.reply_stream(inputs):
+        etype = _evt_type(chunk)
+        if etype == "tool_call_start":
+            yield ev("tool_started", tool=getattr(chunk, "name", ""))
+        elif etype == "require_external_execution":
+            saw_external = True
+            for call in chunk.tool_calls:
+                try:
+                    args = json.loads(call.input) if call.input else {}
+                except json.JSONDecodeError:
+                    args = {"raw": call.input}
+                yield ev(
+                    "require_execution",
+                    toolCallId=call.id,
+                    replyId=chunk.reply_id,
+                    tool=call.name,
+                    args=args,
+                )
+        elif etype == "reply_end" and not saw_external:
+            reason = getattr(chunk, "finished_reason", "completed")
+            yield ev("done", reason=str(reason))
+        elif chunk.__class__.__name__ == "Msg":
+            for blk in getattr(chunk, "content", []) or []:
+                t = getattr(blk, "text", None)
+                if t:
+                    final_text += t
+    if final_text and not saw_external:
+        yield ev("observation_ready", text=final_text, evidence="AI_INFERENCE")
+
+
+# --------------------------------------------------------------------------
+# HTTP surface
+# --------------------------------------------------------------------------
+
+
+class TurnBody(BaseModel):
+    sessionId: str
+    intent: str
+    context: dict = {}
+    resume: dict | None = None
+
+
+def _sse(events: AsyncGenerator[dict, None]) -> StreamingResponse:
+    async def gen() -> AsyncGenerator[bytes, None]:
+        try:
+            async for e in events:
+                yield f"data: {json.dumps(e, ensure_ascii=False)}\n\n".encode()
+        except Exception as exc:  # noqa: BLE001 — surface stream errors to client
+            yield f"data: {json.dumps(ev('error', message=str(exc)))}\n\n".encode()
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@router.get("/health")
+def health() -> dict:
+    return {"ok": True, "backend": backend_name()}
+
+
+@router.post("/turn")
+async def turn(body: TurnBody) -> StreamingResponse:
+    if backend_name() == "agentscope-qwen":
+        if body.resume is not None:
+            from agentscope.event import ExternalExecutionResultEvent
+            from agentscope.message import ToolResultBlock, ToolResultState
+
+            r = body.resume
+            result = ExternalExecutionResultEvent(
+                reply_id=r.get("replyId", ""),
+                execution_results=[
+                    ToolResultBlock(
+                        id=r.get("toolCallId", ""),
+                        name=r.get("tool", "scientific_execute"),
+                        output=json.dumps(r.get("result", {}), ensure_ascii=False),
+                        state=ToolResultState.SUCCESS,
+                    )
+                ],
+            )
+            return _sse(agentscope_stream(body.sessionId, result))
+        from agentscope.message import UserMsg
+
+        user = UserMsg(
+            name="desk",
+            content=f"{body.intent}\n\n[desk context] {json.dumps(body.context, ensure_ascii=False)[:1200]}",
+        )
+        return _sse(agentscope_stream(body.sessionId, user))
+
+    # deterministic SOP backend
+    session = _sop_sessions.setdefault(body.sessionId, SopSession(id=body.sessionId))
+    if body.resume is not None:
+        result = body.resume.get("result", {})
+        session.history.append({"resume": result})
+        return _sse(sop_resume(result))
+    session.history.append({"intent": body.intent})
+    return _sse(sop_turn(body.intent, body.context))

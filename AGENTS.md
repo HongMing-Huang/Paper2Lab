@@ -1,18 +1,23 @@
-# AGENTS.md — Paper2Lab 最高开发约束（v5）
+# AGENTS.md — Paper2Lab 最高开发约束（v6）
 
 > 本文件是整个项目的最高开发约束。**每次开发前必须先读本文件**；形成新的长期设计或技术决策后**立即更新本文件**。任何与本文件冲突的临时决定都不允许直接落地，必须先修订本文件。
 
 ---
 
-## 0. 产品宪法（v3 重写，防止退化回卡片墙）
+## 0. 产品宪法（v6，含 0.1 规范宪法条款）
 
-1. **Canvas 是"研究过程的历史"，不是静态知识图谱。**节点因用户的研究动作而生长；禁止一次性铺开十几张静态卡片。
+1. **Paper2Lab 是可执行论文，不是知识卡片墙。**Canvas 是研究过程的空间历史，不是科学数据源——画布状态只存 shapeId/runId/sourceId/位置/尺寸，科学状态一律在 Scientific Runtime。
 2. **能转成实验的问题，Agent 必须创建实验，不能只回答文字。**Agent 输出结构化 Action（fork/change_parameter/measure/compare/observe），不是长文本。
-3. **参数必须直接存在于公式和实验纸内部。**禁止独立 Dashboard 参数面板；δ、packing 是公式里可拖动的数字、是 3D 里可抓取的对象。
-4. **科学节点必须 Reactive。**参数单一 source of truth；禁止在 UI 回调里手工同步 3D/图/文字。
-5. **所有计算节点必须声明 Evidence 类型**：PAPER（论文原文）/ CALCULATED（本地确定性程序）/ AI INFERENCE（模型解释）。三者不可混用；AI 不产生数值；有限尺度实验不得表述为"证明了定理"。
-6. **Kakeya P0 闭环**：`manipulate → compute → visualize → observe → fork → compare → trace`。每个环节必须有可演示的交互。
-7. **交互优先级**：experiment > computation > visualization > explanation。
+3. **任何显示为 CALCULATED 的数字必须来自真实 Scientific Runtime**（Cortex/Worker/Pyodide 产出的 ExperimentRun）。禁止 React 组件内嵌结果字面量；图表 datapoint 必须携带 runId，点击可回溯到产生它的 Run。
+4. **参数必须直接存在于公式和实验纸内部。**禁止独立 Dashboard 参数面板；δ、packing 是公式里可拖动的数字、是 3D 里可抓取的对象、是图上可反拖的点（graph→parameter 与 parameter→graph 双向）。
+5. **科学节点必须 Reactive。**参数单一 source of truth（Runtime cell / Observable cell）；禁止在 UI 回调里手工同步 3D/图/文字——参数变化必须自动驱动依赖结果。
+6. **所有计算节点必须声明 Evidence 类型**：PAPER（论文原文）/ CALCULATED（本地确定性程序）/ AI_INFERENCE（模型解释）。三者不可混用；AI 不产生数值；有限尺度实验不得表述为"证明了定理"（必须标注 FINITE-SCALE CALCULATION）。
+7. **Agent 只能通过注册 Scientific Skills（`src/skills/registry.ts`）和 Canvas Tools 操作系统**；禁止 Agent 自由生成 UI/React/Three 代码作为正式路径；Agent 永远不制造 CALCULATED 数字——数字只能来自浏览器/Worker 真实执行并回填的 ExperimentRun（AgentScope 外部执行协议）。
+8. **所有实验必须生成 ExperimentRun**（runId/parentRunId/spec/engine+version/seed/startedAt/durationMs/evidence/errors）；Chart、Metric、3D、Observation 只能引用 runId。
+9. **进入实验前必须有结构化 PlayPlan**（goal/inputs/skill/renderer/metrics/evidence/limits，`src/skills/playPlan.ts`）——模块间禁止只传自然语言（FAROS 原则）。
+10. **状态三层分离**：CanvasState（tldraw/xyflow 画布）· ScientificState（ExperimentSpec/Run/参数/数据集，在 Runtime 与 explorerStore）· AgentState（PlayPlan/tool calls/会话，`src/desk/agentState.ts` + server session）。禁止混进同一个全局大 Store。
+11. **Kakeya P0 闭环**：`manipulate → compute → visualize → observe → fork → compare → trace`。每个环节必须有可演示的交互。
+12. **交互优先级**：experiment > computation > visualization > explanation。Agent 的过程不显示"AI 正在思考"——纸面只呈现 PLAN/RUNNING/LOCAL COMPUTE/CALCULATED 状态与新长出的纸。
 
 ## 1. 三层交互模式（共享同一 Runtime，禁止复制状态）
 
@@ -128,6 +133,21 @@ v5（2026-10-01 晚，"PDF → Playable Paper" 通用摄入闭环）：
 - [x] **浏览器双闭环实测（Console 0 错误，截图 docs/verification/v5/）**：①上传 sample-harmonic.pdf→Docling 18 items/2 公式→Playable→Play→拖 a（1.00→4.00，peak 1.000→4.000=|a|，∫8.492→33.970，曲线同步）→Source 镜头回论文+锚点闪烁→Fork→拖 b（base b=1 ∫8.492 vs fork b=3 ∫9.031）→Ask"如果 a 增大一倍会怎样？"→`fork → scale a×2 → rerun → compare`，对比表新增行 a=2.00/peak=2.000/∫16.985≈2×；②Kakeya Lab→实验纸 δ/packing/N 芯片→拖 packing（max m 8→96=N，重叠率 33.4%→39.2%，Worker 真算）→Agent"方向数减半"→5 Action 全✓→Fork A/B 卡 + 对比表（|⋃T| 0.3761→0.2239 −40%）。**89/89 vitest + build ✓**。
 
 v5 注册常量（hardcoded audit 增补，均为配置/呈现，非证据）：`CURVE_SAMPLES=361`、`PAPER_W=560`、`TRIG_DOMAIN=[-7,7]`、`PLAIN_DOMAIN=[-5,5]`、`PARAM_DEFAULTS{default:1,min:-5,max:5,step:0.05}`、`SERIES_COLORS`。
+
+v6（2026-10-01 深夜，Research Orchestrator + Interaction Grammar 完整版）：
+
+- [x] **调研落盘 `docs/research/frameworks-survey.md`**：四仓实读（augmented-math Bind 二元组/正则改 LaTeX 反例、CAScad kernel registry+Observable 变量复用、agentscope 2.x 外部执行协议、FAROS PlanPackage/WorkflowNode/EventLog）+ 六项本仓实证结论与落地映射表
+- [x] **Skill Registry `src/skills/registry.ts`**：10 个 0.1 skill 全量声明（name/description/input·output JSON Schema/runtime/renderer/deterministic/version/evidence/runKind），validateSkillInput 门 + 测试；Agent 只能调用注册 skill
+- [x] **PlayPlan `src/skills/playPlan.ts`**：FAROS 式实验合同（goal/source/variables·confirmed/assumptions/skill/renderer/metrics/evidenceBasis/successCriteria/nonClaims），formula 与 kakeya 建造器 + 测试
+- [x] **ExperimentRun v6 字段**：`startedAt` + `errors[]`（审计合同补齐；全部构造点迁移）
+- [x] **Research Orchestrator `server/agent.py`**：FastAPI SSE `/api/agent/turn|/health`；双后端同协议——AgentScope 2.x `Agent`(ReAct) + 两个 `is_external_tool`（scientific_execute/canvas_apply，agent 在 RequireExternalExecutionEvent 停车等浏览器真算，ExternalExecutionResultEvent 回填续跑；DashScope/Qwen，凭据仅 env）｜确定性 SOP 回退（无 DASHSCOPE_API_KEY 时同事件流）；session 服务端保持
+- [x] **前端 `src/desk/agentBridge.ts` + `agentState.ts`**：SSE 解析（测试覆盖）→ require_execution 在浏览器用与 UI 完全相同的引擎执行（fork/set/scale→Observable run→compare）→ 结果回填 → **PLAN/RUNNING/LOCAL COMPUTE·Nms→CALCULATED 徽章**（AgentPhaseStrip + 实验纸 phase 徽章）；服务端不可达回退 v5 本地 planner
+- [x] **tldraw Binding `p2l-trace`**：实验纸→公式 Shape 的 trace 绑定（TLGlobalBindingPropsMap + BindingUtil，无视觉线，Source 按钮循迹回论文；移动两纸关系不丢）
+- [x] **Direct Geometry（graph→parameter）**：JSXGraph 曲线上可拖点 A，40 步二分把 y 反解回第一个参数（单调区间括定检查，公式无关的通用反演）；芯片→图 与 点→参数 双向闭环
+- [x] **Packing Challenge（第三幕）**：`src/paper/challengeStore.ts` + ChallengeNode——冻结 N/δ，拖 3D packing 降低 |⋃T|；CURRENT/BEST(你)/BEST(Agent)；"Let Agent Try" 在 packing 网格上用**同一 worker、同 seed、同 res** 逐点真算（AGENT_PACKING_CANDIDATES 登记常量），全部尝试带 runId 入表；明示 FINITE-SCALE 非 proof
+- [x] AGENTS.md §0 宪法升 v6（12 条，含三层状态分离/PlayPlan/Agent 只走注册 skill 等新条款）
+
+v6 登记常量：`AGENT_PACKING_CANDIDATES=[1.0,0.95,0.9,0.85,0.8]`（Agent 挑战搜索网格，与用户同引擎）、Direct-Geometry 反演 `ITER=40` 二分步数。
 
 ## 11. 下一阶段（比赛迭代方向）
 

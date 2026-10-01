@@ -40,3 +40,10 @@
 - `src/desk/FormulaChart.tsx`：`SERIES_COLORS`（曲线配色）。
 - `server/ingest_core.py`：文本截断 600 字符（payload 上限）。
 - 允许理由：均为 UI/采样配置，不冒充计算结果；所有用户可见数值（peak/∫/|⋃T| 等）仍一律来自 ExperimentRun。
+
+## E. v6 Research Orchestrator 登记常量（配置/搜索策略类，非证据）
+
+- `src/paper/challengeStore.ts`：`AGENT_PACKING_CANDIDATES = [1.0, 0.95, 0.9, 0.85, 0.8]`（Agent 挑战的 packing 搜索网格——策略与用户可用的参数空间完全相同，同一 worker/seed/res 逐点真算）。
+- `src/desk/shapes.tsx`：Direct-Geometry 反演 `ITER=40` 二分步数与 `±16px` 命中半径（交互参数）。
+- `server/agent.py`：SOP 回退的正则意图模式与默认 Qwen 模型名 `qwen-plus`（`PAPER2LAB_AGENT_MODEL` 可覆盖；凭据仅 env）。
+- 允许理由：均为搜索/交互/回退配置，不产生或伪装任何用户可见测量值；所有可见数值仍 100% 来自 ExperimentRun。

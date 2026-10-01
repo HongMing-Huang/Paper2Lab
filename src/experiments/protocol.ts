@@ -35,8 +35,12 @@ export interface ExperimentRun<T = unknown> {
   durationMs: number
   evidence: 'CALCULATED'
   createdAt: number
+  /** wall-clock start (v6 protocol: same instant as createdAt at run start) */
+  startedAt: number
   /** fork lineage: parent run this one was compared against */
   parentRunId?: string
+  /** execution errors (empty on success) — part of the v6 audit contract */
+  errors: string[]
 }
 
 export const ENGINES = {
@@ -59,6 +63,7 @@ export async function executeSpec<T>(
   compute: () => Promise<T> | T,
 ): Promise<ExperimentRun<T>> {
   const t0 = performance.now()
+  const startedAt = Date.now()
   const result = await compute()
   return {
     runId: nextRunId(spec.kind.replace(/\./g, '-')),
@@ -69,6 +74,8 @@ export async function executeSpec<T>(
     engineVersion: engine.version,
     durationMs: Math.max(0, Math.round(performance.now() - t0)),
     evidence: 'CALCULATED',
-    createdAt: Date.now(),
+    createdAt: startedAt,
+    startedAt,
+    errors: [],
   }
 }
