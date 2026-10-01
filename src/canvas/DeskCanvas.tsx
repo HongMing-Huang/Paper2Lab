@@ -104,7 +104,7 @@ async function awaitSettled(cellId: string, timeoutMs = 8000): Promise<boolean> 
   return kakeya.get(cellId).status === 'resolved'
 }
 
-export function DeskCanvas() {
+export function DeskCanvas({ onExit }: { onExit?: () => void }) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
   const [edges, setEdges] = useState<Edge[]>(initialEdges)
   const [note, setNote] = useState<string | null>(null)
@@ -248,6 +248,16 @@ export function DeskCanvas() {
               message(selectMode ? '已切回平移模式' : '框选模式：空白处拖动框选节点')
             }}
           />
+          {onExit && (
+            <Panel position="top-left" className="desk-toolbar desk-exit">
+              <button type="button" onClick={onExit}>
+                ← 返回首页
+              </button>
+              <button type="button" onClick={() => window.location.reload()}>
+                ↺ 重置桌面
+              </button>
+            </Panel>
+          )}
           {note && (
             <Panel position="top-right" className="question-note">
               {note}

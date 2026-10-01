@@ -1,0 +1,235 @@
+{
+ "docId": "doc-c163f09b13",
+ "engine": "docling",
+ "doclingVersion": "2.131.0",
+ "title": "Untitled paper",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612.0,
+   "height": 792.0
+  },
+  {
+   "page": 2,
+   "width": 612.0,
+   "height": 792.0
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.31955,
+    "y": 0.15156,
+    "w": 0.36091,
+    "h": 0.04941
+   },
+   "text": "Harmonic Distortion Notes: The Two-Parameter Sine Model"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.4419,
+    "y": 0.22142,
+    "w": 0.12311,
+    "h": 0.01652
+   },
+   "text": "A. Researcher ∗"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44393,
+    "y": 0.25372,
+    "w": 0.11215,
+    "h": 0.01509
+   },
+   "text": "October 2026"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.46419,
+    "y": 0.32169,
+    "w": 0.07163,
+    "h": 0.01258
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i4",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.17398,
+    "y": 0.34559,
+    "w": 0.65205,
+    "h": 0.05786
+   },
+   "text": "We study the simplest two-parameter oscillation and ask how its amplitude and frequency controls interact when a signal is sampled at fixed intervals. Throughout the note the amplitude is written a and the angular frequency is written b; the independent variable is time, written x."
+  },
+  {
+   "id": "p1-i5",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.42984,
+    "w": 0.16036,
+    "h": 0.01811
+   },
+   "text": "1 The model"
+  },
+  {
+   "id": "p1-i6",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.4641,
+    "w": 0.50902,
+    "h": 0.01377
+   },
+   "text": "The signal of interest is the pure sine with modulated amplitude:"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.44796,
+    "y": 0.49504,
+    "w": 0.42263,
+    "h": 0.01377
+   },
+   "latex": "y = a \\sin ( b x ) ."
+  },
+  {
+   "id": "p1-i8",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.52599,
+    "w": 0.74117,
+    "h": 0.04799
+   },
+   "text": "Here a controls the peak value of the signal and b controls how fast the oscillation repeats. Doubling a stretches the curve vertically; doubling b compresses it horizontally by one half. When a is negative the curve flips."
+  },
+  {
+   "id": "p1-i9",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.60013,
+    "w": 0.38221,
+    "h": 0.01811
+   },
+   "text": "2 Envelope of a damped variant"
+  },
+  {
+   "id": "p1-i10",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.63439,
+    "w": 0.45569,
+    "h": 0.01377
+   },
+   "text": "For comparison, the damped variant decays exponentially:"
+  },
+  {
+   "id": "p1-i11",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.42852,
+    "y": 0.66387,
+    "w": 0.44207,
+    "h": 0.01523
+   },
+   "latex": "u ( t ) = e ^ { - t } \\cos ( \\omega t ) ."
+  },
+  {
+   "id": "p1-i12",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.69627,
+    "w": 0.74116,
+    "h": 0.03088
+   },
+   "text": "Both formulas are studied numerically in the accompanying worksheet; the sweep below fixes the sampling grid and varies the two parameters of (1)."
+  },
+  {
+   "id": "p1-i13",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.7533,
+    "w": 0.22565,
+    "h": 0.01811
+   },
+   "text": "3 A sampled trace"
+  },
+  {
+   "id": "p1-i14",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.78756,
+    "w": 0.58218,
+    "h": 0.01377
+   },
+   "text": "A short sample of the model with a = 1.5 and b = 2 is plotted in Figure 1."
+  },
+  {
+   "id": "p1-i15",
+   "kind": "footnote",
+   "page": 1,
+   "bbox": {
+    "x": 0.149,
+    "y": 0.8891,
+    "w": 0.24055,
+    "h": 0.01309
+   },
+   "text": "∗ Preliminary draft; worked example."
+  },
+  {
+   "id": "p2-i16",
+   "kind": "figure",
+   "page": 2,
+   "bbox": {
+    "x": 0.28306,
+    "y": 0.39514,
+    "w": 0.43718,
+    "h": 0.17409
+   }
+  },
+  {
+   "id": "p2-i17",
+   "kind": "caption",
+   "page": 2,
+   "bbox": {
+    "x": 0.26547,
+    "y": 0.59737,
+    "w": 0.46906,
+    "h": 0.01377
+   },
+   "text": "Figure 1: One period-sampled trace of (1) at a = 1.5, b = 2."
+  }
+ ]
+}

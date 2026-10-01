@@ -1,4 +1,4 @@
-# AGENTS.md — Paper2Lab 最高开发约束（v3）
+# AGENTS.md — Paper2Lab 最高开发约束（v5）
 
 > 本文件是整个项目的最高开发约束。**每次开发前必须先读本文件**；形成新的长期设计或技术决策后**立即更新本文件**。任何与本文件冲突的临时决定都不允许直接落地，必须先修订本文件。
 
@@ -50,22 +50,32 @@
 
 ## 6. 技术栈与版本（锁定，升级须先 Spike）
 
-react 19.3 / vite 7 / @xyflow/react 12.12 / three 0.186 + fiber 9.8 + drei 10.7 / @observablehq/plot 0.6.17 / mathlive 0.110 / pdfjs-dist 4.10（`?url` worker + convertToViewportRectangle）/ **comlink（新增）** / vitest 3。Pyodide 走 CDN v0.27.7 懒加载进 module worker（npm 打包在 Vite 下 loadPackage 失败——克隆 eqs/pyodide-vite 实证）。R3F 节点内嵌需 `nodrag/nowheel` + `eventPrefix="client"`。
+react 19.3 / vite 7 / @xyflow/react 12.12 / three 0.186 + fiber 9.8 + drei 10.7 / @observablehq/plot 0.6.17 / mathlive 0.110 / pdfjs-dist 4.10（`?url` worker + convertToViewportRectangle）/ **comlink** / vitest 3。Pyodide 走 CDN v0.27.7 懒加载进 module worker（npm 打包在 Vite 下 loadPackage 失败——克隆 eqs/pyodide-vite 实证）。R3F 节点内嵌需 `nodrag/nowheel` + `eventPrefix="client"`。
+**v5 新增（摄入闭环）**：@tldraw/tldraw 5.5（自定义 Shape 走 `TLGlobalShapePropsMap` 增强 + `TLAnyShapeUtilConstructor`；导入必须用 `@tldraw/tldraw`） / @cortex-js/compute-engine 0.142（LaTeX→MathJSON、`compile({to:'javascript'})`） / jsxgraph 1.13（css 需 vite alias 绕过其 exports map） / @observablehq/runtime 6（无官方类型，ambient 声明在 `src/types/observable-runtime.d.ts`） / 后端 docling 2.131 + fastapi（Python 3.12 venv，`server/README.md`）。
 
 ## 7. 目录结构
 
 ```
-AGENTS.md / README.md / docs/research/tech-survey.md
-public/papers/wang-zahl-kakeya3d.pdf
-scripts/precompute_kakeya.cpp        ← C++17 -O3 -pthread 大尺度预计算
+AGENTS.md / README.md / docs/research/tech-survey.md / docs/verification/v5/（双闭环截图）
+public/papers/wang-zahl-kakeya3d.pdf / sample-harmonic.pdf（tectonic 真排版样例）
+server/       Docling 后端（main.py FastAPI + ingest_core.py；README.md 运行说明）
+scripts/      precompute_kakeya.cpp（C++17 大尺度预计算）
+              make_sample_pdf.py（tectonic 样例论文）· run_ingest_fixture.py（fixture 重生成）
+              devservers.sh（tmux 保活 vite+uvicorn，验收脚本前置步骤）
 src/
-  runtime/     Reactive Runtime（状态机版）
+  runtime/     Reactive Runtime（状态机版；Kakeya 路径）
   kakeya/      数学内核（directions/tubes/voxels3d/perron/metrics）
   workers/     voxel.worker（Comlink）、python.worker（Pyodide，接口）
-  skills/      Skill Registry（11 canonical）+ planner（问题→Actions）
-  canvas/      Paper Mode 页、Lab 节点、Microscope overlay、图表反向导航
+  skills/      Skill Registry（11 canonical）+ planner + llmPlanner
+               + adapterRouter（Docling→选适配器）+ formulaPlan（NL→结构化操作）
+  canvas/      Paper Mode 页、Lab 节点、Microscope overlay、图表反向导航（Kakeya 路径）
+  desk/        v5 摄入桌面：tldraw shapes、explorerStore（Observable Runtime）、
+               FormulaChart（JSXGraph）、PdfCanvas、PaperDesk、Home
+  formula/     Cortex 管线：engine/analyze/compile/spec（LaTeX→MathJSON→JS）
+  ingest/      上传客户端 + doclingSchema 归一化 + fixtures（真实 Docling dump）
   paper/       wangZahl 知识（引文+锚点）、kakeyaGraph（cell 图）、forks
-  styles/paper.css
+  styles/paper.css · desk.css
+  types/observable-runtime.d.ts（ambient 类型）
 ```
 
 ## 8. 允许复用 / 禁止事项
@@ -106,10 +116,23 @@ v4（2026-10-01 下午，可追溯性重构）：
 - [x] 修复 envelope 重构遗留：TraceNode verify 与 perron 全部 `.result` 解包
 - [x] **生产包终验（v4 代码）**：acceptance 链全绿——3D ✓ exact 数字 ✓ run badge ✓ packing 改后 0.6010/2.08×/12 ✓ 10 图表点（runId）✓ Observation 引用新 Result ✓ fork 卡显示 `ts-kakeya-worker@v3 · 14ms · run …` ✓ Console 0 错误；64/64 vitest
 
+v5（2026-10-01 晚，"PDF → Playable Paper" 通用摄入闭环）：
+
+- [x] **架构决策：两条摄入路径共用一个产品**。首页（干净 dropzone）→ ①任意上传 PDF → Docling 后端真解析 → tldraw 无限科研桌面（通用 Formula Explorer）；②内置 Wang–Zahl 论文 → 既有 xyflow Lab（v1–v4 Kakeya Hero Demo，作为"专用 Kakeya Adapter"经首页接入）。两条路径共享 ExperimentRun 协议、AGENTS 约束与纸面视觉；**不回迁 xyflow Lab 到 tldraw**（避免推倒 v3/v4 资产）。
+- [x] **后端 `server/`（Python 3.12 venv + FastAPI + docling 2.131）**：`POST /api/ingest` 输出 page/bbox(左上原点页分数)/kind(formula·figure·table·caption…)/latex（公式模型原样输出，含结尾句点）；`ingest_core.py` 与 fixture 生成器 `scripts/run_ingest_fixture.py` 共用同一代码路径；vite 代理 `/api→127.0.0.1:8787`；客户端 ingest 带 3 次退避重试（后端冷启动）。
+- [x] **Cortex Compute Engine 0.142 管线 `src/formula/`**：`analyzeFormula`（Docling LaTeX→MathJSON→变量分类：x/t/θ 优先自变量、LHS 符号或函数名为输出、其余为参数；剥离 Docling 结尾句点）+ `compileFormula`（`compile(expr,{to:'javascript'})` → 真 JS 函数，`success=false` 时引擎解释器兜底）+ `FormulaExplorerSpec`（type/expression/parameters/independent/renderer:'jsxgraph'——**Agent/AI 只产出此配置，不产出代码**）。测试含真实 Docling fixture 公式逐字解析（1e-12 匹配 2·sin(4.5)）。
+- [x] **tldraw 5.5 桌面 `src/desk/`**：五个自定义 Shape（`p2l-paper` PDF 页+Playable 标记+锚点闪烁、`p2l-formula` 浮出公式纸、`p2l-experiment` Interactive Figure、`p2l-chart` 对比卡、`p2l-source` 溯源芯片）；渐进生长：论文页→关键公式 Playable→Play→实验纸→Fork→对比卡，**不预铺卡片墙**。坑位记录：`createShapeId(prefix)` **确定性**（fork 必须自带 explorerId 后缀，否则覆盖原实验）；`stopEventPropagation` 在 v5 是事件级且废弃（改 Interactive 组件 React 合成事件阻断）；tldraw 类型需从 `@tldraw/tldraw` 导入（`tldraw` 包未被 pnpm 提升）。
+- [x] **Observable Runtime 6 + JSXGraph 1.13**：参数 cell + `curveRun` cell（361 采样 + peak + ∫|y|dx 梯形积分，包成 `formula.curve` ExperimentRun，engine `cortex-ce-js@0.142.0`）；拖芯片 → `module.redefine` → 曲线连续更新；JSXGraph 曲线重建必须按参数值 useMemo（series 身份漂移会令曲线反复重建、停在淡入 opacity 0）；`registerEvents:false`+pan/zoom 关（画布手势让给 tldraw）。
+- [x] **Adapter Router `src/skills/adapterRouter.ts`**：确定性（Kakeya 关键词→kakeya；否则公式评分选关键公式）+ 可选 Qwen（只允许返回 adapter 与公式 index，本地复验）；**NL→结构化操作 `formulaPlan.ts`**（"a 增大一倍"→fork/scale×2/rerun/compare；LLM 输出过 validateFormulaActions 白名单+钳制）。
+- [x] **样例论文 `public/papers/sample-harmonic.pdf`**：`scripts/make_sample_pdf.py` 用 tectonic 排版真 LaTeX（y=a·sin(bx) 与 u(t)=e^{−t}cos(ωt) 两个展示公式）+ matplotlib 图；Docling 对其输出 FormulaItem（真实公式识别）。解析器坑：matplotlib 全文字页的游离 line artist 令 docling-parse 7.22 丢整页词；mathtext 公式分类为 picture 非 formula——故正文与公式都用 LaTeX 排版。
+- [x] **浏览器双闭环实测（Console 0 错误，截图 docs/verification/v5/）**：①上传 sample-harmonic.pdf→Docling 18 items/2 公式→Playable→Play→拖 a（1.00→4.00，peak 1.000→4.000=|a|，∫8.492→33.970，曲线同步）→Source 镜头回论文+锚点闪烁→Fork→拖 b（base b=1 ∫8.492 vs fork b=3 ∫9.031）→Ask"如果 a 增大一倍会怎样？"→`fork → scale a×2 → rerun → compare`，对比表新增行 a=2.00/peak=2.000/∫16.985≈2×；②Kakeya Lab→实验纸 δ/packing/N 芯片→拖 packing（max m 8→96=N，重叠率 33.4%→39.2%，Worker 真算）→Agent"方向数减半"→5 Action 全✓→Fork A/B 卡 + 对比表（|⋃T| 0.3761→0.2239 −40%）。**89/89 vitest + build ✓**。
+
+v5 注册常量（hardcoded audit 增补，均为配置/呈现，非证据）：`CURVE_SAMPLES=361`、`PAPER_W=560`、`TRIG_DOMAIN=[-7,7]`、`PLAIN_DOMAIN=[-5,5]`、`PARAM_DEFAULTS{default:1,min:-5,max:5,step:0.05}`、`SERIES_COLORS`。
+
 ## 11. 下一阶段（比赛迭代方向）
 
-1. 视觉打磨：Paper Mode 双栏排版更精细、卡片入场动画、打印级排版细节。
+1. 视觉打磨：Paper Mode 双栏排版更精细、卡片入场动画、打印级排版细节；tldraw 生产 license（去水印）。
 2. Microscope 的 ρ 尺度升级为论文级 tubelet 真模型（当前为 δ/2 视觉过渡层）。
-3. web-llm 本地 Agent（语法约束 JSON）替换确定性 planner，Action 形状不变。
-4. 第二篇论文扩充：ODE 之外加统计/优化示例；Python 运行时预加载提示与进度条。
+3. web-llm 本地 Agent（语法约束 JSON）替换确定性 planner，Action 形状不变；Qwen 路由实配验证。
+4. 摄入桌面增强：多公式 Playable 标记、分页论文 Shape、图表/表格 Anchor、experiment 的 preview/exact 双层（当前 formula.curve 单层即时计算）。
 5. 3D 单管抓取（当前为整族 packing 拖动）与 tube 级反向同步。

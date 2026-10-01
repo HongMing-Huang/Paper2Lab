@@ -29,3 +29,14 @@
 
 - 图表 datapoint 一律携带 `runId`（已实现）；Observation/Metric 显示 engine、durationMs、seed、runId（本轮 ExperimentRun 协议落地）。
 - 新增数值必须来自：Worker 精算 / C++ 预计算 / Pyodide / PAPER 引文 / 登记的配置常量。
+
+## D. v5 摄入闭环登记常量（配置/呈现类，非证据）
+
+- `src/desk/explorerStore.ts`：`CURVE_SAMPLES = 361`（curveRun 采样密度；peak/∫ 均为真计算）。
+- `src/desk/PaperDesk.tsx`：`PAPER_W = 560`、`PAPER_X/Y`（论文页渲染尺寸与初始摆位）。
+- `src/formula/analyze.ts`：`TRIG_DOMAIN = [-7,7]`、`PLAIN_DOMAIN = [-5,5]`（绘图窗口）、
+  `PARAM_DEFAULTS {default:1, min:-5, max:5, step:0.05}`（芯片初值与拖动步长）、
+  `INDEPENDENT_PREFERENCE`（自变量识别顺序——分类规则，非数值）。
+- `src/desk/FormulaChart.tsx`：`SERIES_COLORS`（曲线配色）。
+- `server/ingest_core.py`：文本截断 600 字符（payload 上限）。
+- 允许理由：均为 UI/采样配置，不冒充计算结果；所有用户可见数值（peak/∫/|⋃T| 等）仍一律来自 ExperimentRun。

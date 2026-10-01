@@ -10,6 +10,7 @@ export type ExperimentKind =
   | 'lv.ode' // second-paper ODE (Pyodide/scipy)
   | 'kakeya.pyodide-mc' // NumPy Monte-Carlo cross-check
   | 'perron.tree' // 2D Perron tree measurement
+  | 'formula.curve' // generic formula explorer (Cortex→JS sampling)
 
 export interface ExperimentSpec {
   kind: ExperimentKind
@@ -43,6 +44,7 @@ export const ENGINES = {
   kakeyaPreview: { engine: 'ts-kakeya-preview', version: 'v3' },
   cppPrecomputed: { engine: 'cpp-precompute', version: 'kakeya-voxel-v3-cpp' },
   pyodide: { engine: 'pyodide-scipy', version: 'v0.27.7' },
+  cortexJs: { engine: 'cortex-ce-js', version: '0.142.0' },
 } as const
 
 let runSeq = 0

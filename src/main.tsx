@@ -4,6 +4,7 @@ import '@xyflow/react/dist/style.css'
 import 'mathlive/static.css'
 import 'mathlive/fonts.css'
 import './styles/paper.css'
+import './styles/desk.css'
 import { App } from './App'
 import { SpikeApp } from './spike/SpikeApp'
 

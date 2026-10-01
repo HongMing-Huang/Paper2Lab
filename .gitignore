@@ -6,3 +6,12 @@ dist
 .zcodeignore
 .vite
 coverage
+
+# python
+server/__pycache__/
+server/.venv/
+__pycache__/
+*.pyc
+
+# playwright artifacts
+.playwright-mcp/
