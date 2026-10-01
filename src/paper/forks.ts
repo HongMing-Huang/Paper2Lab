@@ -90,7 +90,8 @@ export function snapshotCurrentFork(label: string): ForkSnapshot {
       }
     : null
 
-  const perronCell = cellValue<import('../kakeya/perron').PerronResult>('perron.tree')
+  const perronRun = cellValue<import('../experiments/protocol').ExperimentRun<import('../kakeya/perron').PerronResult>>('perron.tree')
+  const perronCell = perronRun?.result
   const perron = perronCell
     ? {
         k: perronCell.k,

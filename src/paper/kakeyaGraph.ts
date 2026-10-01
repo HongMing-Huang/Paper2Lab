@@ -108,10 +108,20 @@ async function computeVoxelsSyncFallback(tubes: Tube3[], res: number, visRes: nu
   return computeVoxelCoverage(tubes, res, visRes)
 }
 
-export const perronCell = kakeya.derive<PerronResult>(
+export const perronCell = kakeya.derive<ExperimentRun<PerronResult>>(
   'perron.tree',
   [pPerronK, pPerronAlpha],
-  ([k, alpha]) => perronTree(k as number, alpha as number, 800),
+  ([k, alpha]) => ({
+    runId: `perron-tree-k${k}-a${(alpha as number).toFixed(2)}`,
+    spec: { kind: 'perron.tree', params: { k: k as number, alpha: alpha as number }, seed: 0 },
+    status: 'resolved' as const,
+    result: perronTree(k as number, alpha as number, 800),
+    engine: ENGINES.kakeyaPreview.engine,
+    engineVersion: ENGINES.kakeyaPreview.version,
+    durationMs: 0,
+    evidence: 'CALCULATED' as const,
+    createdAt: Date.now(),
+  }),
 )
 
 // ---- |⋃T| sweep vs N at current δ/packing (live, coarse grid) --------------

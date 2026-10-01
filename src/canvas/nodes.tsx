@@ -439,7 +439,7 @@ export function PerronNode() {
     <Sheet label="EXPERIMENT · 2D Perron 树 + 针旋转" badge="CALCULATED" width={400}>
       <ParamSlider label="细分层数 k（2ᵏ 子三角形）" paramId="perron.k" min={0} max={6} step={1} format={(v) => `k=${v}（${2 ** v} 片）`} />
       <ParamSlider label="重叠比 α" paramId="perron.alpha" min={0.55} max={1} step={0.05} format={(v) => v.toFixed(2)} />
-      {perron.value && <PerronView result={perron.value} animate={!!anim.value} width={370} height={280} />}
+      {perron.value?.result && <PerronView result={perron.value.result} animate={!!anim.value} width={370} height={280} />}
       <div className="card-note">
         <strong>AI INFERENCE 注</strong>：针在各方向间的连续运动由 Pál join（面积可任意小）恢复——这是
         PAPER 事实；此处动画只示意方向覆盖，实测面积不含 join。
@@ -476,9 +476,9 @@ export function ObservationNode() {
             {sep.value && delta.value ? (sep.value >= delta.value ? ' ✓' : ' ✗（加密了方向）') : ''}。
           </li>
           <li>
-            Perron 树（k={perron.value?.k ?? '…'}, α={perron.value?.alpha.toFixed(2) ?? '…'}）：实测面积{' '}
-            {perron.value?.computedArea.toFixed(4) ?? '…'}（原三角形 {PERRON_TRIANGLE_AREA.toFixed(4)}，理论上界{' '}
-            {perron.value?.boundArea.toFixed(4) ?? '…'}）。
+            Perron 树（k={perron.value?.result?.k ?? '…'}, α={perron.value?.result?.alpha.toFixed(2) ?? '…'}）：实测面积{' '}
+            {perron.value?.result?.computedArea.toFixed(4) ?? '…'}（原三角形 {PERRON_TRIANGLE_AREA.toFixed(4)}，理论上界{' '}
+            {perron.value?.result?.boundArea.toFixed(4) ?? '…'}）。
           </li>
         </ul>
       </div>
@@ -705,9 +705,9 @@ export function TraceNode() {
     void runSkill<TraceOutput>('trace.evidence', { target: 'kakeya.voxel' }).then(setTrace)
   }, [])
   const runVerify = async () => {
-    const vox = kakeya.get('kakeya.voxel').value as VoxelMetrics | undefined
+    const vox = (kakeya.get('kakeya.voxel').value as { result?: VoxelMetrics } | undefined)?.result
     if (!vox) return
-    const perron = kakeya.get('perron.tree').value as { computedArea: number; triangleArea: number } | undefined
+    const perron = (kakeya.get('perron.tree').value as { result?: { computedArea: number; triangleArea: number } } | undefined)?.result
     setVerify(
       await runSkill<VerifyOutput>('verify.invariants', {
         metrics: vox,
