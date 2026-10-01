@@ -62,12 +62,18 @@ async def test_jobs_and_docs_survive_app_restart():
         assert r2.json()["title"] == "Sample"
 
 
-async def test_static_serving_mounts_only_when_dist_exists(tmp_path, monkeypatch):
-    """dist/ present → SPA served; absent → API only (no fake production)."""
-    # absent by default in a fresh checkout without a build
+async def test_static_serving_matches_dist_presence(tmp_path, monkeypatch):
+    """dist/ present → SPA served at /; absent → API only (no fake production)."""
     import server.main as main_mod
 
     importlib.reload(main_mod)
+    dist = ROOT / "dist" / "index.html"
     async with _client_for(main_mod.app) as c:
         r = await c.get("/")
-        assert r.status_code == 404  # no dist → no static claim
+        if dist.is_file():
+            # production layout: single-origin SPA hosting must be live
+            assert r.status_code == 200
+            assert r.headers["content-type"].startswith("text/html")
+        else:
+            # no build output → the backend must not claim to serve a frontend
+            assert r.status_code == 404
