@@ -91,11 +91,14 @@ v1/v2 已完成（git log + Linear P-CLI-3 CLI-29..45）。v3（2026-10-01）：
 - [x] PythonScientificRuntime 接口（Comlink+CDN Pyodide worker：ensureRuntime/runPythonJson/solveIVP），不进 Kakeya 路径
 - [x] 浏览器全链验收：manipulate→compute→visualize→observe→fork→compare→trace + Console 0 错误；**50/50 vitest**；build ✓
 - [x] **生产包（vite build + preview）全链复验**：Paper Mode→Agent（N=48 后 exact 0.4091/1.53×/7）→Lab 9 节点→图表 22 数据点（current 标记随动）→显微镜开/关→Console 0 错误；Paper Mode 截图视觉验收（论文观感、公式正常、芯片协调）
+- [x] **连续拖动最强形式验证**：packing 芯片连续拖 → 数字多档滚动（0.5729→0.5109→0.6160→0.6149 exact 收尾）；拖 3D → packing 反向连续更新（0.00→0.20→0.55→1.00）
+- [x] Observation 出现动画（exact 版本驱动 obsIn 淡入）；marimo 源码级调研（visitor/edges/graph/cycles/runner 带行号引证，拓扑失效与我们的实现同构）
+- [x] Microscope **1 → ρ → δ 三级尺度连续体**（ρ=δ/2 中间层，交错透明度窗口；z=0/0.5/1 三站标签浏览器验证）
 
 ## 11. 下一阶段（比赛迭代方向）
 
 1. 视觉打磨：Paper Mode 双栏排版更精细、卡片入场动画、打印级排版细节。
-2. Microscope 多尺度连续化（ρ 尺度 tubelets 真模型，参考 kakeya-explainer 的 packing 分支结构）。
+2. Microscope 的 ρ 尺度升级为论文级 tubelet 真模型（当前为 δ/2 视觉过渡层）。
 3. web-llm 本地 Agent（语法约束 JSON）替换确定性 planner，Action 形状不变。
 4. PythonScientificRuntime 首个真实用户：第二篇论文（ODE/统计）端到端。
 5. 3D 单管抓取（当前为整族 packing 拖动）与 tube 级反向同步。
