@@ -149,6 +149,12 @@ MLABEL { display: none; }
 
 /* 观察卡 */
 .obs-block { padding: 8px 0; border-top: 1px dashed var(--rule); }
+/* 新 Observation 在 exact 计算完成后"出现"：版本驱动的淡入+微高亮 */
+@keyframes obsIn {
+  0% { opacity: 0.25; background: rgba(201, 138, 43, 0.12); }
+  100% { opacity: 1; background: transparent; }
+}
+.obs-appear { animation: obsIn 0.9s ease-out; }
 .obs-block:first-child { border-top: none; padding-top: 0; }
 .obs-block .badge { margin-bottom: 6px; }
 .obs-list { margin: 6px 0 0; padding-left: 16px; font-size: 12.5px; line-height: 1.6; font-variant-numeric: tabular-nums; }

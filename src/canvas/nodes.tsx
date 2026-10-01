@@ -446,11 +446,15 @@ export function ObservationNode() {
   const delta = useCell(deltaCell)
   const sep = useCell(minSepCell)
   const packing = useCell<number>(pPacking)
+  const [flash, setFlash] = useState(0)
+  useEffect(() => {
+    if (vox.version > 0) setFlash(vox.version) // the new observation "appears" when exact compute lands
+  }, [vox.version])
   const v = vox.value
   const regime = (packing.value ?? 0) >= 0.6 ? 'packed/sticky' : (packing.value ?? 0) >= 0.25 ? '中间态' : 'separated'
   return (
     <Sheet label="OBSERVATION" stale={vox.stale} width={360}>
-      <div className="obs-block">
+      <div key={flash} className="obs-block obs-appear">
         <Badge provenance="CALCULATED" />
         <ul className="obs-list">
           <li>
