@@ -36,10 +36,26 @@ export const minSepCell = kakeya.derive<number>(
   ([dirs]) => minAngularSeparation(dirs as Vec3[]),
 )
 
-export const tubesCell = kakeya.derive<Tube3[]>(
-  'kakeya.tubes',
+/** geometry generation wrapped in an ExperimentRun — the 3D scene subscribes
+ *  ONLY to runs (AGENTS §2.8: 图、3D、Metric、Observation 只订阅 ExperimentRun) */
+export const tubesRunCell = kakeya.derive<ExperimentRun<Tube3[]>>(
+  'kakeya.tubesRun',
   [dirsCell, deltaCell, pPacking],
-  ([dirs, delta, packing]) => makeTubes(dirs as Vec3[], delta as number, packing as number),
+  ([dirs, delta, packing]) => ({
+    runId: `kakeya-geometry-${(delta as number).toFixed(4)}-${(packing as number).toFixed(2)}`,
+    spec: {
+      kind: 'kakeya.geometry',
+      params: { delta: delta as number, packing: packing as number, nTubes: (dirs as Vec3[]).length },
+      seed: 20250224,
+    },
+    status: 'resolved' as const,
+    result: makeTubes(dirs as Vec3[], delta as number, packing as number),
+    engine: ENGINES.kakeyaPreview.engine,
+    engineVersion: ENGINES.kakeyaPreview.version,
+    durationMs: 0,
+    evidence: 'CALCULATED' as const,
+    createdAt: Date.now(),
+  }),
 )
 
 // drag-time preview: synchronous low-res measurement so numbers move with the
@@ -47,9 +63,9 @@ export const tubesCell = kakeya.derive<Tube3[]>(
 // Presentation-only envelope — preview res is NOT evidence (kind says so).
 export const voxelPreviewCell = kakeya.derive<ExperimentRun<VoxelMetrics>>(
   'kakeya.voxelPreview',
-  [tubesCell, pDeltaExp, pPacking],
-  ([tubes, deltaExp, packing]) => {
-    const { visGrid: _v, ...metrics } = computeVoxelCoverage(tubes as Tube3[], PREVIEW_RES, 0)
+  [tubesRunCell, pDeltaExp, pPacking],
+  ([tubesRun, deltaExp, packing]) => {
+    const { visGrid: _v, ...metrics } = computeVoxelCoverage((tubesRun as ExperimentRun<Tube3[]>).result as Tube3[], PREVIEW_RES, 0)
     return {
       runId: `preview-${(deltaExp as number).toFixed(2)}-${(packing as number).toFixed(2)}`,
       spec: { kind: 'kakeya.preview', params: { deltaExp: deltaExp as number, packing: packing as number }, seed: 0, res: PREVIEW_RES },
@@ -68,8 +84,8 @@ export const voxelPreviewCell = kakeya.derive<ExperimentRun<VoxelMetrics>>(
 // in a full ExperimentRun (params/engine/duration/seed/evidence/runId)
 export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelResult>>(
   'kakeya.voxel',
-  [tubesCell, pVoxelRes, pDeltaExp, pPacking, pNTubes],
-  async ([tubes, res, deltaExp, packing, nTubes]) =>
+  [tubesRunCell, pVoxelRes, pDeltaExp, pPacking, pNTubes],
+  async ([tubesRun, res, deltaExp, packing, nTubes]) =>
     executeSpec(
       {
         kind: 'kakeya.voxel',
@@ -80,7 +96,7 @@ export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelResult>>(
       ENGINES.kakeyaWorker,
       () =>
         (isWorkerAvailable() ? measureVoxelCover : computeVoxelsSyncFallback)(
-          tubes as Tube3[],
+          (tubesRun as ExperimentRun<Tube3[]>).result as Tube3[],
           res as number,
           VIS_RES,
         ),

@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { useCell, useRuntime } from '../runtime/react'
 import {
-  tubesCell,
+  tubesRunCell,
   voxelCell,
   voxelPreviewCell,
   pNeedleOn,
@@ -22,7 +22,6 @@ import { NeedleSweep } from './views/NeedleSweep'
 import { Tubes3DView } from './views/Tubes3DView'
 import { MicroscopeOverlay } from './MicroscopeOverlay'
 import { agentStore } from '../skills/agentStore'
-import { planExperiment } from '../skills/planner'
 
 function AgentStrip() {
   const state = useSyncExternalStore(agentStore.subscribe, agentStore.get, agentStore.get)
@@ -86,18 +85,22 @@ export function PaperModeNode() {
   const [act, setAct] = useState<'needle' | 'tubes'>('needle')
   const [micro, setMicro] = useState(false)
   const [q, setQ] = useState('')
-  const tubes = useCell(tubesCell)
+  const tubesRun = useCell(tubesRunCell)
   void rt
 
   const thm = THEOREMS.find((t) => t.id === 'thm-1.2')!
   const readNum = (id: string) => () => (kakeya.get(id).value as number) ?? 0
 
-  const ask = () => {
-    const plan = planExperiment(q || '对比 separated vs sticky', {
+  const ask = async () => {
+    const current = {
       nTubes: (kakeya.get('kakeya.nTubes').value as number) ?? 96,
       deltaExp: (kakeya.get('kakeya.deltaExp').value as number) ?? 4,
       packing: (kakeya.get('kakeya.packing').value as number) ?? 0,
-    })
+    }
+    // LLM (Qwen) when configured via env, deterministic planner otherwise —
+    // both emit the same validated ExperimentPlan shape, never numbers
+    const { planQuestion } = await import('../skills/llmPlanner')
+    const plan = await planQuestion(q || '对比 separated vs sticky', current)
     deskBus.emit({ type: 'run-plan', plan })
   }
 
@@ -216,7 +219,7 @@ export function PaperModeNode() {
                 onDoubleClick={() => setMicro(true)}
                 title="双击进入 Microscope（zoom 到细尺度）；在管上上下拖动 = 直接改 packing"
               >
-                <Tubes3DView tubes={tubes.value ?? []} height={252} spin={0.35} packingDrag />
+                <Tubes3DView tubes={tubesRun.value?.result ?? []} height={252} spin={0.35} packingDrag />
               </div>
               <LiveNumbers />
               <p className="paper-note dim">

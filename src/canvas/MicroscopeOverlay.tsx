@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useCell } from '../runtime/react'
-import { tubesCell, fineTubesCell, midTubesCell, deltaCell, FINE_DELTA } from '../paper/kakeyaGraph'
+import { tubesRunCell, fineTubesCell, midTubesCell, deltaCell, FINE_DELTA } from '../paper/kakeyaGraph'
 import type { Tube3 } from '../kakeya/tubes'
 
 const MAX_TUBES = 512
@@ -57,7 +57,7 @@ function Meshes({
 }
 
 function MicroscopeScene({ zoom, setZoom }: { zoom: number; setZoom: (z: number) => void }) {
-  const tubes = useCell(tubesCell).value ?? []
+  const tubes = useCell(tubesRunCell).value?.result ?? []
   const mid = useCell(midTubesCell).value ?? []
   const fine = useCell(fineTubesCell).value ?? []
   const { camera, gl } = useThree()

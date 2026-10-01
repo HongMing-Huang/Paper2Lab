@@ -9,7 +9,7 @@ import { RuntimeProvider, useCell } from '../runtime/react'
 import {
   kakeya,
   deltaCell,
-  tubesCell,
+  tubesRunCell,
   voxelCell,
 } from '../paper/kakeyaGraph'
 import { Tubes3DView } from '../canvas/views/Tubes3DView'
@@ -33,7 +33,7 @@ function SpikeParamsNode() {
 }
 
 function Spike3DNode() {
-  const tubes = useCell(tubesCell)
+  const tubes = useCell(tubesRunCell)
   const vox = useCell(voxelCell)
   const delta = useCell(deltaCell)
   const showVox = useCell<number>('spike.showVoxels')
@@ -41,7 +41,7 @@ function Spike3DNode() {
     <div className="sheet" style={{ width: 380 }}>
       <div className="sheet-label">SPIKE · 3D δ-TUBES — δ = {delta.value?.toFixed(4)} {vox.stale ? '· computing…' : ''}</div>
       <Tubes3DView
-        tubes={tubes.value ?? []}
+        tubes={tubes.value?.result ?? []}
         visGrid={vox.value?.result?.visGrid}
         visMaxM={vox.value?.result?.maxMultiplicity}
         showVoxels={!!showVox.value}

@@ -3,11 +3,13 @@
 // components may only subscribe to runs — never own results.
 
 export type ExperimentKind =
+  | 'kakeya.geometry' // tube family generation (simulate_geometry)
   | 'kakeya.voxel' // one finite-scale voxel measurement
   | 'kakeya.sweep' // |⋃T|–N sweep
   | 'kakeya.preview' // drag-time low-res preview (presentation-only, not evidence)
   | 'lv.ode' // second-paper ODE (Pyodide/scipy)
   | 'kakeya.pyodide-mc' // NumPy Monte-Carlo cross-check
+  | 'perron.tree' // 2D Perron tree measurement
 
 export interface ExperimentSpec {
   kind: ExperimentKind

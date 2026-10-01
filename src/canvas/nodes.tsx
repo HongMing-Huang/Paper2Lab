@@ -6,8 +6,7 @@ import { useCell, useRuntime } from '../runtime/react'
 import {
   deltaCell,
   minSepCell,
-  tubesCell,
-  voxelCell,
+  tubesRunCell,  voxelCell,
   perronCell,
   sweepCell,
   pDeltaExp,
@@ -259,7 +258,7 @@ export function ParamsNode() {
 }
 
 export function Experiment3DNode() {
-  const tubes = useCell(tubesCell)
+  const tubes = useCell(tubesRunCell)
   const vox = useCell(voxelCell)
   const preview = useCell(voxelPreviewCell)
   const delta = useCell(deltaCell)
@@ -288,7 +287,7 @@ export function Experiment3DNode() {
       </div>
       <div onDoubleClick={() => setMicro(true)} title="双击进入 Microscope">
         <Tubes3DView
-          tubes={tubes.value ?? []}
+          tubes={tubes.value?.result ?? []}
           visGrid={vox.value?.result?.visGrid}
           visMaxM={vox.value?.result?.maxMultiplicity}
           showVoxels={!!showVox.value}
