@@ -78,17 +78,23 @@ src/
 
 ## 10. 当前状态（随进度更新）
 
-v1/v2 已完成（详见 git log 与 Linear P-CLI-3 CLI-29..45）。v3 进行中：
+v1/v2 已完成（git log + Linear P-CLI-3 CLI-29..45）。v3（2026-10-01）：
 
-- [ ] docs/research/tech-survey.md（含实际源码阅读）
-- [ ] Runtime 状态机 idle/stale/computing/resolved/error + 状态可视化
-- [ ] Comlink 封装 voxel worker
-- [ ] Skills 重命名到 11 canonical + Agent planner（问题→Actions→自动实验纸）
-- [ ] Paper Mode 初始视图（Question+Theorem+Live Experiment）+ 公式内拖动 δ + 展开实验
-- [ ] 拖动 preview（16³ 同步）/ 松手 exact（高分辨率 Worker）
-- [ ] 3D 抓取 tube 簇 → packing 反向同步
-- [ ] Microscope Mode（双击 3D、zoom 展开细尺度、Esc 返回）
-- [ ] 图表反向导航（点 curve 上的点定位实验；fork 自动加 Original/B 曲线）
-- [ ] scripts/precompute_kakeya.cpp（-O3 -pthread、checksum、JSON）+ 接入图表
-- [ ] PythonScientificRuntime 接口（独立 worker，不进 Kakeya 路径）
-- [ ] 浏览器全链验收：manipulate→compute→visualize→observe→fork→compare→trace
+- [x] docs/research/tech-survey.md（克隆实读 kakeya-explainer——其 C++ 被 agent 实际编译运行复现 δ=1/1000=456,958,817/3.375B；Needle-Lab 的 Perron 树是装饰性假货；comlink/web-llm 结论）
+- [x] Runtime 状态机 idle/stale/computing/resolved/error + 拖动 preview(32³ 同步)/exact(高分辨率 Comlink Worker) 双层（浏览器实测 δ 芯片即拖即变）
+- [x] Comlink 封装 voxel worker（measureVoxelCover/measureFamily）
+- [x] Skills canonical 11 + 确定性 planner + DeskCanvas 执行器：问题"方向数减少一半"→ 5 个结构化 Action 全✓ → fork 卡/对比卡自动生长 + AI INFERENCE 解释（浏览器实测）
+- [x] Paper Mode 初始视图（仅 1 个节点：Question+Theorem+内嵌 Live Experiment；公式内 δ/packing/N 芯片可拖）+ 第一幕针扫掠（96² 栅格实测面积）+ 第二幕 δ-tubes（3D 抓取反向 packing）
+- [x] Microscope Mode（双击 3D → 全屏，zoom 1→ρ→δ/4 粗管渐隐细管展开，Esc 返回；实测）
+- [x] 图表反向导航：HTML 命中层（Plot 0.6 dot 合并单 path，用 fig.scale(name).apply 定位）；点 title 溯源 runId；fork 自动加分支曲线（实测 +6 点）
+- [x] scripts/precompute_kakeya.cpp（-O3 -pthread，atomic uint16 multiplicity，JSON+FNV-1a checksum）：27 行/1.3s/223% CPU，packing=1⇒maxM=N 精确
+- [x] PythonScientificRuntime 接口（Comlink+CDN Pyodide worker：ensureRuntime/runPythonJson/solveIVP），不进 Kakeya 路径
+- [x] 浏览器全链验收：manipulate→compute→visualize→observe→fork→compare→trace + Console 0 错误；40/40 vitest；build ✓
+
+## 11. 下一阶段（比赛迭代方向）
+
+1. 视觉打磨：Paper Mode 双栏排版更精细、卡片入场动画、打印级排版细节。
+2. Microscope 多尺度连续化（ρ 尺度 tubelets 真模型，参考 kakeya-explainer 的 packing 分支结构）。
+3. web-llm 本地 Agent（语法约束 JSON）替换确定性 planner，Action 形状不变。
+4. PythonScientificRuntime 首个真实用户：第二篇论文（ODE/统计）端到端。
+5. 3D 单管抓取（当前为整族 packing 拖动）与 tube 级反向同步。
