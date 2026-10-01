@@ -97,6 +97,15 @@ v1/v2 已完成（git log + Linear P-CLI-3 CLI-29..45）。v3（2026-10-01）：
 - [x] Microscope **1 → ρ → δ 三级尺度连续体**（ρ=δ/2 中间层，交错透明度窗口；z=0/0.5/1 三站标签浏览器验证）
 - [x] **第二篇论文端到端**：Lotka–Volterra ODE 纸（4 参数芯片 → Pyodide → scipy.solve_ivp → Plot 曲线；懒加载不碰 Kakeya 路径；浏览器实测渲染双种群曲线、Console 干净）——Parameter→Pyodide→solve_ivp→Result→Chart 平台通路落地
 
+v4（2026-10-01 下午，可追溯性重构）：
+
+- [x] 硬编码审计 `docs/audit/hardcoded-values.md`（A1–A8 违规修复：WhatIf 预测数字改定性、文案字面量常量化 PREVIEW_RES/NEEDLE_GRID/BOX²/PERRON_TRIANGLE_AREA/SWEEP_RES/FINE_DELTA、fork sweep 复用 SWEEP_NS/SWEEP_RES；允许项四类登记）
+- [x] **ExperimentSpec→Run 协议** `src/experiments/protocol.ts`（runId/spec·seed·res/engine+version/durationMs/evidence）：贯穿 voxelCell、voxelPreviewCell（明示 kakeya.preview 非证据）、sweepCell（每 datapoint 携带 run.runId）、tubesRunCell（kakeya.geometry——**3D 只订阅 Run**）、perronCell（perron.tree）、ODE cell、ForkSnapshot（存源 run 元数据并在卡片显示）
+- [x] 六原语全进 Comlink worker + 类型化客户端（node 回退）；手算几何用例 `handcomputed.test.ts`（16/64 轴管、2/8 对角管——纸上逐点推导后编码，一次通过）
+- [x] Agent Tool Schema：白名单 14 + validatePlan + planSmugglesNumbers（拒绝 explain_result 携带数值）+ JSON Schema；`llmPlanner.ts` 可选 Qwen 适配（env-only 凭据，浏览器 VITE_/node process.env 安全 accessor，未配置回退确定性 planner）
+- [x] 修复 envelope 重构遗留：TraceNode verify 与 perron 全部 `.result` 解包
+- [x] **生产包终验（v4 代码）**：acceptance 链全绿——3D ✓ exact 数字 ✓ run badge ✓ packing 改后 0.6010/2.08×/12 ✓ 10 图表点（runId）✓ Observation 引用新 Result ✓ fork 卡显示 `ts-kakeya-worker@v3 · 14ms · run …` ✓ Console 0 错误；64/64 vitest
+
 ## 11. 下一阶段（比赛迭代方向）
 
 1. 视觉打磨：Paper Mode 双栏排版更精细、卡片入场动画、打印级排版细节。
