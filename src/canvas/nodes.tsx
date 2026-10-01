@@ -1,6 +1,6 @@
 // Research-desk card nodes. Every card states its provenance
 // (PAPER / CALCULATED / AI INFERENCE); numbers come only from runtime cells.
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useCell, useRuntime } from '../runtime/react'
 import {
@@ -32,6 +32,16 @@ import { PerronView } from './views/PerronView'
 import { ParamSlider, ParamToggle } from './controls/ParamSlider'
 import { histogramRows, unionEfficiency, type CurvePoint } from '../kakeya/metrics'
 import precomputed from '../data/kakeya-precomputed.json'
+import { runSkill, subscribeLog } from '../skills/types'
+import '../skills'
+import {
+  forkStore,
+  restoreFork,
+  requestAddNode,
+  snapshotCurrentFork,
+  type ForkSnapshot,
+} from '../paper/forks'
+import type { VoxelMetrics } from '../kakeya/voxels3d'
 
 // ---- shared frame ----------------------------------------------------------
 
@@ -273,6 +283,33 @@ export function Experiment3DNode() {
           '计算中…'
         )}
       </div>
+      <div className="exp-actions nodrag">
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => {
+            const fork = snapshotCurrentFork(
+              `⑂ ${new Date().toLocaleTimeString('zh-CN', { hour12: false })} · packing=${(kakeya.get(pPacking.id).value as number).toFixed(2)}`,
+            )
+            forkStore.add(fork)
+            requestAddNode({
+              id: `forkcard-${fork.id}`,
+              type: 'fork',
+              position: { x: 1760, y: 880 },
+              data: { forkId: fork.id },
+            })
+          }}
+        >
+          ⑂ Fork 此刻实验
+        </button>
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => requestAddNode({ id: 'trace-evidence', type: 'trace', position: { x: 2210, y: -40 }, data: {} })}
+        >
+          ⤳ 证据链
+        </button>
+      </div>
     </Sheet>
   )
 }
@@ -440,6 +477,245 @@ export function RuntimeGraphNode() {
   )
 }
 
+// ---- forks / compare / trace / group（v2） ------------------------------------
+
+function useForks(): readonly ForkSnapshot[] {
+  return useSyncExternalStore(forkStore.subscribe, forkStore.get, forkStore.get)
+}
+
+export function ForkNode({ data }: NodeProps) {
+  const forks = useForks()
+  const fork = forks.find((f) => f.id === data.forkId)
+  if (!fork) {
+    return (
+      <Sheet label="EXPERIMENT FORK" width={280}>
+        <div className="card-note dim">该分支已被删除。</div>
+      </Sheet>
+    )
+  }
+  return (
+    <Sheet label="EXPERIMENT FORK" badge="CALCULATED" width={280}>
+      <div className="card-title">{fork.label}</div>
+      <div className="card-caption">
+        {new Date(fork.createdAt).toLocaleString('zh-CN')} · cell 版本戳 v{fork.cellVersions['kakeya.voxel'] ?? 0}
+        {fork.synthetic ? ' · 由技能直接计算' : ' · 快照自桌面'}
+      </div>
+      {fork.metrics ? (
+        <ul className="obs-list">
+          <li>δ = {fork.metrics.delta.toFixed(4)} · N = {fork.metrics.nTubes} · packing = {fork.metrics.packing.toFixed(2)}</li>
+          <li>|⋃T| = {fork.metrics.occupiedVolume.toFixed(4)}</li>
+          <li>Σ|T| = {fork.metrics.sumTubeVolume.toFixed(4)}</li>
+          <li>max m = {fork.metrics.maxMultiplicity} · avg m = {fork.metrics.avgMultiplicity.toFixed(2)}</li>
+        </ul>
+      ) : (
+        <div className="card-note dim">暂无 committed 指标（Worker 尚未完成）。</div>
+      )}
+      <div className="exp-actions">
+        <button type="button" className="link-btn nodrag" onClick={() => restoreFork(fork)}>
+          ↺ 恢复此分支参数
+        </button>
+        <button type="button" className="link-btn nodrag" onClick={() => forkStore.remove(fork.id)}>
+          ✕ 删除
+        </button>
+      </div>
+    </Sheet>
+  )
+}
+
+interface CompareOutput {
+  summaryA: string
+  summaryB: string
+  rows: Array<{ metric: string; a: number; b: number; delta: number; relChange: number }>
+}
+
+export function CompareNode({ data }: NodeProps) {
+  const forks = useForks()
+  const a = forks.find((f) => f.id === data.aId)
+  const b = forks.find((f) => f.id === data.bId)
+  const [result, setResult] = useState<CompareOutput | null>(null)
+  const [busy, setBusy] = useState(false)
+  const run = async () => {
+    if (!a?.metrics || !b?.metrics) return
+    setBusy(true)
+    try {
+      setResult(await runSkill<CompareOutput>('compare.configurations', { a: a.metrics, b: b.metrics }))
+    } finally {
+      setBusy(false)
+    }
+  }
+  useEffect(() => {
+    void run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a?.id, b?.id, a?.metrics?.occupiedVolume, b?.metrics?.occupiedVolume])
+  return (
+    <Sheet label="COMPARE · 空间对比" badge="CALCULATED" stale={busy} width={380}>
+      <div className="compare-heads">
+        <div className="compare-col-head">A · {a?.label ?? '—'}</div>
+        <div className="compare-col-head">B · {b?.label ?? '—'}</div>
+      </div>
+      {result ? (
+        <table className="compare-table">
+          <thead>
+            <tr>
+              <th>指标</th>
+              <th>A</th>
+              <th>B</th>
+              <th>Δ (B−A)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.rows.map((r) => (
+              <tr key={r.metric}>
+                <td>{r.metric}</td>
+                <td>{r.a.toFixed(4)}</td>
+                <td>{r.b.toFixed(4)}</td>
+                <td className={r.delta > 0 ? 'pos' : r.delta < 0 ? 'neg' : ''}>
+                  {r.delta >= 0 ? '+' : ''}
+                  {r.delta.toFixed(4)}
+                  {Math.abs(r.relChange) > 0.001 && (
+                    <span className="rel"> ({r.relChange >= 0 ? '+' : ''}{(100 * r.relChange).toFixed(0)}%)</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div className="card-note dim">{busy ? 'compare.configurations 运行中…' : '缺少可对比的指标快照。'}</div>
+      )}
+      <div className="card-caption">数据来自 compare.configurations 技能（CALCULATED）；对比基于 fork 时刻的冻结指标。</div>
+    </Sheet>
+  )
+}
+
+interface TraceOutput {
+  target: string
+  chain: Array<{ kind: string; id: string; version?: number; stale?: boolean; detail: string }>
+}
+
+interface VerifyOutput {
+  checks: Array<{ name: string; pass: boolean; detail: string }>
+  allPass: boolean
+}
+
+interface PyodideOutput {
+  available: boolean
+  reason?: string
+  mc?: number
+  analytic?: number
+  relErr?: number
+  pass?: boolean
+}
+
+export function TraceNode() {
+  const [trace, setTrace] = useState<TraceOutput | null>(null)
+  const [verify, setVerify] = useState<VerifyOutput | null>(null)
+  const [pyodide, setPyodide] = useState<PyodideOutput | null>(null)
+  const [pyBusy, setPyBusy] = useState(false)
+  const [, force] = useState(0)
+  useEffect(() => subscribeLog(() => force((n) => n + 1)), [])
+  useEffect(() => {
+    void runSkill<TraceOutput>('trace.evidence', { target: 'kakeya.voxel' }).then(setTrace)
+  }, [])
+  const runVerify = async () => {
+    const vox = kakeya.get('kakeya.voxel').value as VoxelMetrics | undefined
+    if (!vox) return
+    const perron = kakeya.get('perron.tree').value as { computedArea: number; triangleArea: number } | undefined
+    setVerify(
+      await runSkill<VerifyOutput>('verify.invariants', {
+        metrics: vox,
+        packing: (kakeya.get(pPacking.id).value as number) ?? 0,
+        nTubes: (kakeya.get('kakeya.nTubes').value as number) ?? 0,
+        perronComputedArea: perron?.computedArea,
+        perronTriangleArea: perron?.triangleArea,
+      }),
+    )
+  }
+  const runPyodide = async () => {
+    setPyBusy(true)
+    try {
+      const delta = (kakeya.get('kakeya.delta').value as number) ?? 0.125
+      setPyodide(await runSkill<PyodideOutput>('verify.pyodide_numpy', { delta: Math.max(0.05, Math.min(0.15, delta)) }))
+    } finally {
+      setPyBusy(false)
+    }
+  }
+  const kindIcon: Record<string, string> = { param: '🎛', cell: '◇', skill: '⚙', paper: '📄' }
+  return (
+    <Sheet label="TRACE · 证据链" width={360}>
+      <div className="card-title">kakeya.voxel 的证据从哪来？</div>
+      {trace ? (
+        <ol className="trace-chain">
+          {trace.chain.map((c, i) => (
+            <li key={i} className={`trace-${c.kind}`}>
+              <span className="trace-icon">{kindIcon[c.kind] ?? '·'}</span>
+              <span className="trace-id">{c.id}</span>
+              {c.version !== undefined && <span className="trace-ver">v{c.version}</span>}
+              {c.stale && <span className="stale-dot" />}
+              <span className="trace-detail">{c.detail}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div className="card-note dim">trace.evidence 运行中…</div>
+      )}
+      <div className="exp-actions">
+        <button type="button" className="link-btn nodrag" onClick={runVerify}>
+          ✔ 运行不变量校验
+        </button>
+        <button type="button" className="link-btn nodrag" onClick={runPyodide} disabled={pyBusy}>
+          🐍 NumPy 交叉验证{pyBusy ? '…' : '（Pyodide，可选）'}
+        </button>
+      </div>
+      {verify && (
+        <div className={`verify-box ${verify.allPass ? 'pass' : 'fail'}`}>
+          <div className="verify-head">
+            verify.invariants · {verify.allPass ? '全部通过' : '存在失败项'}
+          </div>
+          {verify.checks.map((c) => (
+            <div key={c.name} className="verify-row">
+              <span className={c.pass ? 'ok' : 'bad'}>{c.pass ? '✓' : '✗'}</span>
+              <span>{c.name}</span>
+              <span className="verify-detail">{c.detail}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {pyodide && (
+        <div className={`verify-box ${pyodide.available ? (pyodide.pass ? 'pass' : 'fail') : 'muted'}`}>
+          <div className="verify-head">verify.pyodide_numpy（可选运行时）</div>
+          {pyodide.available ? (
+            <div className="verify-row">
+              <span className={pyodide.pass ? 'ok' : 'bad'}>{pyodide.pass ? '✓' : '✗'}</span>
+              <span>
+                NumPy MC 体积 {pyodide.mc?.toFixed(5)} vs 解析 {pyodide.analytic?.toFixed(5)} · relErr{' '}
+                {(100 * (pyodide.relErr ?? 1)).toFixed(2)}%
+              </span>
+            </div>
+          ) : (
+            <div className="verify-row">
+              <span className="muted">—</span>
+              <span>{pyodide.reason}</span>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="card-caption">
+        徽章：🎛 参数（source of truth）· ◇ Runtime cell · ⚙ 技能运行 · 📄 PAPER 锚点。技能运行记录见 EvidenceLog。
+      </div>
+    </Sheet>
+  )
+}
+
+export function GroupNode({ data }: NodeProps) {
+  return (
+    <div className="group-node nodrag">
+      <div className="group-tag">📎 {typeof data.label === 'string' ? data.label : '分组'}</div>
+      <InkHandles />
+    </div>
+  )
+}
+
 export const deskNodeTypes = {
   paperPage: PaperPageNode,
   theorem: TheoremNode,
@@ -455,4 +731,8 @@ export const deskNodeTypes = {
   whatif: WhatIfNode,
   formulaSandbox: FormulaSandboxNode,
   runtimeGraph: RuntimeGraphNode,
+  fork: ForkNode,
+  compare: CompareNode,
+  trace: TraceNode,
+  group: GroupNode,
 }

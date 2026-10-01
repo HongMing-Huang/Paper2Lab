@@ -41,6 +41,41 @@ Paper2Lab 是一个比赛 Demo：把论文变成**真正可操作的 Reactive Pa
 - 边（edges）不是流程图箭头：默认几乎不可见的浅色细虚线，或仅 hover/选中时显示。
 - 交互：无限缩放/平移、节点自由拖放、双击/点击 Source → `fitView` 聚焦论文对应区域。
 
+## 2.5 交互契约（Interaction Contract）v2
+
+- 用户动作优先级：**experiment > computation > visualization > explanation**。
+- **可运行的科研问题绝不允许只给文本回答**：每个回答必须伴随可执行实验/计算结果（数字、图表、几何）。
+- 画布是主产品面：节点必须像真实科研纸张（剪页/公式纸/实验记录），不是 workflow 卡片。
+- **P0 画布能力**：pan、zoom、selection（Shift 框选/多选）、**grouping（成组）**、**experiment forks（实验分叉）**、**spatial comparison（空间对比）**。
+
+## 2.6 Scientific Skills 注册表（v2 新增）
+
+所有科研能力必须注册为**显式技能**（`src/skills/`），七族：`inspect / simulate / measure / compare / infer / trace / verify`。每个技能声明：
+
+```ts
+interface SkillDeclaration {
+  id: string                    // 如 'measure.coverage'
+  family: 七族之一
+  input_schema: JsonSchemaLike  // { type:'object', properties, required }
+  output_schema: JsonSchemaLike
+  runtime: 'main' | 'worker' | 'pyodide-worker'
+  evidence_type: 'PAPER' | 'CALCULATED' | 'AI_INFERENCE'   // 不可混用
+  dependencies: string[]        // 依赖的内核模块/cell/其他技能
+  run(input): Promise<output>
+}
+```
+
+- 技能通过 `runSkill(id, input)` 调用，每次运行写入 **EvidenceLog**（输入、输出、时间、cell 版本戳），供证据链卡溯源。
+- `infer` 族输出固定为 AI_INFERENCE；`simulate/measure/compare/verify` 固定 CALCULATED；`inspect/trace` 可引用 PAPER 锚点。
+
+## 2.7 本地计算与 Pyodide 政策
+
+- 科研计算优先**本地确定性执行**；耗时计算放 Web Worker。
+- **Pyodide**：调研结论（2026-10-01，gh 搜索 + 克隆 eqs/pyodide-vite 到 ~/Desktop/paper2lab-research/ 实测研究）——npm 打包的 pyodide 在 Vite 下 `loadPackage('numpy')` 因 wheel 完整性校验失败；**采用官方推荐 CDN + indexURL 方式**：专用 module worker 内懒加载 `https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs`。
+- Pyodide 技能是**可选运行时**：离线/加载失败时技能返回 `available: false`（UI 明示），绝不报错阻塞 Demo；数值正确性**永不依赖** Pyodide 或 LLM。
+- 本地 LLM 推理可选，仅用于 `infer` 族的解释文本；无 key 时用确定性模板。
+
+
 ## 3. 技术架构
 
 版本基线（2026-10 调研后锁定；升级须先在 Spike 验证并更新此处）：

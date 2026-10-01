@@ -191,3 +191,55 @@ math-field.sandbox-field { width: 100%; min-height: 52px; font-size: 17px; }
 /* source 卡 */
 .source-meta { font-size: 12px; line-height: 1.65; color: var(--ink); }
 .source-meta a { color: var(--accent-blue); }
+
+/* ===== v2: 实验操作 / fork / 对比 / 证据链 / 分组 ===== */
+.exp-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+.compare-heads { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+.compare-col-head { font-size: 11px; color: var(--ink-soft); border-bottom: 1px dashed var(--rule); padding-bottom: 3px; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.compare-table th { text-align: left; color: var(--ink-soft); font-weight: 600; padding: 3px 4px; border-bottom: 1px solid var(--rule); }
+.compare-table td { padding: 3px 4px; border-bottom: 1px dashed rgba(217, 208, 191, 0.6); }
+.compare-table td.pos { color: #2e6b3f; }
+.compare-table td.neg { color: var(--accent); }
+.compare-table .rel { color: var(--ink-soft); font-size: 10px; }
+
+.trace-chain { list-style: none; margin: 0; padding: 0; font-size: 11.5px; }
+.trace-chain li { display: flex; align-items: baseline; gap: 6px; padding: 2.5px 0; border-bottom: 1px dashed rgba(217, 208, 191, 0.55); flex-wrap: wrap; }
+.trace-icon { width: 16px; }
+.trace-id { font-variant-numeric: tabular-nums; color: var(--ink); }
+.trace-ver { font-size: 9.5px; background: var(--paper-deep); border: 1px solid var(--rule); border-radius: 2px; padding: 0 4px; color: var(--ink-soft); }
+.trace-detail { color: var(--ink-soft); font-size: 10.5px; flex: 1; min-width: 120px; }
+.trace-paper .trace-id { color: var(--accent); }
+
+.verify-box { margin-top: 8px; border: 1px solid var(--rule); border-radius: 3px; padding: 6px 8px; font-size: 11.5px; }
+.verify-box.pass { border-color: rgba(46, 107, 63, 0.45); background: rgba(46, 107, 63, 0.05); }
+.verify-box.fail { border-color: rgba(154, 59, 46, 0.5); background: rgba(154, 59, 46, 0.05); }
+.verify-box.muted { opacity: 0.85; }
+.verify-head { font-size: 10.5px; color: var(--ink-soft); margin-bottom: 4px; letter-spacing: 0.05em; }
+.verify-row { display: flex; gap: 6px; align-items: baseline; padding: 1.5px 0; }
+.verify-row .ok { color: #2e6b3f; }
+.verify-row .bad { color: var(--accent); }
+.verify-row .muted { color: var(--ink-soft); }
+.verify-detail { color: var(--ink-soft); font-size: 10.5px; margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.group-node {
+  width: 100%; height: 100%; min-height: 60px; border: 1.5px dashed #b0a89a;
+  border-radius: 4px; background: rgba(242, 236, 223, 0.35);
+}
+.group-tag {
+  position: absolute; top: -11px; left: 10px; background: var(--paper-deep);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 0 8px;
+  font-size: 10.5px; color: var(--ink-soft);
+}
+
+.desk-toolbar { display: flex; gap: 6px; pointer-events: auto; }
+.desk-toolbar button {
+  font: inherit; font-size: 11.5px; color: var(--ink-soft); background: rgba(250, 246, 238, 0.92);
+  border: 1px solid var(--rule); border-radius: 3px; padding: 3px 10px; cursor: pointer;
+}
+.desk-toolbar button:hover { color: var(--accent); border-color: rgba(154, 59, 46, 0.4); }
+.chip-run { color: var(--accent); border-color: rgba(154, 59, 46, 0.45); }
+
+.react-flow__node.selected > .sheet { outline: 1.5px solid rgba(154, 59, 46, 0.55); outline-offset: 2px; }
+.react-flow__node.selected > .group-node { border-color: var(--accent); border-style: solid; }
