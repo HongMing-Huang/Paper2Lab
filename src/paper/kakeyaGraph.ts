@@ -100,6 +100,16 @@ export const fineTubesCell = kakeya.derive<Tube3[]>(
   ([dirs, packing]) => makeTubes(dirs as Vec3[], 2 ** -6, packing as number, 20250224 + 1),
 )
 
+// ρ intermediate scale (δ/2) — the microscope's 1 → ρ → δ continuum (AGENTS §1)
+export const midTubesCell = kakeya.derive<Tube3[]>(
+  'kakeya.midTubes',
+  [dirsCell, pPacking],
+  ([dirs, packing]) => {
+    const deltaExp = (kakeya.get('kakeya.deltaExp').value as number) ?? 4
+    return makeTubes(dirs as Vec3[], 2 ** -(deltaExp + 1), packing as number, 20250224 + 2)
+  },
+)
+
 // ---- desk coordination params (event-bus style; nonce objects) -------------
 export interface FocusRequest {
   nodeId: string

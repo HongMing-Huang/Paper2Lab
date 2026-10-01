@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useCell } from '../runtime/react'
-import { tubesCell, fineTubesCell, deltaCell } from '../paper/kakeyaGraph'
+import { tubesCell, fineTubesCell, midTubesCell, deltaCell } from '../paper/kakeyaGraph'
 import type { Tube3 } from '../kakeya/tubes'
 
 const MAX_TUBES = 512
@@ -58,10 +58,12 @@ function Meshes({
 
 function MicroscopeScene({ zoom, setZoom }: { zoom: number; setZoom: (z: number) => void }) {
   const tubes = useCell(tubesCell).value ?? []
+  const mid = useCell(midTubesCell).value ?? []
   const fine = useCell(fineTubesCell).value ?? []
   const { camera, gl } = useThree()
 
-  // wheel drives the zoom continuum: 0 = scale 1 (coarse δ) → 1 = scale δ/4
+  // wheel drives the zoom continuum: 0 = scale 1 (coarse δ) → 1 = scale δ/4,
+  // passing through the ρ = δ/2 station (objective: 1 → ρ → δ 连续 Zoom)
   useEffect(() => {
     const el = gl.domElement
     const onWheel = (e: WheelEvent) => {
@@ -86,7 +88,9 @@ function MicroscopeScene({ zoom, setZoom }: { zoom: number; setZoom: (z: number)
     <>
       <ambientLight intensity={0.8} />
       <directionalLight position={[3, 5, 4]} intensity={1.1} />
-      <Meshes tubes={tubes} opacity={0.85 * (1 - zoom) + 0.12} />
+      {/* staggered opacity windows: coarse fades out, ρ peaks mid-way, fine unfolds */}
+      <Meshes tubes={tubes} opacity={0.85 * (1 - zoom) + 0.1} />
+      <Meshes tubes={mid} opacity={0.9 * Math.max(0, 1 - Math.abs(2 * zoom - 1))} hueShift={0.25} />
       <Meshes tubes={fine} opacity={0.9 * zoom} hueShift={0.5} />
     </>
   )
@@ -105,7 +109,12 @@ export function MicroscopeOverlay({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const scaleLabel = zoom < 0.5 ? '尺度 1（粗管 δ）' : `尺度 δ/4（细管 δ=${fineDelta.toFixed(4)}）`
+  const scaleLabel =
+    zoom < 0.33
+      ? `尺度 1（粗管 δ=${(delta.value ?? 0).toFixed(4)}）`
+      : zoom < 0.67
+        ? `尺度 ρ（中管 δ/2=${((delta.value ?? 0) / 2).toFixed(4)}）`
+        : `尺度 δ/4（细管 δ=${fineDelta.toFixed(4)}）`
 
   return (
     <div className="microscope-overlay">
@@ -133,7 +142,7 @@ export function MicroscopeOverlay({ onClose }: { onClose: () => void }) {
           onChange={(e) => setZoom(parseFloat(e.target.value))}
           aria-label="尺度 zoom"
         />
-        <span className="microscope-scale-label">1 ──────── ρ ──────── δ/4</span>
+        <span className="microscope-scale-label">1 ─────── ρ=δ/2 ─────── δ/4</span>
       </div>
     </div>
   )
