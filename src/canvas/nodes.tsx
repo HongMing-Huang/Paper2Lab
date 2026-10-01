@@ -48,6 +48,8 @@ import { MicroscopeOverlay } from './MicroscopeOverlay'
 import { PaperModeNode } from './PaperModeNode'
 import { voxelPreviewCell, pNTubes } from '../paper/kakeyaGraph'
 import { measureFamily } from '../workers/voxelClient'
+import { solutionCell } from '../paper/odeGraph'
+import { OdeChart } from './views/OdeChart'
 
 // ---- shared frame ----------------------------------------------------------
 
@@ -790,6 +792,44 @@ export function GroupNode({ data }: NodeProps) {
   )
 }
 
+// ---- 第二篇论文（Pyodide/SciPy 平台性演示） -----------------------------------
+
+export function OdeSheetNode() {
+  const sol = useCell(solutionCell)
+  const readNum = (id: string) => () => (kakeya.get(id).value as number) ?? 0
+  return (
+    <Sheet
+      label="PAPER 2 · LOTKA–VOLTERRA（PythonScientificRuntime）"
+      badge="CALCULATED"
+      stale={sol.stale}
+      width={420}
+    >
+      <div className="card-note dim">
+        Kakeya 走 TypeScript+Worker；这页走 <strong>Pyodide → scipy.solve_ivp</strong>（懒加载，不影响 Kakeya）。
+        拖动参数重新积分：
+      </div>
+      <div className="exp-chips nodrag">
+        <ParamChip label="α 猎物增长" paramId="lv.alpha" read={readNum('lv.alpha')} min={0.4} max={2.2} step={0.1} />
+        <ParamChip label="β 捕食" paramId="lv.beta" read={readNum('lv.beta')} min={0.1} max={1.0} step={0.05} />
+        <ParamChip label="γ 捕食者死亡" paramId="lv.gamma" read={readNum('lv.gamma')} min={0.1} max={1.0} step={0.05} />
+        <ParamChip label="δ 转化" paramId="lv.delta" read={readNum('lv.delta')} min={0.02} max={0.4} step={0.02} />
+      </div>
+      {sol.status === 'error' ? (
+        <div className="card-note">
+          ⚠ Python 运行时不可用（离线/CDN 失败）：{String(sol.error).slice(0, 120)}… —
+          Kakeya 演示不受影响（其计算永不依赖 Pyodide）。
+        </div>
+      ) : (
+        <OdeChart points={sol.value ?? []} stale={sol.stale} />
+      )}
+      <div className="card-caption">
+        首次打开需从 CDN 加载 Pyodide+SciPy（约 10s）。结果为确定性 CALCULATED；
+        这张纸证明 Parameter → Pyodide → scipy.solve_ivp → Result → Chart 的平台通路。
+      </div>
+    </Sheet>
+  )
+}
+
 export const deskNodeTypes = {
   paperMode: PaperModeNode,
   paperPage: PaperPageNode,
@@ -810,4 +850,5 @@ export const deskNodeTypes = {
   compare: CompareNode,
   trace: TraceNode,
   group: GroupNode,
+  odeSheet: OdeSheetNode,
 }

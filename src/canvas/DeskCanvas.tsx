@@ -199,6 +199,13 @@ export function DeskCanvas() {
         message(lab ? '实验已展开到 Lab Canvas（参数就长在实验纸里）' : '研究材料已铺开（定理/公式/概念/来源）')
       } else if (a.type === 'run-plan' && a.plan) {
         void runPlan(a.plan as ExperimentPlan)
+      } else if (a.type === 'open-ode') {
+        setNodes((cur) =>
+          cur.some((n) => n.id === 'ode-sheet')
+            ? cur
+            : [...cur, { id: 'ode-sheet', type: 'odeSheet', position: { x: -160, y: 1560 }, data: {} }],
+        )
+        message('第二篇论文已铺开：Lotka–Volterra via Pyodide/scipy（首次加载约 10s）')
       }
     })
     return unsubscribe

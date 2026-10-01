@@ -174,6 +174,14 @@ export function PaperModeNode() {
             <button type="button" className="link-btn" onClick={() => deskBus.emit({ type: 'expand-library' })}>
               ＋ 展开研究材料
             </button>
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => deskBus.emit({ type: 'open-ode' })}
+              title="第二篇论文：Pyodide + scipy.solve_ivp（懒加载）"
+            >
+              ＋ 第二篇论文（Lotka–Volterra · Pyodide/SciPy）
+            </button>
           </section>
         </div>
 
