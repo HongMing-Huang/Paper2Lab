@@ -913,7 +913,7 @@ export function ChallengeNode() {
             <button
               type="button"
               className="link-btn nodrag"
-              disabled={!current}
+              disabled={!current || current.spec.params.deltaExp !== baseline.deltaExp || current.spec.params.nTubes !== baseline.nTubes || current.spec.res !== baseline.res}
               title="把当前构型的 Worker 精算结果登记为一次尝试"
               onClick={() => {
                 if (!current?.result) return

@@ -17,3 +17,32 @@ describe('agentBridge SSE parsing', () => {
     expect(events[1].args?.steps).toHaveLength(1)
   })
 })
+
+import { afterEach, vi } from 'vitest'
+import { runAgentTurn } from './agentBridge'
+afterEach(() => vi.unstubAllGlobals())
+function response(events: unknown[]) {
+  return new Response(events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream' } })
+}
+it('executes every external call and resumes with a complete batch', async () => {
+  const bodies: Array<Record<string, unknown>> = []
+  vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+    bodies.push(JSON.parse(init.body))
+    return bodies.length === 1 ? response([
+      { type: 'require_execution', replyId: 'reply', toolCallId: 'one', tool: 'scientific_execute', args: { steps: [] } },
+      { type: 'require_execution', replyId: 'reply', toolCallId: 'two', tool: 'canvas_apply', args: { ops: [] } },
+    ]) : response([{ type: 'done' }])
+  }))
+  const scientificExecute = vi.fn(async () => ({ runs: [] }))
+  const canvasApply = vi.fn(async () => ({ applied: 1 }))
+  await runAgentTurn('double', { deskKind: 'formula', paperTitle: '', params: [] }, 'session', { scientificExecute, canvasApply })
+  expect(scientificExecute).toHaveBeenCalledTimes(1)
+  expect(canvasApply).toHaveBeenCalledTimes(1)
+  expect((bodies[1].resume as { executionResults: unknown[] }).executionResults).toHaveLength(2)
+})
+it('surfaces an SSE error instead of silently succeeding', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => response([{ type: 'error', message: 'model unavailable' }])))
+  await expect(runAgentTurn('q', { deskKind: 'formula', paperTitle: '', params: [] }, 's', {
+    scientificExecute: async () => ({}), canvasApply: async () => ({}),
+  })).rejects.toThrow('model unavailable')
+})

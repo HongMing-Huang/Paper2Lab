@@ -53,3 +53,9 @@ describe('Scientific Skill Registry', () => {
     expect(validateSkillInput('paper.trace-source', { anchorId: 'p1-i7' }).ok).toBe(true)
   })
 })
+
+it('rejects schema type, enum, and range-length violations', () => {
+  expect(validateSkillInput('kakeya.measure', { deltaExp: 4, nTubes: 4.5, packing: NaN }).ok).toBe(false)
+  expect(validateSkillInput('kakeya.sweep', { param: 'fake', values: [1] }).ok).toBe(false)
+  expect(validateSkillInput('formula.plot', { expression: ['Sin', 'x'], parameters: ['a'], independent: 'x', range: [0] }).ok).toBe(false)
+})

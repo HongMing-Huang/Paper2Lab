@@ -68,6 +68,7 @@ async function* streamTurn(body: Record<string, unknown>): AsyncGenerator<AgentS
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000),
   })
   if (!res.ok || !res.body) throw new Error(`agent turn failed (${res.status})`)
   const reader = res.body.getReader()
@@ -95,27 +96,34 @@ export async function runAgentTurn(
 ): Promise<void> {
   let resume: Record<string, unknown> | null = null
   for (let round = 0; round < 5; round++) {
-    let pending: { toolCallId?: string; replyId?: string; tool?: string; args?: AgentSseEvent['args'] } | null = null
+    const pending: AgentSseEvent[] = []
     for await (const e of streamTurn({ sessionId, intent, context, resume })) {
       exec.onEvent?.(e)
+      if (e.type === 'error') throw new Error(e.message ?? 'Agent execution failed')
       if (e.type === 'plan_created' && e.plan) {
         // surfaced to the paper via agentState by the caller's onEvent
       }
       if (e.type === 'require_execution') {
-        pending = { toolCallId: e.toolCallId, replyId: e.replyId, tool: e.tool, args: e.args }
+        if (!e.toolCallId || !e.tool || !['canvas_apply', 'scientific_execute'].includes(e.tool)) throw new Error('Unknown or malformed external tool')
+        pending.push(e)
       }
     }
-    if (!pending) return
-    // the browser is the executor — real skills, real runs
-    const result =
-      pending.tool === 'canvas_apply'
-        ? await exec.canvasApply(pending.args?.ops ?? [])
-        : await exec.scientificExecute(pending.args ?? {})
-    resume = {
-      toolCallId: pending.toolCallId,
-      replyId: pending.replyId,
-      tool: pending.tool,
-      result,
+    if (!pending.length) return
+    const replyId = pending[0].replyId
+    if (pending.some((p) => p.replyId !== replyId)) throw new Error('Mixed reply ids in tool batch')
+    if (new Set(pending.map((p) => p.toolCallId)).size !== pending.length) throw new Error('Duplicate tool call id')
+    const executionResults = []
+    for (const call of pending) {
+      try {
+        const result = call.tool === 'canvas_apply'
+          ? await exec.canvasApply(call.args?.ops ?? [])
+          : await exec.scientificExecute(call.args ?? {})
+        executionResults.push({ toolCallId: call.toolCallId, tool: call.tool, result })
+      } catch (err) {
+        throw new Error(`External tool failed: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
+    resume = { replyId, executionResults }
   }
+  throw new Error('Agent exceeded the maximum execution rounds')
 }
