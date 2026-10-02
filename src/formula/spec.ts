@@ -8,6 +8,7 @@ import { compileFormula, type CompiledFormula } from './compile'
 /** anchor into the ingested paper (Docling provenance, page 1-based) */
 export interface SourceAnchor {
   docId: string
+  anchorId?: string
   page: number
   /** top-left origin, fractions of page width/height (0..1) */
   bbox: { x: number; y: number; w: number; h: number }

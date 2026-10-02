@@ -56,21 +56,21 @@ export function buildFormulaPlayPlan(
   return {
     planId: nextPlanId(),
     goal: `操作论文公式 ${analysis.latex} 的参数，观察 ${analysis.output ?? '输出'} 如何随之变化`,
-    source: { docId: anchor.docId, anchorId: undefined, title: paperTitle },
+    source: { docId: anchor.docId, anchorId: `${anchor.docId}:p${anchor.page}`, title: paperTitle },
     variables: [
       ...analysis.params.map<PlayPlanVariable>((p) => ({
         name: p.name,
         role: 'parameter',
-        confirmed: true,
+        confirmed: false,
       })),
       {
         name: analysis.independent!,
         role: 'independent',
-        confirmed: true,
+        confirmed: false,
       },
       { name: analysis.output ?? 'y', role: 'output', confirmed: !!analysis.output },
     ],
-    assumptions: ['Docling 提取的 LaTeX 与论文排版一致（已过 Cortex 解析校验）'],
+    assumptions: ['变量角色与范围为启发式建议，尚未由论文条件确认；Cortex 可解析不等于提取忠实'],
     skill: skill.name,
     skillVersion: skill.version,
     renderer: skill.renderer,

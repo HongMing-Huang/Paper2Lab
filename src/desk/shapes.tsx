@@ -241,14 +241,7 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
   // memo key by param VALUES: the store mutates params in place, so identity
   // alone would never refresh the chart (or worse, recreate curves on every
   // render — jsxgraph's fade-in then leaves them at opacity 0)
-  const paramsKey = JSON.stringify(explorer?.params ?? {})
-  const series = useMemo(() => {
-    if (!explorer?.compiled) return []
-    const indep = explorer.spec.independent.name
-    const f = (x: number) => explorer.compiled!.run({ ...explorer.params, [indep]: x })
-    return [{ label: 'y(x)', color: SERIES_COLORS[0], f }]
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramsKey, explorer?.compiled, explorer?.spec.independent.name])
+  const series = useMemo(() => run?.result ? [{ label: 'y(x)', color: SERIES_COLORS[0], points: run.result.points, runId: run.runId }] : [], [run])
 
   // Direct Geometry (AGENTS.md v6 §9.2): drag point A on the curve → bisection
   // inverts the measured (x, y) back into the FIRST parameter (graph→param).
@@ -311,9 +304,10 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
             width={p.w - 48}
             height={200}
             anchor={anchor}
+            onRunSelect={() => deskBus.emit({ kind: 'source', anchorId: p.anchorId })}
           />
         </Interactive>
-        <div className="desk-run-badge">
+        <div className="desk-run-badge" style={{ opacity: explorer?.status !== 'resolved' ? 0.45 : 1 }} data-run-id={run?.runId}>
           {phase && (
             <span className={`desk-agent-phase st-${phase.kind}`}>
               {phase.kind === 'plan' && 'PLAN'}
@@ -322,6 +316,7 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
               {phase.kind === 'error' && 'ERROR'}
             </span>
           )}
+          {explorer?.status === 'error' && <span className="calc-badge preview">ERROR · {explorer.error}</span>}
           {run && run.result ? (
             <>
               <span className={`calc-badge${run.engine.includes('js') ? ' exact' : ''}`}>
@@ -336,7 +331,7 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
               </span>
             </>
           ) : (
-            <span className="calc-badge preview">computing…</span>
+            <span className="calc-badge preview">{explorer?.error ?? 'computing…'}</span>
           )}
         </div>
         {selected && (
@@ -392,21 +387,14 @@ class ExperimentShapeUtil extends ShapeUtil<ExperimentShape> {
 function ChartComponent({ shape }: { shape: ChartShape }) {
   const ids = useExplorerIds()
   const explorers = ids.map((id) => explorerStore.get(id)!).filter(Boolean)
-  const paramsKey = JSON.stringify(explorers.map((ex) => ex.params))
-  const series = useMemo(
-    () =>
-      explorers.map((ex, i) => {
-        const indep = ex.spec.independent.name
-        return {
-          label: `${ex.spec.output ?? 'y'}${i > 0 ? ` #${i + 1}` : ''}`,
-          color: SERIES_COLORS[i % SERIES_COLORS.length],
-          f: (x: number) => ex.compiled!.run({ ...ex.params, [indep]: x }),
-          dashed: i > 0,
-        }
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [paramsKey, ids.join(',')],
-  )
+  const runKey = explorers.map((ex) => ex.run?.runId ?? '').join(',')
+  const series = useMemo(() => explorers.flatMap((ex, i) => ex.run?.result ? [{
+    label: `${ex.spec.output ?? 'y'} #${i + 1}`,
+    color: SERIES_COLORS[i % SERIES_COLORS.length],
+    points: ex.run.result.points,
+    runId: ex.run.runId,
+    dashed: i > 0,
+  }] : []), [runKey])
   const range = explorers[0]?.spec.independent.range ?? [-5, 5]
   return (
     <HTMLContainer style={{ pointerEvents: 'all' }}>
@@ -416,7 +404,11 @@ function ChartComponent({ shape }: { shape: ChartShape }) {
           <span className="desk-sheet-meta">{explorers.length} 组真实计算结果</span>
         </div>
         <Interactive>
-          <FormulaChart series={series} range={range} width={shape.props.w - 48} height={180} />
+          <FormulaChart series={series} range={range} width={shape.props.w - 48} height={180}
+            onRunSelect={(runId) => {
+              const ex = explorers.find((e) => e.run?.runId === runId)
+              if (ex) deskBus.emit({ kind: 'source', anchorId: ex.spec.anchor.anchorId ?? shape.props.anchorId })
+            }} />
         </Interactive>
         <table className="desk-compare-table">
           <thead>
@@ -430,13 +422,13 @@ function ChartComponent({ shape }: { shape: ChartShape }) {
           </thead>
           <tbody>
             {explorers.map((ex, i) => (
-              <tr key={ex.id}>
+              <tr key={ex.id} data-run-id={ex.run?.runId}>
                 <td>
                   <span className="desk-swatch" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
-                  {i === 0 ? 'base' : `fork ${i}`}
+                  {i === 0 ? 'base' : `fork ${i}`} · {ex.run?.runId.slice(-6)}
                 </td>
                 {explorers[0].spec.parameters.map((p) => (
-                  <td key={p.name}>{ex.params[p.name].toFixed(2)}</td>
+                  <td key={p.name}>{(ex.run?.spec.params[p.name] ?? ex.params[p.name]).toFixed(2)}</td>
                 ))}
                 <td>{ex.run?.result ? ex.run.result.peak.toFixed(3) : '…'}</td>
                 <td>{ex.run?.result ? ex.run.result.integral.toFixed(3) : '…'}</td>

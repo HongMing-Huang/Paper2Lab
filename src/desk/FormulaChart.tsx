@@ -1,7 +1,5 @@
-// JSXGraph curve chart (CAScad-style rendering layer). Curves evaluate the
-// Cortex-compiled JS functions passed in `series` — never hardcoded data. The
-// board is read-only in 0.1 (pan/zoom off so tldraw canvas gestures keep
-// working around it).
+// JSXGraph renders immutable ExperimentRun samples. The kernel is only used
+// by the scientific runtime and inverse manipulation, never for chart evidence.
 import { useEffect, useRef } from 'react'
 import JXG from 'jsxgraph'
 import 'jsxgraph/distrib/jsxgraph.css'
@@ -9,8 +7,23 @@ import 'jsxgraph/distrib/jsxgraph.css'
 export interface ChartSeries {
   label: string
   color: string
-  f: (x: number) => number
+  points: ReadonlyArray<readonly [number, number]>
+  runId: string
   dashed?: boolean
+}
+
+/** Interpolation of measured samples for the drag affordance, never a new calculation. */
+function at(series: ChartSeries | undefined, x: number): number {
+  const points = series?.points ?? []
+  if (!points.length) return 0
+  for (let i = 1; i < points.length; i++) {
+    if (x <= points[i][0]) {
+      const [xa, ya] = points[i - 1]
+      const [xb, yb] = points[i]
+      return ya + (yb - ya) * (x - xa) / (xb - xa)
+    }
+  }
+  return points[points.length - 1][1]
 }
 
 /** series colors — registered presentation constants */
@@ -34,19 +47,21 @@ export function FormulaChart({
   width,
   height,
   anchor,
+  onRunSelect,
 }: {
   series: ChartSeries[]
   range: [number, number]
   width: number
   height: number
   anchor?: ChartAnchor
+  onRunSelect?: (runId: string) => void
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const boardRef = useRef<JXG.Board | null>(null)
   const curvesRef = useRef<Array<JXG.GeometryElement>>([])
   const anchorPointRef = useRef<JXG.Point | null>(null)
-  const latest = useRef({ f: series[0]?.f, anchor })
-  latest.current = { f: series[0]?.f, anchor }
+  const latest = useRef({ series: series[0], anchor })
+  latest.current = { series: series[0], anchor }
   // direct-geometry drag state — React SYNTHETIC events only: tldraw's
   // tl-html-layer intercepts trusted pointer events in capture before they
   // reach native listeners inside shapes (chips work the same way)
@@ -99,27 +114,6 @@ export function FormulaChart({
       registerEvents: true,
     })
     boardRef.current = b
-    const { f, anchor: a } = latest.current
-    if (f && a) {
-      const pt = b.create('point', [a.x, f(a.x)], {
-        name: 'A',
-        size: 3,
-        fillColor: '#b3542e',
-        strokeColor: '#b3542e',
-        highlight: true,
-        showInfobox: false,
-      }) as unknown as JXG.Point & { rendNode?: SVGElement }
-      // drag handling lives on the React synthetic handlers below — trusted
-      // pointer events never reach native listeners inside a tldraw shape
-      const node = pt.rendNode ?? null
-      if (node) node.style.cursor = 'ns-resize'
-      anchorPointRef.current = pt
-      // trusted pointer events → JXG's own drag (it stops propagation, so
-      // this is the ONLY handler that runs for real users)
-      pt.on('drag', () => {
-        latest.current.anchor?.onDrag(pt.X(), pt.Y())
-      })
-    }
     return () => {
       boardRef.current = null
       anchorPointRef.current = null
@@ -142,12 +136,7 @@ export function FormulaChart({
     curvesRef.current = []
     const [x0, x1] = range
     let maxAbs = 1
-    for (const s of series) {
-      for (let i = 0; i <= 24; i++) {
-        const y = Math.abs(s.f(x0 + ((x1 - x0) * i) / 24))
-        if (Number.isFinite(y)) maxAbs = Math.max(maxAbs, y)
-      }
-    }
+    for (const s of series) for (const [, y] of s.points) maxAbs = Math.max(maxAbs, Math.abs(y))
     // keepaspectratio MUST be false: with true the x-window gets rescaled to
     // match the y-range, flinging fixed-x elements (the anchor point) outside
     // the canvas (verified against jsxgraph 1.13.3)
@@ -155,8 +144,8 @@ export function FormulaChart({
     for (const s of series) {
       curvesRef.current.push(
         b.create(
-          'functiongraph',
-          [(x: number) => s.f(x), x0, x1],
+          'curve',
+          [s.points.map(([x]) => x), s.points.map(([, y]) => y)],
           { strokeColor: s.color, strokeWidth: 2, dash: s.dashed ? 2 : 0, highlight: false },
         ) as unknown as JXG.GeometryElement,
       )
@@ -164,23 +153,30 @@ export function FormulaChart({
     // keep the direct-geometry anchor riding the (possibly new) curve
     // (read via ref — anchor identity must not churn the curve effect)
     const a = latest.current.anchor
-    const f = series[0]?.f
-    if (a && f && anchorPointRef.current) {
-      anchorPointRef.current.moveTo([a.x, f(a.x)])
+    if (a && series[0]) {
+      if (!anchorPointRef.current) {
+        const pt = b.create('point', [a.x, at(series[0], a.x)], { name: 'A', size: 3, fillColor: '#b3542e', strokeColor: '#b3542e', showInfobox: false }) as unknown as JXG.Point
+        pt.on('drag', () => latest.current.anchor?.onDrag(pt.X(), pt.Y()))
+        anchorPointRef.current = pt
+      } else anchorPointRef.current.moveTo([a.x, at(series[0], a.x)])
     }
     b.update()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [series, range])
 
   return (
+    <div>
     <div
       ref={hostRef}
       className="desk-chart"
+      data-run-ids={series.map((s) => s.runId).join(',')}
       style={{ width, height }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     />
+    <div className="desk-chart-sources">{series.map((s) => <button key={s.runId} type="button" className="link-btn" title={s.runId} onClick={() => onRunSelect?.(s.runId)}>{s.label} · run …{s.runId.slice(-6)} · Source</button>)}</div>
+    </div>
   )
 }

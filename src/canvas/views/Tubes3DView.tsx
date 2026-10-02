@@ -144,6 +144,7 @@ export function Tubes3DView({
   spin = 0.25,
   height = 320,
   packingDrag = false,
+  preserveDrawingBuffer = false,
 }: {
   tubes: Tube3[]
   visGrid?: VoxelResult['visGrid']
@@ -152,6 +153,8 @@ export function Tubes3DView({
   spin?: number
   height?: number
   packingDrag?: boolean
+  /** test routes only: lets readPixels/toDataURL see a rendered frame */
+  preserveDrawingBuffer?: boolean
 }) {
   const rt = useRuntime()
   const dragState = useRef<{ y: number; packing: number } | null>(null)
@@ -189,7 +192,7 @@ export function Tubes3DView({
         dpr={[1, 2]}
         camera={{ position: [1.55, 1.25, 1.55], fov: 38 }}
         eventPrefix="client"
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, preserveDrawingBuffer }}
       >
         <ambientLight intensity={0.75} />
         <directionalLight position={[3, 5, 4]} intensity={1.1} />

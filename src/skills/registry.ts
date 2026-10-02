@@ -28,6 +28,10 @@ export interface ScientificSkill {
   evidence: EvidenceType
   /** ExperimentRun.kind this skill produces (numeric skills only) */
   runKind?: ExperimentKind
+  /** false ⇒ the unified executor answers `unsupported` (no runnable path yet) */
+  implemented: boolean
+  /** why an unimplemented skill exists in the registry (shown in unsupported) */
+  unavailableReason?: string
 }
 
 const num = { type: 'number' } as const
@@ -40,7 +44,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     inputSchema: {
       type: 'object',
       required: ['expression', 'bindings'],
-      properties: { expression: { type: 'object' }, bindings: { type: 'object' } },
+      properties: { expression: {}, bindings: { type: 'object' } },
     },
     outputSchema: { type: 'object', required: ['value'], properties: { value: num } },
     runtime: 'cortex-js',
@@ -49,6 +53,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     version: 'cortex-ce@0.142.0',
     evidence: 'CALCULATED',
     runKind: 'formula.curve',
+    implemented: true,
   },
   {
     name: 'formula.plot',
@@ -57,10 +62,12 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
       type: 'object',
       required: ['expression', 'parameters', 'independent', 'range'],
       properties: {
-        expression: { type: 'object' },
+        expression: {},
         parameters: { type: 'array', items: { type: 'string' } },
         independent: { type: 'string' },
         range,
+        values: { type: 'object' },
+        samples: { type: 'integer' },
       },
     },
     outputSchema: {
@@ -74,6 +81,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     version: 'cortex-ce@0.142.0',
     evidence: 'CALCULATED',
     runKind: 'formula.curve',
+    implemented: true,
   },
   {
     name: 'geometry.2d',
@@ -93,6 +101,8 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     version: 'ts-kakeya-2d@v3',
     evidence: 'CALCULATED',
     runKind: 'perron.tree',
+    implemented: false,
+    unavailableReason: '已实现但尚未接入统一执行入口——在通过验收前不声明可调用'
   },
   {
     name: 'ode.solve',
@@ -109,6 +119,8 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     version: 'pyodide-scipy@v0.27.7',
     evidence: 'CALCULATED',
     runKind: 'lv.ode',
+    implemented: false,
+    unavailableReason: '已实现但尚未接入统一执行入口——在通过验收前不声明可调用'
   },
   {
     name: 'kakeya.generate',
@@ -125,6 +137,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     version: 'ts-kakeya-worker@v3',
     evidence: 'CALCULATED',
     runKind: 'kakeya.geometry',
+    implemented: true,
   },
   {
     name: 'kakeya.measure',
@@ -150,6 +163,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     version: 'ts-kakeya-worker@v3',
     evidence: 'CALCULATED',
     runKind: 'kakeya.voxel',
+    implemented: true,
   },
   {
     name: 'kakeya.sweep',
@@ -159,7 +173,10 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
       required: ['param', 'values'],
       properties: {
         param: { type: 'string', enum: ['nTubes', 'deltaExp', 'packing'] },
-        values: { type: 'array', items: num },
+        values: { type: 'array', items: num, minItems: 1 },
+        deltaExp: num,
+        packing: num,
+        res: { type: 'integer' },
       },
     },
     outputSchema: {
@@ -172,6 +189,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     version: 'ts-kakeya-worker@v3',
     evidence: 'CALCULATED',
     runKind: 'kakeya.sweep',
+    implemented: true,
   },
   {
     name: 'experiment.fork',
@@ -187,6 +205,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     deterministic: true,
     version: 'desk@v6',
     evidence: 'CALCULATED',
+    implemented: true,
   },
   {
     name: 'experiment.compare',
@@ -202,6 +221,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     deterministic: true,
     version: 'desk@v6',
     evidence: 'CALCULATED',
+    implemented: true,
   },
   {
     name: 'paper.trace-source',
@@ -213,6 +233,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     deterministic: true,
     version: 'desk@v6',
     evidence: 'PAPER',
+    implemented: true,
   },
 ]
 
@@ -222,14 +243,39 @@ export function getSkill(name: string): ScientificSkill | undefined {
   return byName.get(name)
 }
 
-/** lightweight structural validation of a skill invocation payload */
+/** Validate the JSON-Schema subset declared above, including nested arrays. */
+export function schemaError(schema: Record<string, unknown>, value: unknown, path: string): string | null {
+  const type = schema.type
+  if ((type === 'object' && (value === null || typeof value !== 'object' || Array.isArray(value))) ||
+      (type === 'array' && !Array.isArray(value)) ||
+      (type === 'string' && typeof value !== 'string') ||
+      (type === 'number' && (typeof value !== 'number' || !Number.isFinite(value))) ||
+      (type === 'integer' && (typeof value !== 'number' || !Number.isSafeInteger(value)))) return `${path}: expected ${type}`
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return `${path}: invalid choice`
+  if (Array.isArray(value)) {
+    if (typeof schema.minItems === 'number' && value.length < schema.minItems) return `${path}: too few items`
+    if (typeof schema.maxItems === 'number' && value.length > schema.maxItems) return `${path}: too many items`
+    if (schema.items) for (let i = 0; i < value.length; i++) {
+      const error = schemaError(schema.items as Record<string, unknown>, value[i], `${path}[${i}]`)
+      if (error) return error
+    }
+  } else if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>
+    for (const key of (schema.required as string[] | undefined) ?? []) {
+      if (!Object.hasOwn(obj, key)) return `${path}: missing field ${key}`
+    }
+    for (const [key, child] of Object.entries((schema.properties as Record<string, Record<string, unknown>>) ?? {})) {
+      if (Object.hasOwn(obj, key)) {
+        const error = schemaError(child, obj[key], `${path}.${key}`)
+        if (error) return error
+      }
+    }
+  }
+  return null
+}
 export function validateSkillInput(name: string, input: unknown): { ok: boolean; error?: string } {
   const skill = byName.get(name)
   if (!skill) return { ok: false, error: `unknown skill: ${name}` }
-  if (typeof input !== 'object' || input === null) return { ok: false, error: 'input must be an object' }
-  const required = (skill.inputSchema.required as string[] | undefined) ?? []
-  for (const key of required) {
-    if (!(key in (input as Record<string, unknown>))) return { ok: false, error: `missing field: ${key}` }
-  }
-  return { ok: true }
+  const error = schemaError(skill.inputSchema, input, name)
+  return error ? { ok: false, error } : { ok: true }
 }

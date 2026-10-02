@@ -90,16 +90,39 @@ def convert_pdf(path: str, title_hint: str = "Untitled paper") -> dict[str, Any]
         if kind == "title" and title is None:
             title = text
 
-        items.append(
-            {
-                "id": f"p{page_no}-i{n}",
-                "kind": kind,
-                "page": page_no,
-                "bbox": {"x": round(x, 5), "y": round(y, 5), "w": round(w, 5), "h": round(h, 5)},
-                **({"latex": text} if kind == "formula" else {}),
-                **({"text": text[:600]} if kind != "formula" and text else {}),
-            }
-        )
+        entry: dict[str, Any] = {
+            "id": f"p{page_no}-i{n}",
+            "kind": kind,
+            "page": page_no,
+            "bbox": {"x": round(x, 5), "y": round(y, 5), "w": round(w, 5), "h": round(h, 5)},
+        }
+        if kind == "formula":
+            entry["latex"] = text
+        elif text:
+            entry["text"] = text[:600]
+        # tables keep their structure (columns + rows), not just an empty label
+        if kind == "table" and hasattr(item, "export_to_dataframe"):
+            try:
+                df = item.export_to_dataframe()
+                entry["table"] = {
+                    "columns": [str(c) for c in df.columns],
+                    "rows": [
+                        ["" if v != v else str(v) for v in row]
+                        for row in df.itertuples(index=False)
+                    ][:200],
+                }
+            except Exception:  # noqa: BLE001 — structure is best-effort; bbox stays
+                entry["tableError"] = "table structure export failed"
+        # figures link the caption docling associated with them, when present
+        if kind == "figure":
+            cap = getattr(item, "caption", None)
+            if isinstance(cap, list):
+                cap = cap[0] if cap else None
+            cap_text = getattr(cap, "text", None) if cap is not None else None
+            if cap_text:
+                entry["captionText"] = str(cap_text).strip()[:300]
+
+        items.append(entry)
         n += 1
 
     return {

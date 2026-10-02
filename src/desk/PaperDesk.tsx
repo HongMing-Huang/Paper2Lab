@@ -22,7 +22,7 @@ import { planFormulaActions } from '../skills/formulaPlan'
 import { llmConfigFromEnv } from '../skills/llmPlanner'
 import { runAgentTurn, newAgentSessionId, type DeskAgentContext } from './agentBridge'
 import { agentState } from './agentState'
-import type { CurveRun } from './explorerStore'
+import { executeFormulaSteps } from '../skills/formulaExecutor'
 
 /** registered layout config (presentation, not evidence) */
 const PAPER_W = 560
@@ -56,20 +56,12 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
   })
   const experimentIds = useRef<TLShapeId[]>([])
   const agentSession = useRef(newAgentSessionId())
+  const agentTarget = useRef<string | null>(null)
+  const busy = useRef(false)
+  const [asking, setAsking] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [ask, setAsk] = useState('')
   const size = usePdfPageSize(payload.pdfUrl, 1)
-
-  /** wait for an explorer's observable run to settle (bounded) */
-  const waitForRun = useCallback(async (explorerId: string, timeoutMs = 4000): Promise<CurveRun | null> => {
-    const t0 = Date.now()
-    while (Date.now() - t0 < timeoutMs) {
-      const run = explorerStore.get(explorerId)?.run
-      if (run && run.result) return run
-      await new Promise((r) => setTimeout(r, 120))
-    }
-    return null
-  }, [])
 
   const message = useCallback((m: string) => {
     setNote(m)
@@ -84,6 +76,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     const anchorItem = payload.doc.items.find((i) => i.id === anchorId)
     const { spec, compiled } = buildExplorerSpec(a, {
       docId: payload.doc.docId,
+      anchorId,
       page: anchorItem?.page ?? 1,
       bbox: anchorItem?.bbox ?? { x: 0.3, y: 0.4, w: 0.4, h: 0.06 },
       latex,
@@ -297,51 +290,21 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
    *  agent only ever receives run ids and measured numbers back. */
   const scientificExecute = useCallback(
     async (args: { deskKind?: string; steps?: Array<Record<string, unknown>> }) => {
-      const steps = args.steps ?? []
-      const firstId = explorerStore.ids()[0]
-      if (!firstId) return { runs: [], summary: '没有可操作的实验' }
-      const baseRun = explorerStore.get(firstId)?.run ?? null
-      let targetId = firstId
-      const runs: Array<Record<string, unknown>> = []
-      for (const step of steps) {
-        const op = String(step.op)
-        if (op === 'experiment.fork') {
-          const anchorId = payload.decision.keyFormula?.id ?? ''
-          const created = createForkShape(targetId, anchorId)
-          if (created) {
-            targetId = created
-            agentState.set({ explorerId: created })
-          }
-        } else if (op === 'formula.set' || op === 'formula.scale') {
-          const param = String(step.param)
-          const cur = explorerStore.get(targetId)?.params[param] ?? 1
-          const v =
-            op === 'formula.set' ? Number(step.value) : cur * Number(step.value)
-          explorerStore.setParams(targetId, { [param]: v })
-        } else if (op === 'formula.plot') {
-          agentState.set({ phase: { kind: 'running', tool: 'formula.plot' }, explorerId: targetId })
-          const run = await waitForRun(targetId)
-          if (run?.result) {
-            runs.push({
-              runId: run.runId,
-              parentRunId: targetId === firstId ? undefined : baseRun?.runId,
-              metrics: { peak: run.result.peak, integral: run.result.integral },
-              durationMs: run.durationMs,
-            })
-          }
-        } else if (op === 'experiment.compare') {
-          deskBus.emit({ kind: 'compare' })
-        }
-      }
-      const base = baseRun?.result
-        ? `base peak ${baseRun.result.peak.toFixed(3)}（run …${baseRun.runId.slice(-4)}）`
-        : ''
-      const fork = runs[0] as { metrics?: { peak?: number } } | undefined
-      const forkTxt = fork?.metrics?.peak != null ? `fork peak ${fork.metrics.peak.toFixed(3)}` : ''
-      const summary = [base, forkTxt].filter(Boolean).join(' → ') || '实验完成（数字见 Comparison 纸）'
-      return { runs, comparison: runs.length ? { rows: runs } : null, summary }
+      if (args.deskKind && args.deskKind !== 'formula') throw new Error('Wrong experiment adapter')
+      const sourceId = agentTarget.current
+      if (!sourceId) throw new Error('Select an experiment first')
+      const source = explorerStore.get(sourceId)!
+      agentState.set({ phase: { kind: 'running', tool: 'formula.plot' }, explorerId: sourceId })
+      const result = await executeFormulaSteps(sourceId, args.steps ?? [], {
+        fork: (id) => createForkShape(id, explorerStore.get(id)?.spec.anchor.anchorId ?? source.spec.anchor.anchorId ?? ''),
+        compare: () => deskBus.emit({ kind: 'compare' }),
+      })
+      agentTarget.current = result.targetId
+      const run = explorerStore.get(result.targetId)?.run
+      if (run) agentState.set({ explorerId: result.targetId, phase: { kind: 'computed', runId: run.runId, durationMs: run.durationMs } })
+      return result
     },
-    [payload.decision.keyFormula?.id, createForkShape, waitForRun],
+    [createForkShape],
   )
 
   const canvasApply = useCallback(
@@ -349,6 +312,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       let applied = 0
       for (const o of ops) {
         const op = String(o.op)
+        if (!['compare', 'highlight-source', 'fork-paper', 'focus'].includes(op)) throw new Error(`Unknown canvas operation: ${op}`)
         if (op === 'compare') {
           deskBus.emit({ kind: 'compare' })
           applied++
@@ -356,7 +320,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           deskBus.emit({ kind: 'source', anchorId: String(o.anchorId) })
           applied++
         } else if (op === 'fork-paper') {
-          const created = createForkShape(explorerStore.ids()[0], payload.decision.keyFormula?.id ?? '')
+          const created = createForkShape(agentTarget.current ?? '', payload.decision.keyFormula?.id ?? '')
           if (created) applied++
         } else if (op === 'focus') {
           const editor = editorRef.current
@@ -370,14 +334,18 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     [createForkShape, payload.decision.keyFormula?.id],
   )
 
-  const runAsk = useCallback(async () => {
+  const runAskImpl = useCallback(async () => {
     const q = ask.trim()
     if (!q) return
-    const firstId = explorerStore.ids()[0]
+    const selected = editorRef.current?.getOnlySelectedShape()
+    const selectedId = selected?.type === 'p2l-experiment' ? (selected.props as { explorerId: string }).explorerId : null
+    const available = explorerStore.ids().filter((id) => explorerStore.get(id)?.spec.anchor.docId === payload.doc.docId)
+    const firstId = selectedId ?? (available.length === 1 ? available[0] : null)
     if (!firstId) {
-      message('先 Play 展开一个实验，再提问')
+      message('请选中一张实验纸，再提问')
       return
     }
+    agentTarget.current = firstId
     const src = explorerStore.get(firstId)!
     const paramNames = src.spec.parameters.map((p) => p.name)
     const context: DeskAgentContext = {
@@ -385,7 +353,8 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       paperTitle: payload.doc.title,
       params: paramNames,
       paramValues: { ...src.params },
-      anchorId: payload.decision.keyFormula?.id ?? null,
+      anchorId: src.spec.anchor.anchorId ?? null,
+      selectedRunId: src.run?.runId ?? null,
     }
     agentState.set({ phase: { kind: 'plan', goal: q, skill: 'formula.plot' }, explorerId: firstId, observation: null, plan: null })
     try {
@@ -415,7 +384,13 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       })
       setAsk('')
       return
-    } catch {
+    } catch (err) {
+      // Never repeat a partially executed tool sequence as a new local fork.
+      if (!(err instanceof TypeError)) {
+        agentState.set({ phase: { kind: 'error', message: err instanceof Error ? err.message : String(err) } })
+        message(err instanceof Error ? err.message : String(err))
+        return
+      }
       // server unreachable → deterministic local planner (same action grammar)
       agentState.reset()
     }
@@ -456,26 +431,19 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       message('没听懂 — 试试「如果 a 增大一倍会怎样？」「把 b 设为 3」')
       return
     }
-    // execute: fork → set/scale on the fork → compare chart
-    let targetId = firstId
-    for (const a of actions) {
-      if (a.op === 'fork') {
-        const anchorId = payload.decision.keyFormula?.id ?? ''
-        const created = createForkShape(firstId, anchorId)
-        if (created) targetId = created
-      } else if (a.op === 'set' || a.op === 'scale') {
-        const cur = explorerStore.get(targetId)?.params[a.param!] ?? 1
-        const v = a.op === 'set' ? a.value! : cur * a.value!
-        explorerStore.setParams(targetId, { [a.param!]: v })
-      }
-      // rerun/compare: curve recomputes via observable cells; chart is live
-    }
-    if (actions.some((a) => a.op === 'compare') && !editorRef.current?.getShape(ids.current.chart)) {
-      deskBus.emit({ kind: 'compare' })
-    }
+    const opNames = { fork: 'experiment.fork', set: 'formula.set', scale: 'formula.scale', rerun: 'formula.plot', compare: 'experiment.compare' }
+    await scientificExecute({ deskKind: 'formula', steps: actions.map((a) => ({ ...a, op: opNames[a.op] })) })
     setAsk('')
     message(`Agent：${actions.map((a) => (a.param ? `${a.op} ${a.param}${a.value ? (a.op === 'scale' ? '×' : '=') + a.value : ''}` : a.op)).join(' → ')}`)
   }, [ask, message, payload.decision.keyFormula?.id, payload.doc.title, createForkShape, scientificExecute, canvasApply])
+
+  const runAsk = useCallback(async () => {
+    if (busy.current) return
+    busy.current = true
+    setAsking(true)
+    try { await runAskImpl() } catch (err) { message(err instanceof Error ? err.message : String(err)) }
+    finally { busy.current = false; setAsking(false) }
+  }, [runAskImpl, message])
 
   return (
     <DeskContext.Provider value={payload}>
@@ -513,8 +481,8 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
               onKeyDown={(e) => e.key === 'Enter' && void runAsk()}
               placeholder="问一个实验问题，如：如果 a 增大一倍会怎样？"
             />
-            <button type="button" className="desk-btn desk-btn-play" onClick={() => void runAsk()}>
-              运行
+            <button type="button" className="desk-btn desk-btn-play" disabled={asking} onClick={() => void runAsk()}>
+              {asking ? '实验执行中' : '运行'}
             </button>
           </div>
           {note && <div className="desk-note">{note}</div>}

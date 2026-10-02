@@ -1,15 +1,11 @@
 // Packing Challenge (AGENTS.md v6 §9.7) — the differentiating gameplay.
 // Rules: δ and direction count are FROZEN; the player drags tube packing
-// (in 3D) to minimize finite-scale occupied volume. Every submission is a
-// real ExperimentRun from the SAME engine the UI uses. "Let Agent Try" runs
-// an automated parameter search through the very same worker — no privileged
-// compute, runs recorded side by side.
-import { executeSpec, ENGINES, type ExperimentRun } from '../experiments/protocol'
-import { fibonacciDirections } from '../kakeya/directions'
-import { makeTubes, type Tube3 } from '../kakeya/tubes'
+// (in 3D) to minimize finite-scale occupied volume. Every submission goes
+// through the UNIFIED skill executor (`kakeya.measure`) — user and agent
+// share one registered engine, zero privilege, runs recorded side by side.
+import type { ExperimentRun } from '../experiments/protocol'
+import { executeSkill } from '../skills/executor'
 import type { VoxelResult } from '../kakeya/voxels3d'
-import { isWorkerAvailable, measureVoxelCover } from '../workers/voxelClient'
-import { computeVoxelCoverage } from '../kakeya/voxels3d'
 
 export interface ChallengeAttempt {
   by: 'user' | 'agent'
@@ -28,7 +24,7 @@ export interface ChallengeAttempt {
 /** agent search grid over packing — same engine, zero privilege */
 export const AGENT_PACKING_CANDIDATES = [1.0, 0.95, 0.9, 0.85, 0.8]
 
-class ChallengeStore {
+export class ChallengeStore {
   attempts: ChallengeAttempt[] = []
   /** the frozen baseline when a challenge starts */
   baseline: { deltaExp: number; nTubes: number; res: number } | null = null
@@ -48,10 +44,13 @@ class ChallengeStore {
 
   start(deltaExp: number, nTubes: number, res: number) {
     this.baseline = { deltaExp, nTubes, res }
+    this.attempts = []
     this.notify()
   }
 
   add(attempt: ChallengeAttempt) {
+    const b = this.baseline
+    if (!b || attempt.deltaExp !== b.deltaExp || attempt.nTubes !== b.nTubes || attempt.res !== b.res) throw new Error('Challenge conditions differ from the frozen baseline')
     this.attempts = [...this.attempts, attempt]
     this.notify()
   }
@@ -65,40 +64,45 @@ class ChallengeStore {
 
 export const challengeStore = new ChallengeStore()
 
-/** one real finite-scale measurement through the shared engine */
+/** one real finite-scale measurement — ALWAYS via the unified skill executor */
 export async function runChallengeMeasurement(
   deltaExp: number,
   nTubes: number,
   packing: number,
   res: number,
+  parentRunId?: string,
 ): Promise<ExperimentRun<VoxelResult>> {
-  const delta = 2 ** -deltaExp
-  const dirs = fibonacciDirections(nTubes)
-  const tubes: Tube3[] = makeTubes(dirs, delta, packing)
-  return executeSpec(
-    { kind: 'kakeya.voxel', params: { deltaExp, packing, nTubes }, seed: 20250224, res },
-    ENGINES.kakeyaWorker,
-    () =>
-      isWorkerAvailable()
-        ? measureVoxelCover(tubes, res, 16)
-        : computeVoxelCoverage(tubes, res, 16),
+  const outcome = await executeSkill<VoxelResult>(
+    'kakeya.measure',
+    { deltaExp, nTubes, packing, res },
+    { planId: `challenge:${deltaExp}/${nTubes}/${res}`, parentRunId },
   )
+  if (outcome.status !== 'ok' || !outcome.run) {
+    throw new Error(outcome.status === 'error' ? outcome.message : `kakeya.measure returned ${outcome.status}`)
+  }
+  return outcome.run as ExperimentRun<VoxelResult>
 }
 
-/** "Let Agent Try": deterministic search over the packing grid using the
- *  same worker; records every probe as its own attempt. */
+/** "Let Agent Try": deterministic search over the packing grid through the
+ *  unified executor (kakeya.measure); records every probe as its own attempt.
+ *  `store` is injectable for headless tests; defaults to the UI singleton. */
 export async function agentTry(
   onProgress?: (done: number, total: number) => void,
+  store: ChallengeStore = challengeStore,
 ): Promise<ChallengeAttempt | null> {
-  const b = challengeStore.baseline
+  const b = store.baseline
   if (!b) return null
-  challengeStore.agentBusy = true
-  challengeStore.notify()
+  store.agentBusy = true
+  store.notify()
   let best: ChallengeAttempt | null = null
   const total = AGENT_PACKING_CANDIDATES.length
+  try {
   for (let i = 0; i < total; i++) {
     const packing = AGENT_PACKING_CANDIDATES[i]
-    const run = await runChallengeMeasurement(b.deltaExp, b.nTubes, packing, b.res)
+    // agent attempts descend from the current best USER attempt — an
+    // independent branch of the same experiment, never a mixed leaderboard
+    const parent = store.best('user')?.runId
+    const run = await runChallengeMeasurement(b.deltaExp, b.nTubes, packing, b.res, parent)
     if (run.result) {
       const attempt: ChallengeAttempt = {
         by: 'agent',
@@ -112,12 +116,14 @@ export async function agentTry(
         durationMs: run.durationMs,
         at: Date.now(),
       }
-      challengeStore.add(attempt)
+      store.add(attempt)
       if (!best || attempt.occupiedVolume < best.occupiedVolume) best = attempt
     }
     onProgress?.(i + 1, total)
   }
-  challengeStore.agentBusy = false
-  challengeStore.notify()
+  } finally {
+    store.agentBusy = false
+    store.notify()
+  }
   return best
 }

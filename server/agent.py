@@ -57,9 +57,16 @@ def ev(type_: str, **payload: Any) -> dict:
 class SopSession:
     id: str
     history: list[dict] = field(default_factory=list)
+    """tool calls already answered once — duplicate resumes are rejected"""
+    answered_calls: set[str] = field(default_factory=set)
+    """how many external-execution rounds this session has consumed"""
+    rounds: int = 0
 
 
 _sop_sessions: dict[str, SopSession] = {}
+
+MAX_ROUNDS = 5
+ALLOWED_TOOLS = ("scientific_execute", "canvas_apply")
 
 
 def _parse_formula_intent(q: str, params: list[str]) -> list[dict] | None:
@@ -269,8 +276,14 @@ def _build_agent() -> Any:
 
 
 def _evt_type(chunk: Any) -> str:
+    """Normalized (lowercase) event type for matching.
+
+    AgentScope's EventType enum values are UPPERCASE ('REQUIRE_EXTERNAL_EXECUTION',
+    verified against the installed agentscope 2.0.9); comparing raw values against
+    lowercase names silently dropped execution requests from the real backend.
+    """
     t = getattr(chunk, "type", "")
-    return getattr(t, "value", t) or ""
+    return str(getattr(t, "value", t) or "").lower()
 
 
 async def agentscope_stream(session_id: str, inputs: Any) -> AsyncGenerator[dict, None]:
@@ -347,17 +360,24 @@ async def turn(body: TurnBody) -> StreamingResponse:
             from agentscope.message import ToolResultBlock, ToolResultState
 
             r = body.resume
-            result = ExternalExecutionResultEvent(
-                reply_id=r.get("replyId", ""),
-                execution_results=[
+            rows = r.get("executionResults", [])
+            if not rows:
+                return _sse(_single_error("resume without executionResults"))
+            blocks = []
+            for row in rows:
+                state = ToolResultState.SUCCESS if row.get("status", "ok") == "ok" else ToolResultState.ERROR
+                blocks.append(
                     ToolResultBlock(
-                        id=r.get("toolCallId", ""),
-                        name=r.get("tool", "scientific_execute"),
-                        output=json.dumps(r.get("result", {}), ensure_ascii=False),
-                        state=ToolResultState.SUCCESS,
+                        id=row.get("toolCallId", ""),
+                        name=row.get("tool", "scientific_execute"),
+                        output=json.dumps(
+                            row.get("result", {}) if state == ToolResultState.SUCCESS else {"error": row.get("error", "external execution failed")},
+                            ensure_ascii=False,
+                        ),
+                        state=state,
                     )
-                ],
-            )
+                )
+            result = ExternalExecutionResultEvent(reply_id=r.get("replyId", ""), execution_results=blocks)
             return _sse(agentscope_stream(body.sessionId, result))
         from agentscope.message import UserMsg
 
@@ -370,8 +390,50 @@ async def turn(body: TurnBody) -> StreamingResponse:
     # deterministic SOP backend
     session = _sop_sessions.setdefault(body.sessionId, SopSession(id=body.sessionId))
     if body.resume is not None:
-        result = body.resume.get("result", {})
-        session.history.append({"resume": result})
-        return _sse(sop_resume(result))
+        rows = body.resume.get("executionResults", [])
+        if not rows:
+            return _sse(_single_error("resume without executionResults"))
+        # duplicate-resume guard: a toolCallId may be answered exactly once
+        fresh = [row for row in rows if row.get("toolCallId") not in session.answered_calls]
+        if not fresh:
+            return _sse(_single_error("all toolCallIds in this resume were already answered"))
+        for row in rows:
+            call_id = str(row.get("toolCallId", ""))
+            if call_id:
+                session.answered_calls.add(call_id)
+        failed = [row for row in fresh if row.get("status") == "error"]
+        if failed:
+            # a failed external execution is reported as failure — never done
+            session.history.append({"failed": [f.get("toolCallId") for f in failed]})
+            return _sse(_failure_resume(failed))
+        merged = {
+            "runs": [run for row in fresh for run in row.get("result", {}).get("runs", [])],
+            "comparison": next(
+                (row.get("result", {}).get("comparison") for row in fresh if row.get("result", {}).get("comparison")),
+                None,
+            ),
+            "summary": "实验已由浏览器完成，来源见实验纸。",
+        }
+        session.history.append({"resume": merged})
+        return _sse(sop_resume(merged))
+    session.rounds += 1
+    if session.rounds > MAX_ROUNDS:
+        return _sse(_single_error(f"session exceeded {MAX_ROUNDS} execution rounds"))
     session.history.append({"intent": body.intent})
     return _sse(sop_turn(body.intent, body.context))
+
+
+def _single_error(message: str) -> AsyncGenerator[dict, None]:
+    async def gen() -> AsyncGenerator[dict, None]:
+        yield ev("error", message=message)
+    return gen()
+
+
+async def _failure_resume(failed: list[dict]) -> AsyncGenerator[dict, None]:
+    for row in failed:
+        yield ev(
+            "experiment_failed",
+            toolCallId=row.get("toolCallId"),
+            error=row.get("error", "external execution failed"),
+        )
+    yield ev("done", reason="execution_failed")
