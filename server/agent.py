@@ -25,6 +25,7 @@ import os
 import re
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, AsyncGenerator
 
 from fastapi import APIRouter
@@ -70,6 +71,62 @@ _sop_sessions: dict[str, SopSession] = {}
 
 MAX_ROUNDS = 5
 ALLOWED_TOOLS = ("scientific_execute", "canvas_apply")
+
+# ---- session persistence (restart recovery) ----------------------------------
+# Sessions live in the same DATA_DIR as ingest jobs; a server restart reloads
+# them so answered/issued toolCallIds stay enforced across restarts.
+
+
+def _data_dir() -> Path:
+    return Path(os.environ.get("PAPER2LAB_DATA_DIR", Path(__file__).parent / "data"))
+
+
+def _session_path(session_id: str) -> Path:
+    # session ids are opaque strings — keep them out of path components
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", session_id)[:80]
+    return _data_dir() / f"agent-session-{safe}.json"
+
+
+def _persist_session(session: SopSession) -> None:
+    try:
+        _data_dir().mkdir(parents=True, exist_ok=True)
+        _session_path(session.id).write_text(
+            json.dumps(
+                {
+                    "id": session.id,
+                    "history": session.history,
+                    "answered_calls": sorted(session.answered_calls),
+                    "issued_calls": sorted(session.issued_calls),
+                    "rounds": session.rounds,
+                },
+                ensure_ascii=False,
+            )
+        )
+    except OSError:
+        # persistence is best-effort: an unwritable disk must not kill turns,
+        # but /api/ready's storage check will already flag it
+        pass
+
+
+def _load_sessions() -> None:
+    try:
+        for path in _data_dir().glob("agent-session-*.json"):
+            data = json.loads(path.read_text())
+            if not isinstance(data, dict) or "id" not in data:
+                continue
+            s = SopSession(
+                id=str(data["id"]),
+                history=list(data.get("history", [])),
+                answered_calls=set(data.get("answered_calls", [])),
+                issued_calls=set(data.get("issued_calls", [])),
+                rounds=int(data.get("rounds", 0)),
+            )
+            _sop_sessions[s.id] = s
+    except (OSError, ValueError):
+        pass
+
+
+_load_sessions()
 
 
 def _parse_formula_intent(q: str, params: list[str]) -> list[dict] | None:
@@ -414,10 +471,12 @@ async def turn(body: TurnBody) -> StreamingResponse:
             call_id = str(row.get("toolCallId", ""))
             if call_id:
                 session.answered_calls.add(call_id)
+        _persist_session(session)
         failed = [row for row in fresh if row.get("status") == "error"]
         if failed:
             # a failed external execution is reported as failure — never done
             session.history.append({"failed": [f.get("toolCallId") for f in failed]})
+            _persist_session(session)
             return _sse(_failure_resume(failed))
         merged = {
             "runs": [run for row in fresh for run in row.get("result", {}).get("runs", [])],
@@ -428,11 +487,13 @@ async def turn(body: TurnBody) -> StreamingResponse:
             "summary": "实验已由浏览器完成，来源见实验纸。",
         }
         session.history.append({"resume": merged})
+        _persist_session(session)
         return _sse(sop_resume(merged))
     session.rounds += 1
     if session.rounds > MAX_ROUNDS:
         return _sse(_single_error(f"session exceeded {MAX_ROUNDS} execution rounds"))
     session.history.append({"intent": body.intent})
+    _persist_session(session)
     return _sse(sop_turn(session, body.intent, body.context))
 
 
