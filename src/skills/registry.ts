@@ -176,6 +176,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
       properties: {
         param: { type: 'string', enum: ['nTubes', 'deltaExp', 'packing'] },
         values: { type: 'array', items: num, minItems: 1 },
+        nTubes: { type: 'integer' },
         deltaExp: num,
         packing: num,
         res: { type: 'integer' },

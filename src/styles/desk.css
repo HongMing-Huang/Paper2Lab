@@ -509,3 +509,23 @@
   border-color: #a8c2a8;
   background: #eef5ee;
 }
+
+/* multi-page paper navigation */
+.desk-paper-pager {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: #fffdf7ee;
+  border: 1px solid #e2d9c6;
+  border-radius: 3px;
+}
+.desk-paper-page-label {
+  font-size: 12px;
+  color: #4d4232;
+  font-family: 'Menlo', monospace;
+}

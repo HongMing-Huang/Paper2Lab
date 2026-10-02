@@ -12,7 +12,7 @@ import {
 } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { DeskContext, type DeskPayload } from './context'
-import { deskShapeUtils, deskBindingUtils, type PaperShape } from './shapes'
+import { deskShapeUtils, deskBindingUtils, type PaperShape, type FormulaShape } from './shapes'
 import { deskBus } from './deskBus'
 import { usePdfPageSize } from './PdfCanvas'
 import { analyzeFormula } from '../formula/analyze'
@@ -158,7 +158,8 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       const anchor = anchorOf(e.anchorId)
       if (!anchor) return
       if (!ids.current.formula) ids.current.formula = createShapeId('formula')
-      if (!editor.getShape(ids.current.formula)) {
+      const existing = editor.getShape(ids.current.formula) as FormulaShape | undefined
+      if (!existing) {
         editor.createShape({
           id: ids.current.formula,
           type: 'p2l-formula',
@@ -173,6 +174,15 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           },
         })
         editor.zoomToFit({ animation: { duration: 450 } })
+      } else if (existing.props.anchorId !== e.anchorId) {
+        // a DIFFERENT marker was selected — retarget the lifted formula sheet
+        // to the new anchor (it used to keep showing the first formula)
+        editor.updateShape({
+          id: ids.current.formula,
+          type: 'p2l-formula',
+          props: { anchorId: e.anchorId, latex: anchor.latex ?? '', explorerId: '' },
+        })
+        editor.centerOnPoint({ x: existing.x, y: existing.y }, { animation: { duration: 450 } })
       } else {
         editor.centerOnPoint(
           { x: (editor.getShape(ids.current.formula)!.x), y: (editor.getShape(ids.current.formula)!.y) },

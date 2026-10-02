@@ -98,9 +98,21 @@ function Interactive({ children, className }: { children: React.ReactNode; class
 
 function PaperComponent({ shape }: { shape: PaperShape }) {
   const { doc, pdfUrl } = useDesk()
+  const editor = useEditor()
   const p = shape.props
-  const keyAnchor = doc.items.find((i) => i.id === p.keyAnchorId) ?? null
+  // every plottable formula ON THE CURRENT PAGE gets its own Playable marker
+  // (multi-formula selection); markers re-derive when the page turns
+  const pageFormulas = doc.items.filter(
+    (i) => i.kind === 'formula' && i.latex && i.page === p.page && analyzeFormula(i.latex).ok,
+  )
   const highlightAnchor = doc.items.find((i) => i.id === p.highlightAnchorId) ?? null
+  const totalPages = doc.pages.length
+  const turnPage = (delta: number) => {
+    const next = Math.min(totalPages, Math.max(1, p.page + delta))
+    if (next !== p.page) {
+      editor.updateShape({ id: shape.id, type: 'p2l-paper', props: { page: next } })
+    }
+  }
   return (
     <HTMLContainer style={{ pointerEvents: 'all' }}>
       <div className="desk-paper-sheet">
@@ -108,21 +120,34 @@ function PaperComponent({ shape }: { shape: PaperShape }) {
           url={pdfUrl}
           page={p.page}
           width={p.w}
-          highlight={highlightAnchor ? highlightAnchor.bbox : null}
+          highlight={highlightAnchor && highlightAnchor.page === p.page ? highlightAnchor.bbox : null}
         />
-        {keyAnchor && (
-          <Interactive>
+        {pageFormulas.map((f, idx) => (
+          <Interactive key={f.id}>
             <button
               type="button"
               className="desk-playable-marker"
               style={{
-                left: keyAnchor.bbox.x * p.w + keyAnchor.bbox.w * p.w + 6,
-                top: keyAnchor.bbox.y * p.h - 2,
+                left: f.bbox.x * p.w + f.bbox.w * p.w + 6,
+                top: f.bbox.y * p.h - 2,
               }}
-              title="展开这个公式的实验"
-              onClick={() => deskBus.emit({ kind: 'marker-click', anchorId: keyAnchor.id })}
+              title={`展开公式 ${idx + 1}（共 ${pageFormulas.length} 个）：${f.latex}`}
+              onClick={() => deskBus.emit({ kind: 'marker-click', anchorId: f.id })}
             >
-              ▸ Playable
+              ▸ Playable {idx + 1}
+            </button>
+          </Interactive>
+        ))}
+        {totalPages > 1 && (
+          <Interactive className="desk-paper-pager">
+            <button type="button" className="desk-btn" disabled={p.page <= 1} onClick={() => turnPage(-1)}>
+              ‹
+            </button>
+            <span className="desk-paper-page-label">
+              {p.page} / {totalPages}
+            </span>
+            <button type="button" className="desk-btn" disabled={p.page >= totalPages} onClick={() => turnPage(1)}>
+              ›
             </button>
           </Interactive>
         )}
@@ -386,7 +411,14 @@ class ExperimentShapeUtil extends ShapeUtil<ExperimentShape> {
 
 function ChartComponent({ shape }: { shape: ChartShape }) {
   const ids = useExplorerIds()
-  const explorers = ids.map((id) => explorerStore.get(id)!).filter(Boolean)
+  // scope to ONE formula's lineage: with multiple formulas playable, the
+  // global store mixes unrelated curves/domains, and the table used to map
+  // the first formula's parameters over every explorer (missing values →
+  // toFixed crash). Group key = the anchor the explorer grew from.
+  const all = ids.map((id) => explorerStore.get(id)!).filter(Boolean)
+  const anchorOf = (ex: (typeof all)[number]) => ex.spec.anchor.anchorId ?? ex.spec.anchor.latex
+  const own = all.filter((ex) => anchorOf(ex) === shape.props.anchorId)
+  const explorers = own.length > 0 ? own : all
   const runKey = explorers.map((ex) => ex.run?.runId ?? '').join(',')
   const series = useMemo(() => explorers.flatMap((ex, i) => ex.run?.result ? [{
     label: `${ex.spec.output ?? 'y'} #${i + 1}`,
@@ -396,12 +428,16 @@ function ChartComponent({ shape }: { shape: ChartShape }) {
     dashed: i > 0,
   }] : []), [runKey])
   const range = explorers[0]?.spec.independent.range ?? [-5, 5]
+  // table columns come from the FIRST explorer of this lineage only
+  const tableParams = explorers[0]?.spec.parameters ?? []
   return (
     <HTMLContainer style={{ pointerEvents: 'all' }}>
       <div className="desk-sheet desk-sheet-chart">
         <div className="desk-sheet-head">
           <span className="desk-sheet-tag">COMPARISON</span>
-          <span className="desk-sheet-meta">{explorers.length} 组真实计算结果</span>
+          <span className="desk-sheet-meta">
+            {explorers.length} 组真实计算结果{own.length > 0 && all.length > own.length ? `（同一公式分支；桌面共 ${all.length} 个实验）` : ''}
+          </span>
         </div>
         <Interactive>
           <FormulaChart series={series} range={range} width={shape.props.w - 48} height={180}
@@ -414,7 +450,7 @@ function ChartComponent({ shape }: { shape: ChartShape }) {
           <thead>
             <tr>
               <th>run</th>
-              {explorers[0]?.spec.parameters.map((p) => <th key={p.name}>{p.name}</th>)}
+              {tableParams.map((p) => <th key={p.name}>{p.name}</th>)}
               <th>peak</th>
               <th>∫|y|dx</th>
               <th>ms</th>
@@ -427,9 +463,10 @@ function ChartComponent({ shape }: { shape: ChartShape }) {
                   <span className="desk-swatch" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
                   {i === 0 ? 'base' : `fork ${i}`} · {ex.run?.runId.slice(-6)}
                 </td>
-                {explorers[0].spec.parameters.map((p) => (
-                  <td key={p.name}>{(ex.run?.spec.params[p.name] ?? ex.params[p.name]).toFixed(2)}</td>
-                ))}
+                {tableParams.map((p) => {
+                  const v = ex.run?.spec.params[p.name] ?? ex.params[p.name]
+                  return <td key={p.name}>{Number.isFinite(v) ? v.toFixed(2) : '—'}</td>
+                })}
                 <td>{ex.run?.result ? ex.run.result.peak.toFixed(3) : '…'}</td>
                 <td>{ex.run?.result ? ex.run.result.integral.toFixed(3) : '…'}</td>
                 <td>{ex.run ? ex.run.durationMs : '…'}</td>

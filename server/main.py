@@ -95,6 +95,13 @@ def _restore_jobs() -> None:
         job.created_at = float(data.get("createdAt", 0))
         job.finished_at = data.get("finishedAt")
         job.error = data.get("error")
+        # a running/pending job died with the process — no task is recreated,
+        # so it must surface as interrupted instead of "running" forever
+        if job.status in ("pending", "running"):
+            job.status = "error"
+            job.error = "interrupted by server restart"
+            job.finished_at = time.time()
+            job.persist()
         doc = _load_json(_doc_path(str(data.get("docId")))) if data.get("docId") else None
         job.result = doc
         _jobs[job.job_id] = job
@@ -140,13 +147,31 @@ async def ready() -> dict:
     return JSONResponse({"ready": ready, "checks": checks}, status_code=200 if ready else 503)
 
 
+async def _read_bounded(file: UploadFile) -> bytes:
+    """Stream the upload in bounded chunks; abort the moment the cap is crossed.
+
+    Reading the whole body first (the old `await file.read()`) materialized
+    an arbitrarily large file before the 25 MB check ran — the advertised
+    limit did not protect memory at all.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail=f"PDF exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @app.post("/api/ingest", status_code=202)
 async def ingest(file: UploadFile = File(...)) -> dict:
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=415, detail="only PDF is supported in 0.1")
-    payload = await file.read()
-    if len(payload) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail=f"PDF exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit")
+    payload = await _read_bounded(file)
     if not payload.startswith(b"%PDF"):
         raise HTTPException(status_code=422, detail="file is not a valid PDF")
 
@@ -162,14 +187,30 @@ async def ingest(file: UploadFile = File(...)) -> dict:
     async def run() -> None:
         try:
             loop = asyncio.get_running_loop()
+            # thread-level serialization: cancelling the asyncio future on
+            # timeout does NOT stop the docling thread — this lock stays held
+            # until the thread actually exits, so a timed-out conversion can
+            # never overlap the next one (DocumentConverter is not thread-safe)
+            done = asyncio.Event()
+
+            def convert() -> dict[str, Any]:
+                try:
+                    return convert_pdf(str(tmp_path), title_hint=os.path.splitext(job.filename)[0])
+                finally:
+                    loop.call_soon_threadsafe(done.set)
+
+            async def serialized() -> dict[str, Any]:
+                fut = loop.run_in_executor(None, convert)
+                try:
+                    return await fut
+                finally:
+                    # even if the await was cancelled (timeout), wait for the
+                    # thread to finish before releasing the docling slot
+                    if not fut.done():
+                        await done.wait()
+
             async with _ingest_lock:  # one docling conversion at a time
-                result = await asyncio.wait_for(
-                    loop.run_in_executor(
-                        None,
-                        lambda: convert_pdf(str(tmp_path), title_hint=os.path.splitext(job.filename)[0]),
-                    ),
-                    timeout=INGEST_TIMEOUT_S,
-                )
+                result = await asyncio.wait_for(serialized(), timeout=INGEST_TIMEOUT_S)
             job.result = result
             job.status = "done"
             job.finished_at = time.time()
@@ -184,7 +225,14 @@ async def ingest(file: UploadFile = File(...)) -> dict:
             job.finished_at = time.time()
         finally:
             job.persist()
-            tmp_path.unlink(missing_ok=True)
+            # delete the upload only once no conversion can still be reading it
+            if job.status != "error" or not job.error or "exceeded" not in job.error:
+                tmp_path.unlink(missing_ok=True)
+            else:
+                # timed-out conversion may still hold the file open; retry the
+                # delete a bit later (best effort — the temp dir is not public)
+                loop = asyncio.get_event_loop()
+                loop.call_later(60, lambda: tmp_path.unlink(missing_ok=True))
 
     asyncio.get_event_loop().create_task(run())
     return {"jobId": job_id, "status": "running"}
