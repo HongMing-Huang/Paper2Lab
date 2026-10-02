@@ -54,7 +54,7 @@ export async function ensurePrecomputedRuns(): Promise<{ imported: number; skipp
   return { imported: fresh.length, skipped: rows.length - fresh.length, source }
 }
 
-export const PRECOMPUTED_DELTA_EXPS = [4, 5, 6, 7, 8] as const
+export const PRECOMPUTED_DELTA_EXPS = [4, 5, 6, 7, 8, 9, 10] as const
 const PRECOMPUTED_PACKINGS = [0, 0.5, 1]
 
 // read-only evidence hook (also works in the built bundle — the headless

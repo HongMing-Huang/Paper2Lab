@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:render": "pnpm build && node scripts/render-webgl-test.mjs",
-    "precompute": "c++ -std=c++17 -O3 -pthread scripts/precompute_kakeya.cpp -o scripts/precompute_kakeya && ./scripts/precompute_kakeya large | node --import tsx scripts/build_kakeya_bundle.ts",
+    "precompute": "c++ -std=c++17 -O3 -pthread scripts/precompute_kakeya.cpp -o scripts/precompute_kakeya && ./scripts/precompute_kakeya xxl | node --import tsx scripts/build_kakeya_bundle.ts",
     "engine": "node --import tsx scripts/engine_server.ts"
   },
   "dependencies": {

@@ -258,13 +258,13 @@ async function productPhase(browser, failures) {
     // 9. C++ high-scale precompute chain on the REAL page: the chart loads the
     //    bundle itself (offline fallback — no backend on this static origin),
     //    imports real ExperimentRuns, and the series/button reflect them
-    await page.waitForFunction(() => (window.__P2L_CPP_RUNS__?.() ?? []).length >= 45, null, { timeout: 30000 })
+    await page.waitForFunction(() => (window.__P2L_CPP_RUNS__?.() ?? []).length >= 63, null, { timeout: 30000 })
       .catch(() => null)
     const cppIds = await page.evaluate(() => window.__P2L_CPP_RUNS__?.() ?? [])
     const cppBtn = await page.evaluate(() => document.querySelector('.cpp-load-btn')?.textContent ?? '(no button)')
     console.log(`[product] cpp runs imported: ${cppIds.length}${cppIds.length ? ` (${cppIds[0]} …)` : ''}`)
     console.log(`[product] cpp button: ${cppBtn}`)
-    if (cppIds.length < 45) failures.push(`C++ high-scale runs did not import on the product path (${cppIds.length})`)
+    if (cppIds.length < 63) failures.push(`C++ high-scale runs did not import on the product path (${cppIds.length})`)
     if (!cppBtn.includes('已载入')) failures.push(`cpp load button did not settle: ${cppBtn}`)
     // chart caption datapoints grew with the precomputed series
     const caption = await page.evaluate(() => document.querySelector('.react-flow__node-chartUnion .card-caption')?.textContent ?? '')

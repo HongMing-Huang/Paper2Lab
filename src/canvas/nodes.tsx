@@ -277,7 +277,7 @@ export function Experiment3DNode() {
       width={460}
     >
       <div className="exp-chips nodrag">
-        <ParamChip label="δ" paramId="kakeya.deltaExp" read={readNum('kakeya.deltaExp')} min={3} max={5.5} step={0.25} display={(v) => `2^−${v.toFixed(2)}`} />
+        <ParamChip label="δ" paramId="kakeya.deltaExp" read={readNum('kakeya.deltaExp')} min={3} max={10} step={0.25} display={(v) => `2^−${v.toFixed(2)}`} />
         <ParamChip label="packing" paramId="kakeya.packing" read={readNum('kakeya.packing')} min={0} max={1} step={0.05} />
         <ParamChip label="N" paramId="kakeya.nTubes" read={readNum('kakeya.nTubes')} min={16} max={256} step={8} digits={0} />
         <ParamToggle label="" paramId="desk.showVoxels" labels={['tubes', 'voxels']} />
@@ -437,12 +437,12 @@ export function ChartUnionNode() {
         className="cpp-load-btn"
         onClick={loadCpp}
         disabled={cppState === 'loading'}
-        title="从后端引擎载入 C++ 高规模预计算（res 至 320³、δ=2⁻⁸），导入为可追溯的 ExperimentRun"
+        title="从后端引擎载入 C++ 高规模预计算（res 至 1024³≈10.9 亿体素、δ=2⁻¹⁰），导入为可追溯的 ExperimentRun"
       >
         {cppState === 'loading' ? 'LOCAL COMPUTE · 导入中…' : cppState === 'done' ? 'CALCULATED · C++ 高规模已载入 ✓' : '载入 C++ 高规模预计算'}
       </button>
       <div className="card-caption">
-        {points.length} 数据点 · 实线=本页 Worker 实时扫描；朱砂点=C++ 高规模预计算（res≤320³，δ≥2⁻⁸，真 runId）；其余=fork 分支。点击任意数据点 → 定位产生它的实验（Data→Experiment）。
+        {points.length} 数据点 · 实线=本页 Worker 实时扫描；朱砂点=C++ 高规模预计算（res≤1024³≈10.9 亿体素，δ≥2⁻¹⁰，真 runId）；其余=fork 分支。点击任意数据点 → 定位产生它的实验（Data→Experiment）。
       </div>
     </Sheet>
   )
