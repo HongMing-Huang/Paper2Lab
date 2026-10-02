@@ -211,6 +211,31 @@ def document(doc_id: str) -> dict:
 
 # ------------------------------------------------------- production statics
 _dist = Path(__file__).parent.parent / "dist"
+# resolve once; every static response must stay inside this root
+_dist_root = _dist.resolve()
+
+
+def _safe_dist_file(full_path: str) -> Path | None:
+    """Resolve a SPA path to a file inside dist/, or None.
+
+    Path-traversal guard: `GET /../server/agent.py` used to escape dist via
+    the fallback route and serve backend source (reproduced). Resolve the
+    joined path and require containment within the dist root — symlinked
+    targets outside dist are rejected the same way.
+    """
+    if not full_path:
+        return None
+    try:
+        candidate = (_dist / full_path).resolve()
+    except (OSError, ValueError):
+        return None
+    if candidate == _dist_root or _dist_root not in candidate.parents:
+        return None
+    if not candidate.is_file():
+        return None
+    return candidate
+
+
 if _dist.is_dir():
     app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
 
@@ -220,7 +245,8 @@ if _dist.is_dir():
 
     @app.get("/{full_path:path}")
     def spa_fallback(full_path: str) -> FileResponse:
-        candidate = _dist / full_path
-        if full_path and candidate.is_file():
-            return FileResponse(candidate)
+        served = _safe_dist_file(full_path)
+        if served is not None:
+            return FileResponse(served)
+        # unknown or escaping paths get the SPA shell (same as a fresh route)
         return FileResponse(_dist / "index.html")
