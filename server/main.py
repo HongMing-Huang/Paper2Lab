@@ -15,15 +15,34 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any
+import shutil
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from server.agent import router as agent_router
+from server.engine_api import router as engine_router
+from server.engine_bridge import bridge
 from server.ingest_core import convert_pdf
 
-app = FastAPI(title="Paper2Lab backend", version="0.3")
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    # engine boots lazily on first /api/engine call (keeps ingest-only
+    # deployments cheap); teardown always stops the child process
+    try:
+        yield
+    finally:
+        await bridge.stop()
+
+
+app = FastAPI(title="Paper2Lab backend", version="0.4", lifespan=_lifespan)
 app.include_router(agent_router)
+app.include_router(engine_router)
 
 DATA_DIR = Path(os.environ.get("PAPER2LAB_DATA_DIR", Path(__file__).parent / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -143,6 +162,16 @@ async def ready() -> dict:
         checks["storage"] = {"ok": True, "dir": str(DATA_DIR)}
     except Exception as exc:  # noqa: BLE001
         checks["storage"] = {"ok": False, "error": str(exc)}
+    if shutil.which("node"):
+        status = bridge.status()
+        checks["engine"] = {
+            "ok": True,
+            "booted": bridge.alive(),
+            "node": shutil.which("node"),
+            **({"lastError": status["lastError"]} if status["lastError"] else {}),
+        }
+    else:
+        checks["engine"] = {"ok": False, "error": "node runtime not found"}
     ready = all(c["ok"] for c in checks.values())
     return JSONResponse({"ready": ready, "checks": checks}, status_code=200 if ready else 503)
 

@@ -24,3 +24,6 @@ server/data/
 
 # local agent-tool scratch
 .video_agent/
+
+# compiled precompute binary
+scripts/precompute_kakeya

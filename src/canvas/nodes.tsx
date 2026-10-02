@@ -30,7 +30,7 @@ import { FormulaView } from './views/FormulaView'
 import { PerronView } from './views/PerronView'
 import { ParamSlider, ParamToggle } from './controls/ParamSlider'
 import { histogramRows, unionEfficiency, type CurvePoint } from '../kakeya/metrics'
-import precomputed from '../data/kakeya-precomputed.json'
+import { precomputedPointsCell, ensurePrecomputedRuns } from '../paper/precomputedRuns'
 import { runSkill, subscribeLog } from '../skills/types'
 import '../skills'
 import {
@@ -360,8 +360,6 @@ export function ChartMultiplicityNode() {
 
 export function ChartUnionNode() {
   const sweep = useCell(sweepCell)
-  const deltaExp = useCell<number>(pDeltaExp)
-  const packing = useCell<number>(pPacking)
   const nTubes = useCell<number>(pNTubes)
   const exact = useCell(voxelCell)
   const preview = useCell(voxelPreviewCell)
@@ -390,14 +388,22 @@ export function ChartUnionNode() {
   }, [forkKey])
 
   const live = sweep.value ?? []
-  const pre = useMemo<CurvePoint[]>(() => {
-    const e = Math.min(5, Math.max(4, Math.round(deltaExp.value ?? 4)))
-    const p = [0, 0.5, 1].reduce((best, c) =>
-      Math.abs(c - (packing.value ?? 0)) < Math.abs(best - (packing.value ?? 0)) ? c : best, 0)
-    return (precomputed.series as Array<Record<string, number>>)
-      .filter((r) => r.deltaExp === e && r.packing === p)
-      .map((r) => ({ x: r.n, y: r.occupiedVolume, series: 'precomputed（离线脚本）', runId: 'precomputed' }))
-  }, [deltaExp.value, packing.value])
+  const pre = useCell(precomputedPointsCell)
+  const [cppState, setCppState] = useState<'idle' | 'loading' | 'done'>('idle')
+  const loadCpp = useCallback(async () => {
+    setCppState('loading')
+    try {
+      await ensurePrecomputedRuns()
+    } finally {
+      setCppState('done')
+    }
+  }, [])
+  // the high-scale series loads itself on first mount (idempotent) — evidence
+  // appears without a user ritual; the button below then acts as status/reload
+  useEffect(() => {
+    void loadCpp()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // stable identity so the chart effect doesn't loop (points is an effect dep)
   const liveY =
     exact.status === 'resolved' ? exact.value?.result?.occupiedVolume : preview.value?.result?.occupiedVolume
@@ -405,7 +411,7 @@ export function ChartUnionNode() {
   const points = useMemo<CurvePoint[]>(
     () => [
       ...live.map((p) => ({ ...p, runId: 'main' })),
-      ...pre,
+      ...(pre.value ?? []),
       ...forkPoints,
       // the CURRENT experiment's point — moves live during drags (preview)
       // and settles on the Worker's exact value afterwards
@@ -413,12 +419,12 @@ export function ChartUnionNode() {
         ? [{ x: nTubes.value, y: liveY, series: 'current（当前实验）', runId: liveRunId }]
         : []),
     ],
-    [live, pre, forkPoints, nTubes.value, liveY, liveRunId],
+    [live, pre.value, forkPoints, nTubes.value, liveY, liveRunId],
   )
 
   const onPointClick = useCallback((runId: string) => {
     if (runId === 'preview' || runId.startsWith('kakeya-voxel')) deskBus.emit({ type: 'focus-node', nodeId: 'exp-3d' })
-    else if (runId === 'precomputed') deskBus.emit({ type: 'focus-node', nodeId: 'chart-union' })
+    else if (runId.startsWith('kakeya-cpp-')) deskBus.emit({ type: 'focus-node', nodeId: 'trace-evidence' })
     else if (runId.startsWith('kakeya-sweep')) deskBus.emit({ type: 'focus-node', nodeId: 'chart-union' })
     else if (runId.startsWith('fork-')) deskBus.emit({ type: 'focus-node', nodeId: `forkcard-${runId}` })
   }, [])
@@ -426,8 +432,17 @@ export function ChartUnionNode() {
   return (
     <Sheet label="CHART · |⋃T| 随 N 增长（点数据点⇒定位实验）" badge="CALCULATED" stale={sweep.stale} width={400}>
       <UnionCurveChart points={points} xLabel="N（管数）" height={210} onPointClick={onPointClick} />
+      <button
+        type="button"
+        className="cpp-load-btn"
+        onClick={loadCpp}
+        disabled={cppState === 'loading'}
+        title="从后端引擎载入 C++ 高规模预计算（res 至 320³、δ=2⁻⁸），导入为可追溯的 ExperimentRun"
+      >
+        {cppState === 'loading' ? 'LOCAL COMPUTE · 导入中…' : cppState === 'done' ? 'CALCULATED · C++ 高规模已载入 ✓' : '载入 C++ 高规模预计算'}
+      </button>
       <div className="card-caption">
-        {points.length} 数据点 · 实线=本页 Worker 实时扫描；朱砂点=离线预计算（C++）；其余=fork 分支。点击任意数据点 → 定位产生它的实验（Data→Experiment）。
+        {points.length} 数据点 · 实线=本页 Worker 实时扫描；朱砂点=C++ 高规模预计算（res≤320³，δ≥2⁻⁸，真 runId）；其余=fork 分支。点击任意数据点 → 定位产生它的实验（Data→Experiment）。
       </div>
     </Sheet>
   )
