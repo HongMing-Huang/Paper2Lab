@@ -276,8 +276,14 @@ def _build_agent() -> Any:
 
 
 def _evt_type(chunk: Any) -> str:
+    """Normalized (lowercase) event type for matching.
+
+    AgentScope's EventType enum values are UPPERCASE ('REQUIRE_EXTERNAL_EXECUTION',
+    verified against the installed agentscope 2.0.9); comparing raw values against
+    lowercase names silently dropped execution requests from the real backend.
+    """
     t = getattr(chunk, "type", "")
-    return getattr(t, "value", t) or ""
+    return str(getattr(t, "value", t) or "").lower()
 
 
 async def agentscope_stream(session_id: str, inputs: Any) -> AsyncGenerator[dict, None]:

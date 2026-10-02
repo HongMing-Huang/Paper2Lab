@@ -7,9 +7,16 @@ import './styles/paper.css'
 import './styles/desk.css'
 import { App } from './App'
 import { SpikeApp } from './spike/SpikeApp'
+import { RenderTestRoute } from './render/RenderTestRoute'
 
 const root = createRoot(document.getElementById('root')!)
-if (location.hash === '#spike') {
+if (location.hash === '#render-test') {
+  root.render(
+    <StrictMode>
+      <RenderTestRoute />
+    </StrictMode>,
+  )
+} else if (location.hash === '#spike') {
   root.render(
     <StrictMode>
       <SpikeApp />

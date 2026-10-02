@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:render": "pnpm build && node scripts/render-webgl-test.mjs",
     "precompute": "c++ -std=c++17 -O3 -pthread scripts/precompute_kakeya.cpp -o scripts/precompute_kakeya && ./scripts/precompute_kakeya > src/data/kakeya-precomputed.json"
   },
   "dependencies": {
@@ -34,6 +35,7 @@
     "@types/react-dom": "^19.2.0",
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "playwright-core": "^1.63.0",
     "typescript": "~5.9.0",
     "vite": "^7.0.0",
     "vitest": "^3.0.0"
