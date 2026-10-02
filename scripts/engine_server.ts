@@ -11,12 +11,14 @@
 //   {id, op:"ping"}                                         → {id, ok, node, uptimeMs}
 //   {id, op:"skills"}                                       → {id, ok, skills:[...meta]}
 //   {id, op:"execute", skill, input, planId?, parentRunId?} → {id, ok, outcome}
+//   {id, op:"agent_steps", deskKind, steps, base, planId}   → {id, ok, result}
 //   {id, op:"runs", limit?, kind?}                          → {id, ok, runs:[...]}
 //   {id, op:"export", runIds:[...]}                         → {id, ok, bundle:"..."}
 //   {id, op:"import", bundle:"..."}                         → {id, ok, imported:n}
 //   {id, op:"shutdown"}                                     → {id, ok} then exit
 import { createInterface } from 'node:readline'
 import { executeSkill } from '../src/skills/executor.ts'
+import { runAgentSteps, type DeskKind } from '../src/skills/agentSteps.ts'
 import { SKILL_REGISTRY } from '../src/skills/registry.ts'
 import { exportExperimentRuns, listExperimentRuns } from '../src/experiments/protocol.ts'
 import { importRuns } from '../src/experiments/runRepository.ts'
@@ -36,6 +38,7 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
       ok: true,
       skills: SKILL_REGISTRY.map((s) => ({
         name: s.name,
+        aliases: s.aliases ?? [],
         description: s.description,
         version: s.version,
         deterministic: s.deterministic,
@@ -50,6 +53,17 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
       parentRunId: typeof req.parentRunId === 'string' ? req.parentRunId : undefined,
     })
     return { ok: true, outcome }
+  }
+  if (op === 'agent_steps') {
+    // full agent turn server-side: base skill + steps, everything through
+    // the SAME registry-validated executor the browser runs
+    const result = await runAgentSteps(
+      String(req.deskKind) as DeskKind,
+      Array.isArray(req.steps) ? (req.steps as never) : [],
+      (req.base ?? {}) as Record<string, unknown>,
+      typeof req.planId === 'string' ? req.planId : `plan-engine-${Date.now()}`,
+    )
+    return { ok: true, result }
   }
   if (op === 'runs') {
     const runs = listExperimentRuns({

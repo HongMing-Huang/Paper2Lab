@@ -505,10 +505,13 @@ export async function executeSkill<T = unknown>(
   if (!skill.implemented) {
     return {
       status: 'unsupported',
-      skill: name,
-      message: skill.unavailableReason ?? `${name} is registered but not wired to the unified executor yet`,
+      skill: skill.name,
+      message: skill.unavailableReason ?? `${skill.name} is registered but not wired to the unified executor yet`,
     }
   }
+  // canonical aliases resolve to the registry name BEFORE dispatch, so every
+  // accepted name runs the same implementation (AGENTS §4 vocabulary)
+  if (skill.name !== name) name = skill.name
   const inputError = schemaError(skill.inputSchema, input, name)
   if (inputError) return { status: 'error', code: 'invalid_input', message: inputError }
   if (FORMAL_SKILLS.has(name) && !opts.planId && !opts.replay) {

@@ -32,6 +32,12 @@ export interface ScientificSkill {
   implemented: boolean
   /** why an unimplemented skill exists in the registry (shown in unsupported) */
   unavailableReason?: string
+  /**
+   * Canonical AGENTS §4 names that resolve to THIS skill (same input/output
+   * contract). Lets agent-side planners speak the canonical vocabulary while
+   * the executor surface stays the registry names.
+   */
+  aliases?: string[]
 }
 
 const num = { type: 'number' } as const
@@ -126,6 +132,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
   },
   {
     name: 'kakeya.generate',
+    aliases: ['simulate_geometry'],
     description: 'Generate the δ-tube family geometry (directions, packing, radius) as a kakeya.geometry run.',
     inputSchema: {
       type: 'object',
@@ -143,6 +150,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
   },
   {
     name: 'kakeya.measure',
+    aliases: ['measure_volume', 'measure_multiplicity'],
     description: 'Finite-scale voxel measurement of a tube family: occupied cells, union volume, multiplicity.',
     inputSchema: {
       type: 'object',
@@ -169,6 +177,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
   },
   {
     name: 'kakeya.sweep',
+    aliases: ['run_scale_sweep'],
     description: 'Parameter sweep of kakeya.measure over N — every datapoint is its own ExperimentRun.',
     inputSchema: {
       type: 'object',
@@ -196,6 +205,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
   },
   {
     name: 'experiment.fork',
+    aliases: ['fork_experiment'],
     description: 'Clone an experiment (same skill, new run lineage via parentRunId). No numerics by itself.',
     inputSchema: {
       type: 'object',
@@ -212,6 +222,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
   },
   {
     name: 'experiment.compare',
+    aliases: ['compare_experiments'],
     description: 'Compare two ExperimentRuns metric-by-metric; differences reference run ids only.',
     inputSchema: {
       type: 'object',
@@ -241,9 +252,10 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
 ]
 
 const byName = new Map(SKILL_REGISTRY.map((s) => [s.name, s]))
+const byAlias = new Map(SKILL_REGISTRY.flatMap((s) => (s.aliases ?? []).map((a) => [a, s] as const)))
 
 export function getSkill(name: string): ScientificSkill | undefined {
-  return byName.get(name)
+  return byName.get(name) ?? byAlias.get(name)
 }
 
 /** Validate the JSON-Schema subset declared above, including nested arrays. */

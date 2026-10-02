@@ -181,28 +181,106 @@ def _parse_kakeya_intent(q: str) -> list[dict] | None:
     return None
 
 
+def _parse_ode_intent(q: str, params: list[str]) -> list[dict] | None:
+    """math-model desk: Lotka–Volterra parameter tasks (same op vocabulary
+    shape as the formula desk, executed via the ode.solve kernel)."""
+    if not params:
+        return None
+    target = next((p for p in params if re.search(rf"\b{p}\b", q)), params[0])
+    m = re.search(rf"(设为|改为|置为|调整为|set(?:\s+to)?)\s*{_NUM}", q)
+    if m:
+        return [
+            {"op": "experiment.fork"},
+            {"op": "ode.set", "param": target, "value": float(m.group(2))},
+            {"op": "ode.solve"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(rf"(增大|增加|放大|加倍|翻倍)(一倍|1倍|两倍|2倍)?|double\s+{target}", q):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "ode.scale", "param": target, "value": 2.0},
+            {"op": "ode.solve"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(rf"(减少一半|减半|减到一半|缩小一半|halve\s+{target})", q):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "ode.scale", "param": target, "value": 0.5},
+            {"op": "ode.solve"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(对比|比较|compare)", q):
+        return [{"op": "experiment.compare"}]
+    return None
+
+
+def _parse_geometry_intent(q: str) -> list[dict] | None:
+    """geometry desk: Perron-tree tasks over k (subdivision) and α (overlap)."""
+    m_alpha = re.search(rf"(?:α|alpha|重叠比).{{0,6}}?(设为|改为|置为|调整为)\s*{_NUM}", q)
+    if m_alpha:
+        return [
+            {"op": "experiment.fork"},
+            {"op": "geometry.set", "param": "alpha", "value": float(m_alpha.group(2))},
+            {"op": "geometry.plot"},
+            {"op": "experiment.compare"},
+        ]
+    m_k = re.search(rf"(?:k|细分|层数).{{0,8}}?(设为|改为|置为|调整为)\s*{_NUM}", q)
+    if m_k:
+        return [
+            {"op": "experiment.fork"},
+            {"op": "geometry.set", "param": "k", "value": float(m_k.group(2))},
+            {"op": "geometry.plot"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(α|alpha|重叠).{0,8}(加倍|翻倍|增大)", q):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "geometry.scale", "param": "alpha", "value": 1.2},
+            {"op": "geometry.plot"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(k|细分|层数).{0,8}(加倍|翻倍|增大)", q):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "geometry.scale", "param": "k", "value": 2.0},
+            {"op": "geometry.plot"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(对比|比较|compare)", q):
+        return [{"op": "experiment.compare"}]
+    return None
+
+
 def sop_plan(intent: str, context: dict) -> dict | None:
     desk = context.get("deskKind", "formula")
     if desk == "kakeya":
         steps = _parse_kakeya_intent(intent)
+    elif desk == "ode":
+        steps = _parse_ode_intent(intent, list(context.get("params", ["alpha", "beta", "gamma", "delta"])))
+    elif desk == "geometry":
+        steps = _parse_geometry_intent(intent)
     else:
         steps = _parse_formula_intent(intent, list(context.get("params", [])))
     if not steps:
         return None
-    kakeya = desk == "kakeya"
+    meta = {
+        "kakeya": ("kakeya.measure", "ts-kakeya-worker@v3", "r3f", ["unionVolume", "multiplicity"]),
+        "ode": ("ode.solve", "ts-rk4@ode-rk4-0.1", "plot", ["finalPrey", "finalPredator", "conservedDrift"]),
+        "geometry": ("geometry.2d", "perron-kernel@0.1", "svg", ["computedArea", "boundArea"]),
+    }.get(desk, ("formula.plot", "cortex-ce@0.142.0", "jsxgraph", ["curve", "peak", "integral"]))
     return {
         "planId": f"plan-{uuid.uuid4().hex[:8]}",
         "goal": f"用真实实验回答：「{intent[:60]}」",
-        "skill": "kakeya.measure" if kakeya else "formula.plot",
-        "skillVersion": "ts-kakeya-worker@v3" if kakeya else "cortex-ce@0.142.0",
-        "renderer": "r3f" if kakeya else "jsxgraph",
-        "metrics": (
-            ["occupiedCells", "unionVolume", "multiplicity"]
-            if kakeya
-            else ["curve", "peak", "integral"]
-        ),
+        "skill": meta[0],
+        "skillVersion": meta[1],
+        "renderer": meta[2],
+        "metrics": meta[3],
         "steps": steps,
-        "evidenceBasis": "浏览器 Scientific Runtime（与用户完全相同的引擎）产生的 ExperimentRun",
+        "evidenceBasis": (
+            "后端引擎（与浏览器同一统一执行器）产生的 ExperimentRun"
+            if context.get("execution") == "server"
+            else "浏览器 Scientific Runtime（与用户完全相同的引擎）产生的 ExperimentRun"
+        ),
         "nonClaims": ["不得声称证明了任何定理（有限尺度数值实验）"],
     }
 
@@ -225,6 +303,69 @@ async def sop_turn(session: SopSession, intent: str, context: dict) -> AsyncGene
         tool="scientific_execute",
         args={"deskKind": context.get("deskKind", "formula"), "steps": plan["steps"]},
     )
+
+
+async def sop_turn_server(session: SopSession, intent: str, context: dict) -> AsyncGenerator[dict, None]:
+    """Server-execution mode: instead of pausing for the browser, the engine
+    bridge runs the plan steps through the SAME unified executor — the turn
+    completes headless (formula / kakeya / ode / geometry desks all covered)."""
+    desk = str(context.get("deskKind", "formula"))
+    base = context.get("base")
+    if not isinstance(base, dict) or not base:
+        yield ev("error", message="server execution mode requires context.base (the experiment's skill input)")
+        yield ev("done", reason="execution_failed")
+        return
+    plan = sop_plan(intent, context)
+    if plan is None:
+        yield ev("done", reason="not-an-experiment")
+        return
+    yield ev("plan_created", plan=plan)
+    call_id = f"tc-{uuid.uuid4().hex[:10]}"
+    session.issued_calls.add(call_id)
+    session.history.append({"issued": call_id, "mode": "server", "intent": intent[:200]})
+    _persist_session(session)
+    yield ev("tool_started", toolCallId=call_id, tool="scientific_execute", mode="server")
+    from server.engine_bridge import bridge
+
+    try:
+        resp = await bridge.call(
+            "agent_steps",
+            deskKind=desk,
+            steps=plan["steps"],
+            base=base,
+            planId=plan["planId"],
+        )
+    except TimeoutError:
+        resp = {"ok": False, "error": "engine timed out"}
+    if not resp.get("ok"):
+        session.history.append({"failed": [call_id]})
+        _persist_session(session)
+        yield ev(
+            "experiment_failed",
+            toolCallId=call_id,
+            error=str(resp.get("error", "engine execution failed")),
+        )
+        yield ev("done", reason="execution_failed")
+        return
+    result = resp.get("result", {})
+    session.history.append({"answered": [call_id], "status": "ok"})
+    session.answered_calls.add(call_id)
+    _persist_session(session)
+    for row in result.get("runs", []):
+        yield ev(
+            "experiment_completed",
+            runId=row.get("runId"),
+            metrics=row.get("metrics"),
+            parentRunId=row.get("parentRunId"),
+        )
+    if result.get("comparison"):
+        yield ev("comparison_created", comparison=result["comparison"])
+    yield ev(
+        "observation_ready",
+        text=result.get("summary") or "实验完成——数字全部来自后端引擎（与浏览器同一执行器）的真实 ExperimentRun。",
+        evidence="AI_INFERENCE",
+    )
+    yield ev("done", reason="completed")
 
 
 async def sop_resume(result: dict) -> AsyncGenerator[dict, None]:
@@ -454,6 +595,17 @@ async def turn(body: TurnBody) -> StreamingResponse:
 
     # deterministic SOP backend
     session = _sop_sessions.setdefault(body.sessionId, SopSession(id=body.sessionId))
+    desk = str(body.context.get("deskKind", "formula"))
+    server_mode = body.context.get("execution") == "server"
+    if not server_mode and desk in ("ode", "geometry"):
+        # these desks have no browser execution surface (agentBridge executes
+        # formula/kakeya only) — don't promise a turn that can never complete
+        return _sse(_single_event("done", reason="not-an-experiment"))
+    if server_mode:
+        # server mode never pauses for the browser → no resume contract
+        if body.resume is not None:
+            return _sse(_single_error("server-execution turns do not accept resumes"))
+        return _sse(sop_turn_server(session, body.intent, body.context))
     if body.resume is not None:
         rows = body.resume.get("executionResults", [])
         if not rows:
@@ -508,6 +660,12 @@ async def turn(body: TurnBody) -> StreamingResponse:
 def _single_error(message: str) -> AsyncGenerator[dict, None]:
     async def gen() -> AsyncGenerator[dict, None]:
         yield ev("error", message=message)
+    return gen()
+
+
+def _single_event(type_: str, **payload: Any) -> AsyncGenerator[dict, None]:
+    async def gen() -> AsyncGenerator[dict, None]:
+        yield ev(type_, **payload)
     return gen()
 
 
