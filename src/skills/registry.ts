@@ -85,7 +85,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
   },
   {
     name: 'geometry.2d',
-    description: '2D geometric construction measurement (Perron tree / needle sweep) in the Kakeya 2D kernel.',
+    description: '2D geometric measurement: Perron tree (k, α) union area or unit-needle sweep area.',
     inputSchema: {
       type: 'object',
       required: ['construction', 'params'],
@@ -101,26 +101,28 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     version: 'ts-kakeya-2d@v3',
     evidence: 'CALCULATED',
     runKind: 'perron.tree',
-    implemented: false,
-    unavailableReason: '已实现但尚未接入统一执行入口——在通过验收前不声明可调用'
+    implemented: true,
   },
   {
     name: 'ode.solve',
-    description: 'Solve an ODE system (Pyodide/scipy solve_ivp) and emit a trajectory run.',
+    description: "Integrate a 2-species Lotka–Volterra system (system.kind='lv2') over tSpan with a fixed-step RK4 kernel.",
     inputSchema: {
       type: 'object',
       required: ['system', 'initialValues', 'tSpan'],
-      properties: { system: { type: 'object' }, initialValues: { type: 'object' }, tSpan: range },
+      properties: {
+        system: { type: 'object' },
+        initialValues: { type: 'object' },
+        tSpan: range,
+      },
     },
     outputSchema: { type: 'object', properties: { t: { type: 'array' }, y: { type: 'object' } } },
     runtime: 'pyodide',
     renderer: 'plot',
     deterministic: true,
-    version: 'pyodide-scipy@v0.27.7',
+    version: 'ts-rk4@0.1',
     evidence: 'CALCULATED',
     runKind: 'lv.ode',
-    implemented: false,
-    unavailableReason: '已实现但尚未接入统一执行入口——在通过验收前不声明可调用'
+    implemented: true,
   },
   {
     name: 'kakeya.generate',

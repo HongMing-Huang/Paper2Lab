@@ -11,6 +11,7 @@ import { getSkill, schemaError } from './registry'
 import { fibonacciDirections } from '../kakeya/directions'
 import { makeTubes, type Tube3 } from '../kakeya/tubes'
 import { computeVoxelCoverage, type VoxelResult } from '../kakeya/voxels3d'
+import { perronTree } from '../kakeya/perron'
 import { isWorkerAvailable, measureVoxelCover } from '../workers/voxelClient'
 
 /** the Kakeya family seed pinned across UI cells and C++ precompute */
@@ -202,6 +203,152 @@ async function runKakeyaSweep(input: Input, opts: ExecuteOptions): Promise<Exper
   )
 }
 
+// ---- geometry.2d runtime (Perron tree / needle union kernels) ---------------
+
+const PERRON_RASTER = 900
+
+async function runGeometry2D(input: Input, opts: ExecuteOptions): Promise<ExperimentRun> {
+  const construction = String((input as { construction: string }).construction)
+  const params = (input as { params: Record<string, number> }).params ?? {}
+  if (construction === 'perron-tree') {
+    const k = Number(params.k)
+    const alpha = Number(params.alpha)
+    if (!Number.isInteger(k) || k < 1 || k > 6) throw new Error(`perron-tree: k must be an integer 1..6, got ${k}`)
+    if (!(alpha >= 0 && alpha <= 1)) throw new Error(`perron-tree: alpha must be in [0,1], got ${alpha}`)
+    return executeSpec(
+      {
+        kind: 'perron.tree',
+        params: { k, alpha },
+        seed: 0,
+        res: PERRON_RASTER,
+        model: { construction, k, alpha, raster: PERRON_RASTER },
+      },
+      ENGINES.kakeyaWorker,
+      () => {
+        const r = perronTree(k, alpha, PERRON_RASTER)
+        return {
+          k, alpha,
+          computedArea: r.computedArea,
+          triangleArea: r.triangleArea,
+          boundArea: r.boundArea,
+          ratio: r.computedArea / r.triangleArea,
+          triangles: r.triangles.length,
+        }
+      },
+      { parentRunId: opts.parentRunId },
+    )
+  }
+  // needle-sweep: rasterised union area of a unit needle rotated over [0, π/2]
+  // (the Kakeya needle problem's minimal 2D model — same grid measure family
+  // as the 3D voxel kernel; δ-behaviour mirrors NeedleSweep's 96² constant)
+  const grid = Number(params.grid ?? 96)
+  if (!Number.isInteger(grid) || grid < 8 || grid > 512) throw new Error(`needle-sweep: grid must be an integer 8..512, got ${grid}`)
+  return executeSpec(
+    {
+      kind: 'perron.tree',
+      params: { grid },
+      seed: 0,
+      res: grid,
+      model: { construction, grid },
+    },
+    ENGINES.kakeyaWorker,
+    () => {
+      const cell = 1 / grid
+      const covered = new Uint8Array(grid * grid)
+      let touched = 0
+      const steps = Math.max(64, grid * 4)
+      for (let s = 0; s <= steps; s++) {
+        const theta = (Math.PI / 2) * (s / steps)
+        const dx = Math.cos(theta)
+        const dy = Math.sin(theta)
+        // unit needle from apex (0,0) along (cosθ, sinθ) — Besicovitch base
+        for (let t = 0; t <= 1; t += cell / 4) {
+          const px = t * dx
+          const py = t * dy
+          const ix = Math.min(grid - 1, Math.max(0, Math.floor(px / cell)))
+          const iy = Math.min(grid - 1, Math.max(0, Math.floor(py / cell)))
+          const idx = iy * grid + ix
+          if (!covered[idx]) {
+            covered[idx] = 1
+            touched++
+          }
+        }
+      }
+      const sweptArea = (touched * cell * cell)
+      // analytic: area swept by a unit needle rotating through π/2 is π/4
+      return { grid, sweptArea, analyticArea: Math.PI / 4, ratio: sweptArea / (Math.PI / 4) }
+    },
+    { parentRunId: opts.parentRunId },
+  )
+}
+
+// ---- ode.solve runtime (RK4 Lotka–Volterra kernel) --------------------------
+
+const ODE_STEPS = 2400
+
+interface OdePointOut { t: number; prey: number; predator: number }
+
+async function runOdeSolve(input: Input, opts: ExecuteOptions): Promise<ExperimentRun> {
+  const system = (input as { system: { kind?: string } }).system ?? {}
+  if (system.kind !== 'lv2') {
+    throw new Error(`ode.solve: only system.kind='lv2' (2-species Lotka–Volterra) is wired in 0.1, got ${JSON.stringify(system.kind ?? null)}`)
+  }
+  const p = (input as { system: { params?: Record<string, number> } }).system.params ?? {}
+  const y0 = (input as { initialValues: Record<string, number> }).initialValues ?? {}
+  const tSpan = (input as { tSpan: [number, number] }).tSpan
+  const alpha = Number(p.alpha ?? 1.1), beta = Number(p.beta ?? 0.4)
+  const gamma = Number(p.gamma ?? 0.4), delta = Number(p.delta ?? 0.1)
+  let prey0 = Number(y0.prey ?? 1), predator0 = Number(y0.predator ?? 0.5)
+  for (const [k, v] of Object.entries({ alpha, beta, gamma, delta, prey: prey0, predator: predator0 })) {
+    if (!Number.isFinite(v) || v <= 0) throw new Error(`ode.solve: ${k} must be a positive finite number, got ${v}`)
+  }
+  const [t0, t1] = tSpan
+  if (!(t1 > t0) || !Number.isFinite(t0) || !Number.isFinite(t1)) throw new Error(`ode.solve: tSpan must be [t0,t1] with t1>t0`)
+
+  return executeSpec(
+    {
+      kind: 'lv.ode',
+      params: { alpha, beta, gamma, delta, prey0, predator0, t0, t1 },
+      seed: 0,
+      model: { kind: 'lv2', params: { alpha, beta, gamma, delta }, initialValues: { prey: prey0, predator: predator0 }, tSpan, steps: ODE_STEPS },
+      source: opts.source,
+    },
+    // RK4 fixed-step in TS (CLI-verifiable without Pyodide); the Pyodide/
+    // scipy path remains the browser-second-paper surface (odeGraph).
+    { engine: 'ts-rk4', version: 'ode-rk4@0.1' },
+    () => {
+      const h = (t1 - t0) / ODE_STEPS
+      const f = (_t: number, x: number, y: number): [number, number] => [
+        alpha * x - beta * x * y,
+        -gamma * y + delta * x * y,
+      ]
+      let x = prey0
+      let y = predator0
+      const points: OdePointOut[] = [{ t: t0, prey: x, predator: y }]
+      // sample output at the same 240 points the Pyodide path emits
+      const emitEvery = Math.max(1, Math.round(ODE_STEPS / 240))
+      for (let i = 1; i <= ODE_STEPS; i++) {
+        const t = t0 + (i - 1) * h
+        const [k1x, k1y] = f(t, x, y)
+        const [k2x, k2y] = f(t + h / 2, x + h / 2 * k1x, y + h / 2 * k1y)
+        const [k3x, k3y] = f(t + h / 2, x + h / 2 * k2x, y + h / 2 * k2y)
+        const [k4x, k4y] = f(t + h, x + h * k3x, y + h * k3y)
+        x += (h / 6) * (k1x + 2 * k2x + 2 * k3x + k4x)
+        y += (h / 6) * (k1y + 2 * k2y + 2 * k3y + k4y)
+        if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error(`ode.solve: trajectory diverged at t=${(t + h).toFixed(3)} — check parameters`)
+        if (x < 0 || y < 0) throw new Error(`ode.solve: population went negative at t=${(t + h).toFixed(3)} — step size too large for stiffness`)
+        if (i % emitEvery === 0 || i === ODE_STEPS) points.push({ t: t0 + i * h, prey: x, predator: y })
+      }
+      // LV conserved quantity: V = δx − γ ln x + βy − α ln y (should drift ≈ 0)
+      const V0 = delta * prey0 - gamma * Math.log(prey0) + beta * predator0 - alpha * Math.log(predator0)
+      const last = points[points.length - 1]
+      const V1 = delta * last.prey - gamma * Math.log(last.prey) + beta * last.predator - alpha * Math.log(last.predator)
+      return { t: points.map((p2) => p2.t), y: { prey: points.map((p2) => p2.prey), predator: points.map((p2) => p2.predator) }, conservedDrift: Math.abs(V1 - V0), conserved0: V0 }
+    },
+    { parentRunId: opts.parentRunId },
+  )
+}
+
 // ---- orchestration skills ---------------------------------------------------
 
 const COMPUTE_BY_KIND: Record<string, string> = {
@@ -210,6 +357,8 @@ const COMPUTE_BY_KIND: Record<string, string> = {
   'kakeya.voxel': 'kakeya.measure',
   'kakeya.geometry': 'kakeya.generate',
   'kakeya.sweep': 'kakeya.sweep',
+  'perron.tree': 'geometry.2d',
+  'lv.ode': 'ode.solve',
 }
 
 /** re-execute a historical run from its recorded spec (real replay, no mocks) */
@@ -256,6 +405,16 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {
   if (skillName === 'formula.evaluate' && model) {
     return { expression: model.expression, bindings: model.bindings }
   }
+  if (skillName === 'geometry.2d' && model) {
+    return { construction: model.construction, params: model }
+  }
+  if (skillName === 'ode.solve' && model) {
+    return {
+      system: { kind: model.kind, params: model.params },
+      initialValues: model.initialValues,
+      tSpan: model.tSpan,
+    }
+  }
   return null
 }
 
@@ -289,6 +448,8 @@ export async function executeSkill<T = unknown>(
     if (name === 'kakeya.generate') return { status: 'ok', run: (await runKakeyaGenerate(input as Input)) as ExperimentRun<T> }
     if (name === 'kakeya.measure') return { status: 'ok', run: (await runKakeyaMeasure(input as Input, opts)) as ExperimentRun<T> }
     if (name === 'kakeya.sweep') return { status: 'ok', run: (await runKakeyaSweep(input as Input, opts)) as ExperimentRun<T> }
+    if (name === 'geometry.2d') return { status: 'ok', run: (await runGeometry2D(input as Input, opts)) as ExperimentRun<T> }
+    if (name === 'ode.solve') return { status: 'ok', run: (await runOdeSolve(input as Input, opts)) as ExperimentRun<T> }
     if (name === 'experiment.fork') {
       const { sourceRunId, parameterChanges = {} } = input as { sourceRunId: string; parameterChanges?: Record<string, number> }
       const source = getExperimentRun(sourceRunId)
