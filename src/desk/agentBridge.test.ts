@@ -46,3 +46,53 @@ it('surfaces an SSE error instead of silently succeeding', async () => {
     scientificExecute: async () => ({}), canvasApply: async () => ({}),
   })).rejects.toThrow('model unavailable')
 })
+
+it('a failed execution is RESUMED as a failure before the turn throws (server records experiment_failed)', async () => {
+  const bodies: Array<Record<string, unknown>> = []
+  vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+    bodies.push(JSON.parse(init.body))
+    if (bodies.length === 1) {
+      return response([
+        { type: 'require_execution', replyId: 'r', toolCallId: 'boom', tool: 'scientific_execute', args: { steps: [] } },
+      ])
+    }
+    // the failure-resume round: server must answer experiment_failed + done
+    return response([
+      { type: 'experiment_failed', toolCallId: 'boom', error: 'compile failed' },
+      { type: 'done', reason: 'execution_failed' },
+    ])
+  }))
+  const scientificExecute = vi.fn(async () => { throw new Error('compile failed') })
+  const seen: string[] = []
+  await expect(runAgentTurn('q', { deskKind: 'formula', paperTitle: '', params: [] }, 's2', {
+    scientificExecute,
+    canvasApply: async () => ({}),
+    onEvent: (e) => seen.push(e.type),
+  })).rejects.toThrow('compile failed')
+  // the failure WAS fed back: exactly one resume carrying status 'error'
+  expect(bodies).toHaveLength(2)
+  const resume = bodies[1].resume as { executionResults: Array<{ toolCallId: string; status: string; error: string }> }
+  expect(resume.executionResults[0]).toMatchObject({ toolCallId: 'boom', status: 'error', error: 'compile failed' })
+  // and the client observed the server's failure events
+  expect(seen).toContain('experiment_failed')
+})
+
+it('partial failure in a batch: successes resume normally, the error row carries status error', async () => {
+  const bodies: Array<Record<string, unknown>> = []
+  vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+    bodies.push(JSON.parse(init.body))
+    return bodies.length === 1
+      ? response([
+          { type: 'require_execution', replyId: 'r', toolCallId: 'ok1', tool: 'canvas_apply', args: { ops: [{}] } },
+          { type: 'require_execution', replyId: 'r', toolCallId: 'bad1', tool: 'scientific_execute', args: { steps: [] } },
+        ])
+      : response([{ type: 'experiment_failed', toolCallId: 'bad1', error: 'x' }, { type: 'done', reason: 'execution_failed' }])
+  }))
+  await expect(runAgentTurn('q', { deskKind: 'formula', paperTitle: '', params: [] }, 's3', {
+    scientificExecute: async () => { throw new Error('x') },
+    canvasApply: async () => ({ applied: 1 }),
+  })).rejects.toThrow('x')
+  const resume = bodies[1].resume as { executionResults: Array<{ toolCallId: string; status: string }> }
+  const byId = Object.fromEntries(resume.executionResults.map((r) => [r.toolCallId, r.status]))
+  expect(byId).toEqual({ ok1: 'ok', bad1: 'error' })
+})
