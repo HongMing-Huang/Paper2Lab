@@ -49,9 +49,21 @@ export async function executeFormulaSteps(
       runs.push({ runId: run.runId, parentRunId: run.parentRunId, metrics: { peak: run.result!.peak, integral: run.result!.integral }, durationMs: run.durationMs })
     } else if (step.op === 'experiment.compare') {
       const child = await explorerStore.waitForRun(targetId)
+      // compare-only sequence (no fork): child === baseRun — comparing the
+      // run with itself yields all-zero deltas. Fall back to the selected
+      // run's PARENT (its fork lineage); if it has none, there is genuinely
+      // no second experiment to compare — say so instead of reporting a
+      // false "no change" (review finding)
+      let runA = baseRun.runId
+      if (child.runId === baseRun.runId) {
+        runA = child.parentRunId ?? ''
+        if (!runA) {
+          throw new Error('没有可对比的第二个实验：请先 Fork（或选中一个分支）再比较')
+        }
+      }
       // compare goes through the registered skill (which uses the Run
       // Repository's explicit two-run diff — never "everything in the store")
-      const out = await executeSkill('experiment.compare', { runA: baseRun.runId, runB: child.runId })
+      const out = await executeSkill('experiment.compare', { runA, runB: child.runId })
       if (out.status !== 'ok') throw new Error(out.status === 'error' ? out.message : `experiment.compare returned ${out.status}`)
       comparison = out.payload
       canvas.compare()

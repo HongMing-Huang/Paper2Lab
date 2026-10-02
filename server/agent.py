@@ -215,6 +215,9 @@ async def sop_turn(session: SopSession, intent: str, context: dict) -> AsyncGene
     yield ev("plan_created", plan=plan)
     call_id = f"tc-{uuid.uuid4().hex[:10]}"
     session.issued_calls.add(call_id)
+    # persist BEFORE yielding: if the server dies after the event reaches the
+    # browser, the reloaded session must still accept this call's result
+    _persist_session(session)
     yield ev(
         "require_execution",
         toolCallId=call_id,
@@ -476,6 +479,7 @@ async def turn(body: TurnBody) -> StreamingResponse:
         if failed:
             # a failed external execution is reported as failure — never done
             session.history.append({"failed": [f.get("toolCallId") for f in failed]})
+            session.rounds = 0  # turn terminated (failed) — reset the budget
             _persist_session(session)
             return _sse(_failure_resume(failed))
         merged = {
@@ -487,8 +491,12 @@ async def turn(body: TurnBody) -> StreamingResponse:
             "summary": "实验已由浏览器完成，来源见实验纸。",
         }
         session.history.append({"resume": merged})
+        session.rounds = 0  # turn completed — reset the per-turn resume budget
         _persist_session(session)
         return _sse(sop_resume(merged))
+    # a NEW intent starts a fresh turn: the round limit bounds resume cycles
+    # WITHIN one turn (runaway tool loops), never the lifetime of the desk
+    # session (PaperDesk reuses one sessionId across many questions)
     session.rounds += 1
     if session.rounds > MAX_ROUNDS:
         return _sse(_single_error(f"session exceeded {MAX_ROUNDS} execution rounds"))

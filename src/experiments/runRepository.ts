@@ -69,6 +69,15 @@ export function importRuns(bundleJson: string): { imported: number } {
       throw new Error('Run bundle entry does not match the ExperimentRun protocol')
     }
   }
+  // preflight EVERY id against history and against each other before touching
+  // the store — a mid-bundle failure used to leave a partially imported,
+  // non-retryable history (the call is documented all-or-nothing)
+  const seen = new Set<string>()
+  for (const r of runs) {
+    if (getExperimentRun(r.runId)) throw new Error(`Run already recorded: ${r.runId}`)
+    if (seen.has(r.runId)) throw new Error(`Run already recorded: ${r.runId}`)
+    seen.add(r.runId)
+  }
   for (const r of runs) registerImportedRun(r)
   return { imported: runs.length }
 }

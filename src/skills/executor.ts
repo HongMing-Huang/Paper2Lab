@@ -77,6 +77,9 @@ async function runFormulaPlot(input: Input, opts: ExecuteOptions): Promise<Exper
   const independent = String(input.independent)
   const [x0, x1] = input.range as [number, number]
   const samples = typeof input.samples === 'number' ? input.samples : 361
+  if (!Number.isInteger(samples) || samples < 2) {
+    throw new Error(`formula.plot requires samples >= 2 (got ${input.samples}) — fewer yields an empty curve or a divide-by-zero`)
+  }
   const compiled = compileExpr(input.expression as MathJsonExpression)
   return executeSpec(
     {
@@ -136,7 +139,7 @@ async function measureVoxels(
   }
 }
 
-async function runKakeyaGenerate(input: Input): Promise<ExperimentRun<Tube3[]>> {
+async function runKakeyaGenerate(input: Input, opts: ExecuteOptions): Promise<ExperimentRun<Tube3[]>> {
   const deltaExp = Number(input.deltaExp)
   const nTubes = Number(input.nTubes)
   const packing = Number(input.packing)
@@ -150,6 +153,7 @@ async function runKakeyaGenerate(input: Input): Promise<ExperimentRun<Tube3[]>> 
     },
     ENGINES.kakeyaWorker,
     () => tubes,
+    { parentRunId: opts.parentRunId },
   )
 }
 
@@ -179,20 +183,31 @@ async function runKakeyaSweep(input: Input, opts: ExecuteOptions): Promise<Exper
   const deltaExp = typeof input.deltaExp === 'number' ? Number(input.deltaExp) : 4
   const packing = typeof input.packing === 'number' ? Number(input.packing) : 0
   const res = typeof input.res === 'number' ? Number(input.res) : 40
+  // non-nTubes sweeps measure a FIXED tube family — without a baseline count
+  // nTubes is undefined → NaN → fibonacciDirections(NaN) returns an empty
+  // family and the sweep records zero-volume CALCULATED evidence (review finding)
+  if (param !== 'nTubes' && typeof input.nTubes !== 'number') {
+    throw new Error(`kakeya.sweep over '${param}' requires a baseline nTubes (the fixed tube family being swept)`)
+  }
+  const nTubes = typeof input.nTubes === 'number' ? Number(input.nTubes) : 0
   return executeSpec(
     {
       kind: 'kakeya.sweep',
       params: { deltaExp, packing },
       seed: KAKEYA_SEED,
       res,
-      model: { param, values, deltaExp, packing, res },
+      model: { param, values, deltaExp, packing, res, ...(nTubes ? { nTubes } : {}) },
     },
     ENGINES.kakeyaWorker,
     async () => {
       const points: Array<{ x: number; y: number; series: string; runId: string }> = []
       for (const v of values) {
         const child = await runKakeyaMeasure(
-          param === 'nTubes' ? { ...input, nTubes: v, res } : param === 'packing' ? { ...input, packing: v, res } : { ...input, deltaExp: v, res },
+          param === 'nTubes'
+            ? { ...input, nTubes: v, res }
+            : param === 'packing'
+              ? { nTubes, deltaExp, packing: v, res }
+              : { nTubes, deltaExp: v, packing, res },
           { ...opts, parentRunId: opts.parentRunId },
         )
         points.push({ x: v, y: (child.result as { occupiedVolume: number }).occupiedVolume, series: 'sweep', runId: child.runId })
@@ -372,8 +387,65 @@ export async function replayRun(runId: string): Promise<SkillOutcome> {
   return executeSkill(skillName, input, { planId: `replay:${runId}`, replay: true })
 }
 
-function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {
-  const model = run.spec.model as Record<string, unknown> | undefined
+/** merge fork parameterChanges into each skill's REAL nested input shape */
+function applyForkChanges(skillName: string, forkInput: Input, changes: Record<string, number>): void {
+  if (Object.keys(changes).length === 0) return
+  switch (skillName) {
+    case 'formula.plot': {
+      const values = (forkInput.values as Record<string, number>) ?? {}
+      const unknown = Object.keys(changes).filter((k) => !(k in values))
+      if (unknown.length) throw new Error(`fork(formula.plot): unknown parameters ${JSON.stringify(unknown)} — known: ${JSON.stringify(Object.keys(values))}`)
+      forkInput.values = { ...values, ...changes }
+      return
+    }
+    case 'formula.evaluate': {
+      const bindings = (forkInput.bindings as Record<string, number>) ?? {}
+      const unknown = Object.keys(changes).filter((k) => !(k in bindings))
+      if (unknown.length) throw new Error(`fork(formula.evaluate): unknown bindings ${JSON.stringify(unknown)}`)
+      forkInput.bindings = { ...bindings, ...changes }
+      return
+    }
+    case 'ode.solve': {
+      // parameters live in system.params; initial populations in initialValues
+      // (spec.model records are frozen — clone before mutating)
+      const sys = (forkInput.system as { kind?: string; params?: Record<string, number> }) ?? {}
+      const params: Record<string, number> = { ...(sys.params ?? {}) }
+      const init: Record<string, number> = { ...((forkInput.initialValues as Record<string, number>) ?? {}) }
+      for (const [k, v] of Object.entries(changes)) {
+        if (k in params) params[k] = v
+        else if (k in init) init[k] = v
+        else throw new Error(`fork(ode.solve): unknown change '${k}' — not a system param or initial value`)
+      }
+      forkInput.system = { ...sys, params }
+      forkInput.initialValues = init
+      return
+    }
+    case 'geometry.2d': {
+      // construction decides which keys are meaningful (k/alpha for perron, grid
+      // for needle); inputFromSpec packs the model as params — clone first
+      const params: Record<string, number> = { ...((forkInput.params as Record<string, number>) ?? {}) }
+      const unknown = Object.keys(changes).filter((k) => !(k in params))
+      if (unknown.length) throw new Error(`fork(geometry.2d): unknown parameters ${JSON.stringify(unknown)}`)
+      Object.assign(params, changes)
+      forkInput.params = params
+      return
+    }
+    case 'kakeya.measure':
+    case 'kakeya.generate':
+    case 'kakeya.sweep': {
+      // these skills read params at the top level — but only known keys
+      const known = ['deltaExp', 'nTubes', 'packing', 'res']
+      const unknown = Object.keys(changes).filter((k) => !known.includes(k))
+      if (unknown.length) throw new Error(`fork(${skillName}): unknown parameters ${JSON.stringify(unknown)} — known: ${JSON.stringify(known)}`)
+      Object.assign(forkInput, changes)
+      return
+    }
+    default:
+      throw new Error(`fork: parameter changes not supported for skill ${skillName}`)
+  }
+}
+
+function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  const model = run.spec.model as Record<string, unknown> | undefined
   if (skillName === 'formula.plot') {
     if (!model?.expression) return null
     return {
@@ -421,7 +493,7 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {
 // ---- the single entry -------------------------------------------------------
 
 /** skills whose runs are formal evidence and therefore need a PlayPlan */
-const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep'])
+const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve'])
 
 export async function executeSkill<T = unknown>(
   name: string,
@@ -445,7 +517,7 @@ export async function executeSkill<T = unknown>(
   try {
     if (name === 'formula.evaluate') return { status: 'ok', run: (await runFormulaEvaluate(input as Input)) as ExperimentRun<T> }
     if (name === 'formula.plot') return { status: 'ok', run: (await runFormulaPlot(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'kakeya.generate') return { status: 'ok', run: (await runKakeyaGenerate(input as Input)) as ExperimentRun<T> }
+    if (name === 'kakeya.generate') return { status: 'ok', run: (await runKakeyaGenerate(input as Input, opts)) as ExperimentRun<T> }
     if (name === 'kakeya.measure') return { status: 'ok', run: (await runKakeyaMeasure(input as Input, opts)) as ExperimentRun<T> }
     if (name === 'kakeya.sweep') return { status: 'ok', run: (await runKakeyaSweep(input as Input, opts)) as ExperimentRun<T> }
     if (name === 'geometry.2d') return { status: 'ok', run: (await runGeometry2D(input as Input, opts)) as ExperimentRun<T> }
@@ -458,11 +530,10 @@ export async function executeSkill<T = unknown>(
       if (!skillName) return { status: 'unsupported', skill: source.spec.kind, message: 'Source run kind has no compute skill' }
       const forkInput = inputFromSpec(skillName, source)
       if (!forkInput) return { status: 'error', code: 'invalid_input', message: 'Source run spec cannot be replayed' }
-      if (skillName === 'formula.plot') {
-        forkInput.values = { ...((forkInput.values as Record<string, number>) ?? {}), ...parameterChanges }
-      } else {
-        Object.assign(forkInput, parameterChanges)
-      }
+      // merge parameterChanges into each skill's ACTUAL nested input shape —
+      // top-level Object.assign used to silently recompute the unchanged
+      // experiment for every non-formula skill (review finding)
+      applyForkChanges(skillName, forkInput, parameterChanges)
       const outcome = await executeSkill(skillName, forkInput, {
         planId: `fork:${sourceRunId}`,
         replay: true,
