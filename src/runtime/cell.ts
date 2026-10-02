@@ -33,6 +33,30 @@ export interface CellRef<T = unknown> {
 
 type SyncFn<T> = (inputs: unknown[]) => T
 type AsyncFn<T> = (inputs: unknown[]) => Promise<T>
+/** optional commit-time output check: return an error message to reject the value */
+export type OutputValidator = (value: unknown) => string | null
+
+/** deep finiteness check over plain objects/arrays (bounded) — NaN/±∞ leak guard */
+export function assertFiniteNumbers(value: unknown, label = 'value', depth = 4): string | null {
+  if (depth < 0) return null
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? null : `${label} is not finite (${value})`
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      const err = assertFiniteNumbers(value[i], `${label}[${i}]`, depth - 1)
+      if (err) return err
+    }
+    return null
+  }
+  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    for (const [k, v] of Object.entries(value)) {
+      const err = assertFiniteNumbers(v, `${label}.${k}`, depth - 1)
+      if (err) return err
+    }
+  }
+  return null
+}
 
 interface CellDef {
   id: CellId
@@ -48,6 +72,8 @@ interface CellDef {
   debounceMs: number
   debounceTimer?: ReturnType<typeof setTimeout>
   launched: boolean
+  /** commit-time output check (async cells): message ⇒ error status, value rejected */
+  validate?: OutputValidator
   subscribers: Set<() => void>
   snapshot: CellSnapshot
   order: number
@@ -99,11 +125,12 @@ export class Runtime {
     id: CellId,
     deps: CellRef[],
     fn: (inputs: unknown[]) => Promise<T>,
-    opts: { debounceMs?: number } = {},
+    opts: { debounceMs?: number; validate?: OutputValidator } = {},
   ): CellRef<T> {
     this.register(id, 'async', deps.map((d) => d.id), fn as AsyncFn<unknown>, opts.debounceMs ?? 120)
-    // kick the initial computation
     const def = this.cells.get(id)!
+    def.validate = opts.validate
+    // kick the initial computation
     def.stale = true
     this.publish(def)
     this.run(def)
@@ -114,6 +141,11 @@ export class Runtime {
   setParam<T>(id: CellId, value: T): void {
     const def = this.cells.get(id)
     if (!def || def.kind !== 'param') throw new Error(`setParam: '${id}' is not a param`)
+    // garbage-in guard: NaN/±∞ params poison every downstream cell while
+    // still reporting "resolved" (reproduced with kakeya.voxelRes = NaN)
+    if (typeof value === 'number' && !Number.isFinite(value)) {
+      throw new Error(`setParam('${id}'): non-finite number (${value})`)
+    }
     if (Object.is(def.value, value)) return
     def.value = value
     def.version++
@@ -227,17 +259,31 @@ export class Runtime {
       this.publish(def)
       return
     }
-    // async: trailing debounce, generation-guarded commit
+    // async: trailing debounce, generation-guarded commit.
+    // The generation is bumped at SCHEDULE time (not launch): a task whose
+    // schedule was superseded by a newer invalidation is discarded even when
+    // it resolves during the newer run's debounce window — otherwise an old
+    // task committed stale-input values over newer params (reproduced).
     if (def.debounceTimer !== undefined) clearTimeout(def.debounceTimer)
+    const generation = ++def.generation
     const launch = () => {
       def.debounceTimer = undefined
       def.launched = true
       this.publish(def) // status → computing
-      const generation = ++def.generation
       const inputs = def.deps.map((d) => this.cells.get(d)!.value)
       void Promise.resolve((def.fn as AsyncFn<unknown>)(inputs))
         .then((value) => {
           if (def.generation !== generation) return // superseded — discard
+          const invalid = def.validate ? def.validate(value) : null
+          if (invalid !== null) {
+            // rejected output (e.g. non-finite metrics): error status, never
+            // a "resolved" NaN
+            def.error = new Error(`output validation failed: ${invalid}`)
+            def.stale = false
+            def.launched = false
+            this.publish(def)
+            return
+          }
           if (!def.stale) return // was re-invalidated meanwhile
           def.value = value
           def.hasValue = true
