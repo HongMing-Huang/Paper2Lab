@@ -98,9 +98,21 @@ function Interactive({ children, className }: { children: React.ReactNode; class
 
 function PaperComponent({ shape }: { shape: PaperShape }) {
   const { doc, pdfUrl } = useDesk()
+  const editor = useEditor()
   const p = shape.props
-  const keyAnchor = doc.items.find((i) => i.id === p.keyAnchorId) ?? null
+  // every plottable formula ON THE CURRENT PAGE gets its own Playable marker
+  // (multi-formula selection); markers re-derive when the page turns
+  const pageFormulas = doc.items.filter(
+    (i) => i.kind === 'formula' && i.latex && i.page === p.page && analyzeFormula(i.latex).ok,
+  )
   const highlightAnchor = doc.items.find((i) => i.id === p.highlightAnchorId) ?? null
+  const totalPages = doc.pages.length
+  const turnPage = (delta: number) => {
+    const next = Math.min(totalPages, Math.max(1, p.page + delta))
+    if (next !== p.page) {
+      editor.updateShape({ id: shape.id, type: 'p2l-paper', props: { page: next } })
+    }
+  }
   return (
     <HTMLContainer style={{ pointerEvents: 'all' }}>
       <div className="desk-paper-sheet">
@@ -108,21 +120,34 @@ function PaperComponent({ shape }: { shape: PaperShape }) {
           url={pdfUrl}
           page={p.page}
           width={p.w}
-          highlight={highlightAnchor ? highlightAnchor.bbox : null}
+          highlight={highlightAnchor && highlightAnchor.page === p.page ? highlightAnchor.bbox : null}
         />
-        {keyAnchor && (
-          <Interactive>
+        {pageFormulas.map((f, idx) => (
+          <Interactive key={f.id}>
             <button
               type="button"
               className="desk-playable-marker"
               style={{
-                left: keyAnchor.bbox.x * p.w + keyAnchor.bbox.w * p.w + 6,
-                top: keyAnchor.bbox.y * p.h - 2,
+                left: f.bbox.x * p.w + f.bbox.w * p.w + 6,
+                top: f.bbox.y * p.h - 2,
               }}
-              title="展开这个公式的实验"
-              onClick={() => deskBus.emit({ kind: 'marker-click', anchorId: keyAnchor.id })}
+              title={`展开公式 ${idx + 1}（共 ${pageFormulas.length} 个）：${f.latex}`}
+              onClick={() => deskBus.emit({ kind: 'marker-click', anchorId: f.id })}
             >
-              ▸ Playable
+              ▸ Playable {idx + 1}
+            </button>
+          </Interactive>
+        ))}
+        {totalPages > 1 && (
+          <Interactive className="desk-paper-pager">
+            <button type="button" className="desk-btn" disabled={p.page <= 1} onClick={() => turnPage(-1)}>
+              ‹
+            </button>
+            <span className="desk-paper-page-label">
+              {p.page} / {totalPages}
+            </span>
+            <button type="button" className="desk-btn" disabled={p.page >= totalPages} onClick={() => turnPage(1)}>
+              ›
             </button>
           </Interactive>
         )}
