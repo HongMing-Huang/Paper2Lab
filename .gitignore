@@ -15,3 +15,12 @@ __pycache__/
 
 # playwright artifacts
 .playwright-mcp/
+
+# build artifacts
+tsconfig.tsbuildinfo
+
+# runtime state (server auto-creates the dir)
+server/data/
+
+# local agent-tool scratch
+.video_agent/

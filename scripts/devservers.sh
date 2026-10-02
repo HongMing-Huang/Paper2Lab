@@ -9,7 +9,7 @@ if ! command -v tmux >/dev/null 2>&1; then
   exit 1
 fi
 
-up() { curl -s -m 3 -o /dev/null "$1" 2>/dev/null }
+up() { curl -s -m 3 -o /dev/null "$1" 2>/dev/null; }
 
 if ! up http://127.0.0.1:8787/api/health; then
   tmux kill-session -t p2l-api 2>/dev/null
