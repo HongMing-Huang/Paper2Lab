@@ -59,6 +59,9 @@ class SopSession:
     history: list[dict] = field(default_factory=list)
     """tool calls already answered once — duplicate resumes are rejected"""
     answered_calls: set[str] = field(default_factory=set)
+    """toolCallIds this session actually issued via require_execution — resumes
+    carrying any other id (never issued / forged) are rejected"""
+    issued_calls: set[str] = field(default_factory=set)
     """how many external-execution rounds this session has consumed"""
     rounds: int = 0
 
@@ -147,15 +150,17 @@ def sop_plan(intent: str, context: dict) -> dict | None:
     }
 
 
-async def sop_turn(intent: str, context: dict) -> AsyncGenerator[dict, None]:
+async def sop_turn(session: SopSession, intent: str, context: dict) -> AsyncGenerator[dict, None]:
     plan = sop_plan(intent, context)
     if plan is None:
         yield ev("done", reason="not-an-experiment")
         return
     yield ev("plan_created", plan=plan)
+    call_id = f"tc-{uuid.uuid4().hex[:10]}"
+    session.issued_calls.add(call_id)
     yield ev(
         "require_execution",
-        toolCallId=f"tc-{uuid.uuid4().hex[:10]}",
+        toolCallId=call_id,
         replyId="",
         tool="scientific_execute",
         args={"deskKind": context.get("deskKind", "formula"), "steps": plan["steps"]},
@@ -393,6 +398,14 @@ async def turn(body: TurnBody) -> StreamingResponse:
         rows = body.resume.get("executionResults", [])
         if not rows:
             return _sse(_single_error("resume without executionResults"))
+        # issued-guard: every resumed toolCallId must be one THIS session
+        # actually emitted via require_execution — unknown/never-issued ids
+        # are rejected (the server used to accept results for calls it never
+        # made)
+        for row in rows:
+            call_id = str(row.get("toolCallId", ""))
+            if call_id not in session.issued_calls:
+                return _sse(_single_error(f"toolCallId was never issued by this session: {call_id or '(missing)'}"))
         # duplicate-resume guard: a toolCallId may be answered exactly once
         fresh = [row for row in rows if row.get("toolCallId") not in session.answered_calls]
         if not fresh:
@@ -420,7 +433,7 @@ async def turn(body: TurnBody) -> StreamingResponse:
     if session.rounds > MAX_ROUNDS:
         return _sse(_single_error(f"session exceeded {MAX_ROUNDS} execution rounds"))
     session.history.append({"intent": body.intent})
-    return _sse(sop_turn(body.intent, body.context))
+    return _sse(sop_turn(session, body.intent, body.context))
 
 
 def _single_error(message: str) -> AsyncGenerator[dict, None]:
