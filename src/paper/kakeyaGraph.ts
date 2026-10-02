@@ -1,7 +1,7 @@
 // The Wang–Zahl experiment's reactive cell graph — the single wiring point
 // where params (one source of truth each) drive every derived object.
 // UI components only read cells via useCell; nobody updates peers by hand.
-import { Runtime } from '../runtime/cell'
+import { Runtime, assertFiniteNumbers } from '../runtime/cell'
 import { fibonacciDirections, minAngularSeparation, type Vec3 } from '../kakeya/directions'
 import { makeTubes, type Tube3 } from '../kakeya/tubes'
 import { perronTree, type PerronResult } from '../kakeya/perron'
@@ -105,7 +105,14 @@ export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelResult>>(
           VIS_RES,
         ),
     ),
-  { debounceMs: 140 },
+  {
+    debounceMs: 140,
+    // NaN/±∞ metrics must surface as cell error, never "resolved" numbers
+    validate: (run) =>
+      run && typeof run === 'object' && 'result' in (run as Record<string, unknown>)
+        ? assertFiniteNumbers((run as { result: unknown }).result, 'kakeya.voxel.result')
+        : null,
+  },
 )
 
 async function computeVoxelsSyncFallback(tubes: Tube3[], res: number, visRes: number): Promise<VoxelResult> {
