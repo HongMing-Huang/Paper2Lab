@@ -21,6 +21,8 @@ export interface AgentSseEvent {
   evidence?: string
   reason?: string
   message?: string
+  /** experiment_failed events: what went wrong in the external execution */
+  error?: string
 }
 
 export interface DeskAgentContext {
@@ -100,6 +102,10 @@ export async function runAgentTurn(
     for await (const e of streamTurn({ sessionId, intent, context, resume })) {
       exec.onEvent?.(e)
       if (e.type === 'error') throw new Error(e.message ?? 'Agent execution failed')
+      // the server recorded an execution failure for this turn — terminal
+      if (e.type === 'experiment_failed') {
+        throw new Error(String(e.error ?? 'external execution failed'))
+      }
       if (e.type === 'plan_created' && e.plan) {
         // surfaced to the paper via agentState by the caller's onEvent
       }
@@ -118,12 +124,30 @@ export async function runAgentTurn(
         const result = call.tool === 'canvas_apply'
           ? await exec.canvasApply(call.args?.ops ?? [])
           : await exec.scientificExecute(call.args ?? {})
-        executionResults.push({ toolCallId: call.toolCallId, tool: call.tool, result })
+        executionResults.push({ toolCallId: call.toolCallId, tool: call.tool, status: 'ok', result })
       } catch (err) {
-        throw new Error(`External tool failed: ${err instanceof Error ? err.message : String(err)}`)
+        // failures are RESUMED as failures — the server session must end in
+        // experiment_failed, never dangle waiting for a result that never
+        // comes (and never auto-retry into a second fork)
+        executionResults.push({
+          toolCallId: call.toolCallId,
+          tool: call.tool,
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+        })
       }
     }
     resume = { replyId, executionResults }
+    // if every call in the batch failed, this turn is over after the resume —
+    // surface locally too (badges/notes) but do NOT throw before feeding back
+    const allFailed = executionResults.every((r) => r.status === 'error')
+    if (allFailed) {
+      // feed the failure back so the server records experiment_failed, then stop
+      for await (const e of streamTurn({ sessionId, intent, context, resume })) {
+        exec.onEvent?.(e)
+      }
+      throw new Error(`External tool failed: ${executionResults.map((r) => r.error).join('; ')}`)
+    }
   }
   throw new Error('Agent exceeded the maximum execution rounds')
 }
