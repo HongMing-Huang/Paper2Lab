@@ -158,6 +158,13 @@ v0.2（2026-10-02 深夜②，后端引擎全链路 + 高规模引擎）：
 - [x] **产品路径无头证据**：render-webgl-test 第 9 步——真实页面 fetch→导入 45 cpp runs、按钮 `CALCULATED · C++ 高规模已载入 ✓`、图表 caption 含 C++ 序列、console 0 错误（夹具静态服实现同形 /api/engine 路由以验证真 fetch 链）；tsx 入 devDeps（`pnpm engine` 直起引擎）；vitest 4 项（bundle 形状/幂等导入/真 runId/跨引擎一致）
 - v0.2 登记常量（hardcoded audit 增补，均为生成器档位/供给面配置）：C++ `CFGS` 标准 9 档 + large 6 档 + xl 3 档(512³) + xxl 3 档(1024³)、`NS={64,128,256}`；前端 `PRECOMPUTED_DELTA_EXPS=[4..10]`、`PRECOMPUTED_PACKINGS=[0,0.5,1]`（与生成器档位一一对应，δ 芯片范围 3…10）；engine 输入上限 256KB、超时 120s（env PAPER2LAB_ENGINE_TIMEOUT）
 
+v0.3（2026-10-03 凌晨②，Agent 底座收口：无头全回合 + canonical 技能面）：
+
+- [x] **步进执行器 `src/skills/agentSteps.ts`**：SOP/LLM 步进词汇（experiment.fork / formula·ode·geometry·kakeya 的 set/scale/terminal / kakeya.halve-n·sweep / experiment.compare）**全部经 executeSkill**（注册表校验+PlayPlan 门+血缘 fork）；参数改动累积到下一个 terminal 物化为 experiment.fork——agent 永不改实验本体，只产生带 parentRunId 的新 Run；四类桌面（公式/Kakeya/ODE/几何）全覆盖，未知 op 显式报错
+- [x] **服务端执行模式**：`POST /api/agent/turn` 支持 `context.execution:"server"`——`sop_turn_server` 不再向浏览器发 require_execution，直接经引擎桥 `agent_steps` op 在服务端把整回合跑完（plan_created→tool_started→experiment_completed→comparison_created→observation_ready→done:completed）；ODE/几何桌面首次可完成任务（浏览器模式无执行面时诚实拒绝 not-an-experiment；server 模式无 resume 契约、缺 base 显式失败）；新增 ode/geometry 意图解析器（设为/加倍/减半/比较）
+- [x] **canonical 技能别名**：registry 增 `aliases`（fork_experiment / compare_experiments / simulate_geometry / measure_volume / measure_multiplicity / run_scale_sweep ↔ 对应注册技能，输入输出契约相同）；executeSkill 在分发前归一化别名（同受 PlayPlan 门控）；`/api/engine/skills` 面板暴露别名
+- [x] 验证：vitest **177/177**（+8：四桌面步进/拒绝路径/别名真执行/别名同受门控）· pytest 快集 **36/36**（+5：四桌面 server 模式全回合 SSE 断言 + 守卫；真数字断言 peak≈|a·2|、conservedDrift<1e-3）· 双产品脚本 PASS · 真实 HTTP SSE 冒烟（plan→tool_started(server)→experiment_completed peak=1.99998）。**坑：Python rf-string 里正则量词 `{0,6}` 会被当成 f-string 替换字段渲染成 "(0, 6)"**——量词必须写 `{{0,6}}`（本坑曾令 group 编号偏移、float('设为') 崩溃）
+
 ## 11. 下一阶段（比赛迭代方向）
 
 ### 2026-10-01 源码审查后的开发门槛
