@@ -39,6 +39,16 @@ function serve() {
   const server = createServer(async (req, res) => {
     try {
       let path = req.url?.split('?')[0] ?? '/'
+      // minimal engine API stand-in: serve the committed high-scale bundle in
+      // the same {meta, runs} shape as /api/engine — the product path then
+      // proves the REAL fetch→import chain (not just the offline fallback)
+      if (path === '/api/engine/kakeya/precomputed') {
+        const buf = await readFile(join(DIST, '..', 'src', 'data', 'kakeya-precomputed-runs.json'))
+        const bundle = JSON.parse(buf.toString())
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ meta: bundle.meta, runs: bundle.runs }))
+        return
+      }
       if (path === '/') path = '/index.html'
       const file = join(DIST, path)
       const st = await stat(file)
@@ -244,6 +254,22 @@ async function productPhase(browser, failures) {
 
     // 8. CALCULATED badge present in the observation
     if (!obsAfter.includes('CALCULATED')) failures.push('observation lacks CALCULATED provenance')
+
+    // 9. C++ high-scale precompute chain on the REAL page: the chart loads the
+    //    bundle itself (offline fallback — no backend on this static origin),
+    //    imports real ExperimentRuns, and the series/button reflect them
+    await page.waitForFunction(() => (window.__P2L_CPP_RUNS__?.() ?? []).length >= 45, null, { timeout: 30000 })
+      .catch(() => null)
+    const cppIds = await page.evaluate(() => window.__P2L_CPP_RUNS__?.() ?? [])
+    const cppBtn = await page.evaluate(() => document.querySelector('.cpp-load-btn')?.textContent ?? '(no button)')
+    console.log(`[product] cpp runs imported: ${cppIds.length}${cppIds.length ? ` (${cppIds[0]} …)` : ''}`)
+    console.log(`[product] cpp button: ${cppBtn}`)
+    if (cppIds.length < 45) failures.push(`C++ high-scale runs did not import on the product path (${cppIds.length})`)
+    if (!cppBtn.includes('已载入')) failures.push(`cpp load button did not settle: ${cppBtn}`)
+    // chart caption datapoints grew with the precomputed series
+    const caption = await page.evaluate(() => document.querySelector('.react-flow__node-chartUnion .card-caption')?.textContent ?? '')
+    console.log(`[product] chart caption: ${caption.slice(0, 70)}`)
+    if (!/C\+\+/.test(caption)) failures.push('chart caption does not mention the C++ series')
 
     if (consoleErrors.length) {
       failures.push(`console errors on the product path: ${consoleErrors.slice(0, 3).join(' | ')}`)

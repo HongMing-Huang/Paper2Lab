@@ -35,11 +35,12 @@
 - **双向 UI⇄模型**：3D 里抓取 tube 簇移动 → 反向写回 packing 参数（模型更新 UI，UI 也更新模型）。图表点击数据点 → 定位产生它的实验（Data→Experiment）。
 - **v4：可追溯性与硬编码禁令**——任何用户可见数值/图必须来自 **ExperimentRun**（`src/experiments/protocol.ts`：runId/spec(params·seed·res)/engine+version/durationMs/evidence=CALCULATED），datapoint 一律携带 runId。**图、3D、Metric、Observation 全部只订阅 Run**（3D 订阅 `tubesRunCell` 的 kakeya.geometry envelope）。除 PAPER 引文与登记配置常量（SEED/VIS_RES/PREVIEW_RES/SWEEP_RES/FINE_DELTA/NeedleSweep GRID·BOX·NEEDLE_HALF/ODE 初值）外禁止内嵌数值；审计清单 `docs/audit/hardcoded-values.md`（A1–A8 已修复）。有限尺度实验不得写成 theorem proof。**Agent（含 Qwen/本地 LLM）只能输出结构化 ExperimentPlan**（toolSchema：白名单+validatePlan+JSON Schema）与 explain_result 的 AI_INFERENCE 文本，禁止产生 CALCULATED 数值（planSmugglesNumbers 拦截）。**v4b：`src/skills/llmPlanner.ts`**——可选 OpenAI 兼容（Qwen）端点：凭据仅从环境变量读取（浏览器 VITE_ 前缀 / node process.env，无字面量），JSON-mode 提示内嵌 tool schema，输出过 validatePlan+smuggle 门，未配置/失败回退确定性 planner。
 
-## 3. 计算架构（两条路径）
+## 3. 计算架构（三个执行位置，同一统一执行器）
 
 1. **Kakeya Hero Demo：TypeScript + Web Worker（Comlink RPC 封装）**——最低延迟。Skills：generateDirections / generateTubes / interpolatePacking / measureVoxelCover / measureMultiplicity / measureUnionVolume / runScaleSweep。
-2. **大尺度：离线预计算 `scripts/precompute_kakeya.cpp`**——C++17 `-O3 -pthread`，输出 JSON 记录参数、算法版本、checksum。浏览器小尺度实时、大尺度读预计算（参考 bojieli/kakeya-explainer 的教训：δ=1/1000 达数十亿格子，不可傻算）。
-3. **PythonScientificRuntime（为下一篇论文预留）**：独立 Worker + Comlink + Pyodide（numpy/scipy），接口先行（ensureNumpy/runPython/solveIVP 风格），**不得拖慢 Kakeya Demo**；Kakeya 路径禁止走 Pyodide。
+2. **大尺度：离线预计算 `scripts/precompute_kakeya.cpp`**——C++17 `-O3 -pthread`（`pnpm precompute` 编译并以 `large` 档生成：9 档 δ=2⁻⁴…2⁻⁸ × res 至 320³ = 45 行，FNV-1a 封印），`scripts/build_kakeya_bundle.ts` 把每行转成不可变 `kakeya.voxel` ExperimentRun（engine `cpp-precompute`，稳定 runId `kakeya-cpp-d{δ}-p{packing}-n{N}`），后端 `GET /api/engine/kakeya/precomputed` 供给，页面 `ensurePrecomputedRuns()` **原子幂等导入**（失败回退内置 bundle）——大尺度数据点携带真 runId 可回溯。**跨引擎一致性是硬门**：node 执行器与 C++ 同输入 rel<1e-6（曾靠此测试抓出 C++ 两个移植 bug：原点采样区间写错、mulberry32 状态链错），预计算数据必须过此门才能入库。浏览器小尺度实时、大尺度读预计算（参考 bojieli/kakeya-explainer 的教训：δ=1/1000 达数十亿格子，不可傻算）。
+3. **后端引擎（0.2）：Node 常驻桥**——`scripts/engine_server.ts`（stdio 行协议，`node --import tsx` 运行**同一份** `src/skills/executor.ts`）+ `server/engine_bridge.py`（子进程管理/按 id 关联/死亡重启）+ `server/engine_api.py`（`POST /api/engine/execute`·`GET /skills|/runs|/kakeya/precomputed`；输入 256KB 上限；PlayPlan 门控与白名单和浏览器完全同构）。后端由此可无头跑通全链路（Agent 编排→真内核→ExperimentRun），浏览器仍是交互执行位置（外部执行协议不变）。ready 检查含 engine（node 缺失=不健康）。
+4. **PythonScientificRuntime（为下一篇论文预留）**：独立 Worker + Comlink + Pyodide（numpy/scipy），接口先行（ensureNumpy/runPython/solveIVP 风格），**不得拖慢 Kakeya Demo**；Kakeya 路径禁止走 Pyodide。
 4. 本地 LLM（web-llm/transformers.js）：非 P0，仅接口调研。
 
 ## 4. Scientific Skills Agent
@@ -148,6 +149,14 @@ v6（2026-10-01 深夜，Research Orchestrator + Interaction Grammar 完整版�
 - [x] AGENTS.md §0 宪法升 v6（12 条，含三层状态分离/PlayPlan/Agent 只走注册 skill 等新条款）
 
 v6 登记常量：`AGENT_PACKING_CANDIDATES=[1.0,0.95,0.9,0.85,0.8]`（Agent 挑战搜索网格，与用户同引擎）、Direct-Geometry 反演 `ITER=40` 二分步数。
+
+v0.2（2026-10-02 深夜②，后端引擎全链路 + 高规模引擎）：
+
+- [x] **后端引擎服务**：`scripts/engine_server.ts`（Node stdio 行协议，跑同一份统一执行器；ops ping/skills/execute/runs/export/import）+ `server/engine_bridge.py`（asyncio 子进程桥，Popen 阻塞管道全部走 to_thread，死亡自动重启，请求严格串行保血缘顺序）+ `server/engine_api.py`（/api/engine 四端点，256KB 输入上限）；main.py lifespan 关停子进程、/api/ready 增 engine 检查（node 存在性）。pytest 8 项真执行（sin(1)=0.84147…、lv.ode、kakeya.measure、needs_input 门、未知技能拒绝、registry 面、runs 历史、precomputed 供给、ready booted）
+- [x] **高规模引擎**：C++ `large` 档（δ=2⁻⁴…2⁻⁸ × packing{0,.5,1} × N{64,128,256} = 45 行，res 至 320³≈3.3×10⁷ 体素，7.1s/389% CPU）→ `build_kakeya_bundle.ts` 转 45 个 cpp-precompute Run → 前端 `precomputedRuns.ts`（API 优先/内置 bundle 回退，幂等原子导入，`precomputedPointsCell` 派生当前 δ/packing 序列）；ChartUnionNode 假 runId `'precomputed'` 废除——朱砂点全部携带真 runId（点击→Trace）
+- [x] **跨引擎一致性测试抓出两个真 bug**：① C++ 原点采样上界 `1−1.5a`（应为 `1−a/2`，管可出单位立方体）② mulberry32 按值传参导致 RNG 状态链=哈希回写（TS 是 `a+=K` 链），第一抽后流分叉——修复后 node↔C++ rel≈3e-8（边界体素翻转量级），旧 27 行数据集同源错误已随重生成修正
+- [x] **产品路径无头证据**：render-webgl-test 第 9 步——真实页面 fetch→导入 45 cpp runs、按钮 `CALCULATED · C++ 高规模已载入 ✓`、图表 caption 含 C++ 序列、console 0 错误（夹具静态服实现同形 /api/engine 路由以验证真 fetch 链）；tsx 入 devDeps（`pnpm engine` 直起引擎）；vitest 4 项（bundle 形状/幂等导入/真 runId/跨引擎一致）
+- v0.2 登记常量（hardcoded audit 增补，均为生成器档位/供给面配置）：C++ `CFGS` 标准 9 档 + large 6 档、`NS={64,128,256}`；前端 `PRECOMPUTED_DELTA_EXPS=[4..8]`、`PRECOMPUTED_PACKINGS=[0,0.5,1]`（与生成器档位一一对应）；engine 输入上限 256KB、超时 120s（env PAPER2LAB_ENGINE_TIMEOUT）
 
 ## 11. 下一阶段（比赛迭代方向）
 

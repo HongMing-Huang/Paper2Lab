@@ -24,14 +24,17 @@ static const uint32_t SEED = 20250224u;
 
 struct Vec3 { double x, y, z; };
 
-static uint32_t mulberry32(uint32_t a) {
+// state advances as a += K per draw (reference param!) — an earlier revision
+// returned the hash and chained on IT, silently forking the RNG stream after
+// the first draw; the cross-engine consistency test caught it.
+static uint32_t mulberry32(uint32_t& a) {
   a = a + 0x6D2B79F5u;
   uint32_t t = a;
   t = (t ^ (t >> 15)) * (t | 1u);
   t ^= t + (t ^ (t >> 7)) * (t | 61u);
   return t ^ (t >> 14);
 }
-static double rng01(uint32_t& a) { a = mulberry32(a); return a / 4294967296.0; }
+static double rng01(uint32_t& a) { return mulberry32(a) / 4294967296.0; }
 
 static std::vector<Vec3> fibonacciDirections(int n) {
   std::vector<Vec3> out;
@@ -52,10 +55,14 @@ static std::vector<Tube> makeTubes(const std::vector<Vec3>& dirs, double delta, 
   uint32_t a = seed;
   for (const Vec3& d : dirs) {
     double ax = std::fabs(d.x), ay = std::fabs(d.y), az = std::fabs(d.z);
+    // spread origin: uniform in the admissible box [a/2, 1 - a/2] per axis
+    // (same as src/kakeya/tubes.ts — hi - lo = 1 - a). An earlier revision
+    // drew from [a/2, 1 - 1.5a], placing tube cores outside the unit cube;
+    // the cross-engine consistency test caught it.
     double lox = ax / 2, loy = ay / 2, loz = az / 2;
-    double sx = lox + (1 - ax - lox) * rng01(a);
-    double sy = loy + (1 - ay - loy) * rng01(a);
-    double sz = loz + (1 - az - loz) * rng01(a);
+    double sx = lox + (1 - ax) * rng01(a);
+    double sy = loy + (1 - ay) * rng01(a);
+    double sz = loz + (1 - az) * rng01(a);
     tubes.push_back({d,
         {sx + (0.5 - sx) * packing, sy + (0.5 - sy) * packing, sz + (0.5 - sz) * packing},
         delta});
@@ -134,14 +141,22 @@ static std::string fixed(double v, int prec) {
   return os.str();
 }
 
-int main() {
+int mainImpl(int argc, char** argv) {
   struct Cfg { int deltaExp; double packing; int res; };
   const std::vector<int> NS = {64, 128, 256};
-  const std::vector<Cfg> CFGS = {
+  std::vector<Cfg> CFGS = {
       {4, 0.0, 96}, {4, 0.5, 96}, {4, 1.0, 96},
       {5, 0.0, 128}, {5, 0.5, 128}, {5, 1.0, 128},
       {6, 0.0, 192}, {6, 0.5, 192}, {6, 1.0, 192},
   };
+  // argv[1] == "large" appends the high-scale tier served by /api/engine —
+  // grids beyond what a browser page can compute interactively (AGENTS §3.2).
+  if (argc > 1 && std::string(argv[1]) == "large") {
+    CFGS.insert(CFGS.end(), {
+        {7, 0.0, 256}, {7, 0.5, 256}, {7, 1.0, 256},
+        {8, 0.0, 320}, {8, 0.5, 320}, {8, 1.0, 320},
+    });
+  }
   std::string checksumInput;
   int rowCount = 0;
   std::cout << "{\n";
@@ -182,3 +197,5 @@ int main() {
   std::cerr << "wrote " << rowCount << " rows, checksum " << fnv1aHex(checksumInput) << "\n";
   return 0;
 }
+
+int main(int argc, char** argv) { return mainImpl(argc, argv); }
