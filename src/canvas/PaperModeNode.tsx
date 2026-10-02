@@ -159,7 +159,7 @@ export function PaperModeNode() {
                 paramId="kakeya.deltaExp"
                 read={readNum('kakeya.deltaExp')}
                 min={3}
-                max={5.5}
+                max={10}
                 step={0.25}
                 display={(v) => `2^−${v.toFixed(2)}=${(2 ** -v).toFixed(4)}`}
               />{' '}

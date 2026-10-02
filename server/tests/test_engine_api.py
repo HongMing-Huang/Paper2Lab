@@ -132,11 +132,16 @@ async def test_precomputed_high_scale_bundle_served() -> None:
             assert body["meta"]["algorithmVersion"] == "kakeya-voxel-v3-cpp"
             assert len(body["meta"]["checksumFnv1a"]) == 16
             runs = body["runs"]
-            assert len(runs) >= 45
-            assert max(r["spec"]["res"] for r in runs) >= 320  # high-scale tier present
+            assert len(runs) >= 63
+            assert max(r["spec"]["res"] for r in runs) >= 1024  # billion-voxel tier present
             assert all(r["engine"] == "cpp-precompute" for r in runs)
             ids = [r["runId"] for r in runs]
             assert len(set(ids)) == len(ids)  # stable, unique
+            # extreme tier invariants: packing=1 rows have maxMultiplicity == N
+            for r in runs:
+                p = r["spec"]["params"]
+                if p["deltaExp"] == 10 and p["packing"] == 1:
+                    assert r["result"]["maxMultiplicity"] == p["nTubes"]
 
 
 @pytest.mark.asyncio

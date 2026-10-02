@@ -4,8 +4,8 @@
     "seed": 20250224,
     "compile": "c++ -std=c++17 -O3 -pthread",
     "kernel": "exact capsule-vs-voxel-centre distance; atomic uint16 multiplicity",
-    "rowCount": 45,
-    "checksumFnv1a": "70699f40b3e9a0cd",
+    "rowCount": 63,
+    "checksumFnv1a": "b0bcbc92ddf1ece1",
     "note": "offline C++ precompute — same kernels/seed as the browser; import atomically via runRepository.importRuns"
   },
   "runs": [
@@ -31,7 +31,7 @@
           "maxMultiplicity": 9,
           "avgMultiplicity": 1.690744,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -72,7 +72,7 @@
           "maxMultiplicity": 14,
           "avgMultiplicity": 2.366163,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -113,7 +113,7 @@
           "maxMultiplicity": 23,
           "avgMultiplicity": 3.838055,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -154,7 +154,7 @@
           "maxMultiplicity": 16,
           "avgMultiplicity": 2.036525,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -195,7 +195,7 @@
           "maxMultiplicity": 34,
           "avgMultiplicity": 2.968757,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -236,7 +236,7 @@
           "maxMultiplicity": 54,
           "avgMultiplicity": 4.753925,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -277,7 +277,7 @@
           "maxMultiplicity": 64,
           "avgMultiplicity": 1.803582,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -318,7 +318,7 @@
           "maxMultiplicity": 128,
           "avgMultiplicity": 2.679538,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -359,7 +359,7 @@
           "maxMultiplicity": 256,
           "avgMultiplicity": 4.963789,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -400,7 +400,7 @@
           "maxMultiplicity": 4,
           "avgMultiplicity": 1.146572,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -441,7 +441,7 @@
           "maxMultiplicity": 10,
           "avgMultiplicity": 1.321669,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -482,7 +482,7 @@
           "maxMultiplicity": 11,
           "avgMultiplicity": 1.665116,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -523,7 +523,7 @@
           "maxMultiplicity": 9,
           "avgMultiplicity": 1.332522,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -564,7 +564,7 @@
           "maxMultiplicity": 14,
           "avgMultiplicity": 1.642298,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -605,7 +605,7 @@
           "maxMultiplicity": 22,
           "avgMultiplicity": 2.200943,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -646,7 +646,7 @@
           "maxMultiplicity": 64,
           "avgMultiplicity": 1.298965,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -687,7 +687,7 @@
           "maxMultiplicity": 128,
           "avgMultiplicity": 1.482384,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -728,7 +728,7 @@
           "maxMultiplicity": 256,
           "avgMultiplicity": 1.856662,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -769,7 +769,7 @@
           "maxMultiplicity": 3,
           "avgMultiplicity": 1.031099,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -810,7 +810,7 @@
           "maxMultiplicity": 6,
           "avgMultiplicity": 1.075368,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -851,7 +851,7 @@
           "maxMultiplicity": 6,
           "avgMultiplicity": 1.157774,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -892,7 +892,7 @@
           "maxMultiplicity": 4,
           "avgMultiplicity": 1.083031,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -933,7 +933,7 @@
           "maxMultiplicity": 10,
           "avgMultiplicity": 1.184548,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -974,7 +974,7 @@
           "maxMultiplicity": 11,
           "avgMultiplicity": 1.362653,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1015,7 +1015,7 @@
           "maxMultiplicity": 64,
           "avgMultiplicity": 1.133198,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1056,7 +1056,7 @@
           "maxMultiplicity": 128,
           "avgMultiplicity": 1.199824,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1097,7 +1097,7 @@
           "maxMultiplicity": 256,
           "avgMultiplicity": 1.308537,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1138,7 +1138,7 @@
           "maxMultiplicity": 2,
           "avgMultiplicity": 1.007908,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1179,7 +1179,7 @@
           "maxMultiplicity": 4,
           "avgMultiplicity": 1.018361,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1220,7 +1220,7 @@
           "maxMultiplicity": 4,
           "avgMultiplicity": 1.038186,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1261,7 +1261,7 @@
           "maxMultiplicity": 3,
           "avgMultiplicity": 1.018781,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1302,7 +1302,7 @@
           "maxMultiplicity": 5,
           "avgMultiplicity": 1.045779,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1343,7 +1343,7 @@
           "maxMultiplicity": 6,
           "avgMultiplicity": 1.095347,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1384,7 +1384,7 @@
           "maxMultiplicity": 64,
           "avgMultiplicity": 1.062625,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1425,7 +1425,7 @@
           "maxMultiplicity": 128,
           "avgMultiplicity": 1.090726,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1466,7 +1466,7 @@
           "maxMultiplicity": 256,
           "avgMultiplicity": 1.134363,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1507,7 +1507,7 @@
           "maxMultiplicity": 2,
           "avgMultiplicity": 1.002396,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1548,7 +1548,7 @@
           "maxMultiplicity": 3,
           "avgMultiplicity": 1.004776,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1589,7 +1589,7 @@
           "maxMultiplicity": 3,
           "avgMultiplicity": 1.009167,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1630,7 +1630,7 @@
           "maxMultiplicity": 2,
           "avgMultiplicity": 1.004733,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1671,7 +1671,7 @@
           "maxMultiplicity": 4,
           "avgMultiplicity": 1.011497,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1712,7 +1712,7 @@
           "maxMultiplicity": 4,
           "avgMultiplicity": 1.023743,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1753,7 +1753,7 @@
           "maxMultiplicity": 64,
           "avgMultiplicity": 1.029657,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1794,7 +1794,7 @@
           "maxMultiplicity": 128,
           "avgMultiplicity": 1.043423,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1835,7 +1835,7 @@
           "maxMultiplicity": 256,
           "avgMultiplicity": 1.062686,
           "algorithmVersion": "kakeya-voxel-v3-cpp",
-          "checksumFnv1a": "70699f40b3e9a0cd"
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
         }
       },
       "status": "resolved",
@@ -1845,6 +1845,744 @@
         "sumTubeVolume": 0.0123233,
         "maxMultiplicity": 256,
         "avgMultiplicity": 1.062686
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p0-n64",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 0,
+          "nTubes": 64
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 0,
+          "res": 512,
+          "n": 64,
+          "occupiedVolume": 0.00076966,
+          "sumTubeVolume": 0.00077014,
+          "maxMultiplicity": 2,
+          "avgMultiplicity": 1.00062,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.00076966,
+        "sumTubeVolume": 0.00077014,
+        "maxMultiplicity": 2,
+        "avgMultiplicity": 1.00062
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p0-n128",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 0,
+          "nTubes": 128
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 0,
+          "res": 512,
+          "n": 128,
+          "occupiedVolume": 0.0015379,
+          "sumTubeVolume": 0.00153975,
+          "maxMultiplicity": 3,
+          "avgMultiplicity": 1.001206,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.0015379,
+        "sumTubeVolume": 0.00153975,
+        "maxMultiplicity": 3,
+        "avgMultiplicity": 1.001206
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p0-n256",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 0,
+          "nTubes": 256
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 0,
+          "res": 512,
+          "n": 256,
+          "occupiedVolume": 0.00307354,
+          "sumTubeVolume": 0.00308046,
+          "maxMultiplicity": 3,
+          "avgMultiplicity": 1.002254,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.00307354,
+        "sumTubeVolume": 0.00308046,
+        "maxMultiplicity": 3,
+        "avgMultiplicity": 1.002254
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p50-n64",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 0.5,
+          "nTubes": 64
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 0.5,
+          "res": 512,
+          "n": 64,
+          "occupiedVolume": 0.00076915,
+          "sumTubeVolume": 0.0007702,
+          "maxMultiplicity": 2,
+          "avgMultiplicity": 1.001356,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.00076915,
+        "sumTubeVolume": 0.0007702,
+        "maxMultiplicity": 2,
+        "avgMultiplicity": 1.001356
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p50-n128",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 0.5,
+          "nTubes": 128
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 0.5,
+          "res": 512,
+          "n": 128,
+          "occupiedVolume": 0.00153534,
+          "sumTubeVolume": 0.00153984,
+          "maxMultiplicity": 3,
+          "avgMultiplicity": 1.002931,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.00153534,
+        "sumTubeVolume": 0.00153984,
+        "maxMultiplicity": 3,
+        "avgMultiplicity": 1.002931
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p50-n256",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 0.5,
+          "nTubes": 256
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 0.5,
+          "res": 512,
+          "n": 256,
+          "occupiedVolume": 0.00305688,
+          "sumTubeVolume": 0.00307493,
+          "maxMultiplicity": 3,
+          "avgMultiplicity": 1.005903,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.00305688,
+        "sumTubeVolume": 0.00307493,
+        "maxMultiplicity": 3,
+        "avgMultiplicity": 1.005903
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p100-n64",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 1,
+          "nTubes": 64
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 1,
+          "res": 512,
+          "n": 64,
+          "occupiedVolume": 0.0007578,
+          "sumTubeVolume": 0.00076984,
+          "maxMultiplicity": 64,
+          "avgMultiplicity": 1.015888,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.0007578,
+        "sumTubeVolume": 0.00076984,
+        "maxMultiplicity": 64,
+        "avgMultiplicity": 1.015888
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p100-n128",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 1,
+          "nTubes": 128
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 1,
+          "res": 512,
+          "n": 128,
+          "occupiedVolume": 0.00150789,
+          "sumTubeVolume": 0.00154187,
+          "maxMultiplicity": 128,
+          "avgMultiplicity": 1.022531,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.00150789,
+        "sumTubeVolume": 0.00154187,
+        "maxMultiplicity": 128,
+        "avgMultiplicity": 1.022531
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d9-p100-n256",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 9,
+          "packing": 1,
+          "nTubes": 256
+        },
+        "seed": 20250224,
+        "res": 512,
+        "model": {
+          "deltaExp": 9,
+          "delta": 0.001953125,
+          "packing": 1,
+          "res": 512,
+          "n": 256,
+          "occupiedVolume": 0.0029837,
+          "sumTubeVolume": 0.00307846,
+          "maxMultiplicity": 256,
+          "avgMultiplicity": 1.031758,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 512,
+        "occupiedVolume": 0.0029837,
+        "sumTubeVolume": 0.00307846,
+        "maxMultiplicity": 256,
+        "avgMultiplicity": 1.031758
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p0-n64",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 0,
+          "nTubes": 64
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 0,
+          "res": 1024,
+          "n": 64,
+          "occupiedVolume": 0.00019222,
+          "sumTubeVolume": 0.00019224,
+          "maxMultiplicity": 2,
+          "avgMultiplicity": 1.000121,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.00019222,
+        "sumTubeVolume": 0.00019224,
+        "maxMultiplicity": 2,
+        "avgMultiplicity": 1.000121
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p0-n128",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 0,
+          "nTubes": 128
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 0,
+          "res": 1024,
+          "n": 128,
+          "occupiedVolume": 0.00038411,
+          "sumTubeVolume": 0.00038424,
+          "maxMultiplicity": 2,
+          "avgMultiplicity": 1.000325,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.00038411,
+        "sumTubeVolume": 0.00038424,
+        "maxMultiplicity": 2,
+        "avgMultiplicity": 1.000325
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p0-n256",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 0,
+          "nTubes": 256
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 0,
+          "res": 1024,
+          "n": 256,
+          "occupiedVolume": 0.000768,
+          "sumTubeVolume": 0.00076843,
+          "maxMultiplicity": 2,
+          "avgMultiplicity": 1.00056,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.000768,
+        "sumTubeVolume": 0.00076843,
+        "maxMultiplicity": 2,
+        "avgMultiplicity": 1.00056
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p50-n64",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 0.5,
+          "nTubes": 64
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 0.5,
+          "res": 1024,
+          "n": 64,
+          "occupiedVolume": 0.0001922,
+          "sumTubeVolume": 0.00019228,
+          "maxMultiplicity": 2,
+          "avgMultiplicity": 1.000392,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.0001922,
+        "sumTubeVolume": 0.00019228,
+        "maxMultiplicity": 2,
+        "avgMultiplicity": 1.000392
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p50-n128",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 0.5,
+          "nTubes": 128
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 0.5,
+          "res": 1024,
+          "n": 128,
+          "occupiedVolume": 0.00038402,
+          "sumTubeVolume": 0.00038431,
+          "maxMultiplicity": 3,
+          "avgMultiplicity": 1.000732,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.00038402,
+        "sumTubeVolume": 0.00038431,
+        "maxMultiplicity": 3,
+        "avgMultiplicity": 1.000732
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p50-n256",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 0.5,
+          "nTubes": 256
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 0.5,
+          "res": 1024,
+          "n": 256,
+          "occupiedVolume": 0.00076736,
+          "sumTubeVolume": 0.00076849,
+          "maxMultiplicity": 3,
+          "avgMultiplicity": 1.001479,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.00076736,
+        "sumTubeVolume": 0.00076849,
+        "maxMultiplicity": 3,
+        "avgMultiplicity": 1.001479
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p100-n64",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 1,
+          "nTubes": 64
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 1,
+          "res": 1024,
+          "n": 64,
+          "occupiedVolume": 0.00019072,
+          "sumTubeVolume": 0.00019223,
+          "maxMultiplicity": 64,
+          "avgMultiplicity": 1.007891,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.00019072,
+        "sumTubeVolume": 0.00019223,
+        "maxMultiplicity": 64,
+        "avgMultiplicity": 1.007891
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p100-n128",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 1,
+          "nTubes": 128
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 1,
+          "res": 1024,
+          "n": 128,
+          "occupiedVolume": 0.00038039,
+          "sumTubeVolume": 0.00038464,
+          "maxMultiplicity": 128,
+          "avgMultiplicity": 1.011164,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.00038039,
+        "sumTubeVolume": 0.00038464,
+        "maxMultiplicity": 128,
+        "avgMultiplicity": 1.011164
+      },
+      "engine": "cpp-precompute",
+      "engineVersion": "kakeya-voxel-v3-cpp",
+      "durationMs": 0,
+      "evidence": "CALCULATED",
+      "createdAt": 0,
+      "startedAt": 0,
+      "errors": []
+    },
+    {
+      "runId": "kakeya-cpp-d10-p100-n256",
+      "spec": {
+        "kind": "kakeya.voxel",
+        "params": {
+          "deltaExp": 10,
+          "packing": 1,
+          "nTubes": 256
+        },
+        "seed": 20250224,
+        "res": 1024,
+        "model": {
+          "deltaExp": 10,
+          "delta": 0.0009765625,
+          "packing": 1,
+          "res": 1024,
+          "n": 256,
+          "occupiedVolume": 0.00075753,
+          "sumTubeVolume": 0.00076938,
+          "maxMultiplicity": 256,
+          "avgMultiplicity": 1.015636,
+          "algorithmVersion": "kakeya-voxel-v3-cpp",
+          "checksumFnv1a": "b0bcbc92ddf1ece1"
+        }
+      },
+      "status": "resolved",
+      "result": {
+        "res": 1024,
+        "occupiedVolume": 0.00075753,
+        "sumTubeVolume": 0.00076938,
+        "maxMultiplicity": 256,
+        "avgMultiplicity": 1.015636
       },
       "engine": "cpp-precompute",
       "engineVersion": "kakeya-voxel-v3-cpp",

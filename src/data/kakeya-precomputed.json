@@ -499,8 +499,206 @@
       "sumTubeVolume": 0.0123233,
       "maxMultiplicity": 256,
       "avgMultiplicity": 1.062686
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 0,
+      "res": 512,
+      "n": 64,
+      "occupiedVolume": 0.00076966,
+      "sumTubeVolume": 0.00077014,
+      "maxMultiplicity": 2,
+      "avgMultiplicity": 1.00062
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 0,
+      "res": 512,
+      "n": 128,
+      "occupiedVolume": 0.0015379,
+      "sumTubeVolume": 0.00153975,
+      "maxMultiplicity": 3,
+      "avgMultiplicity": 1.001206
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 0,
+      "res": 512,
+      "n": 256,
+      "occupiedVolume": 0.00307354,
+      "sumTubeVolume": 0.00308046,
+      "maxMultiplicity": 3,
+      "avgMultiplicity": 1.002254
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 0.5,
+      "res": 512,
+      "n": 64,
+      "occupiedVolume": 0.00076915,
+      "sumTubeVolume": 0.0007702,
+      "maxMultiplicity": 2,
+      "avgMultiplicity": 1.001356
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 0.5,
+      "res": 512,
+      "n": 128,
+      "occupiedVolume": 0.00153534,
+      "sumTubeVolume": 0.00153984,
+      "maxMultiplicity": 3,
+      "avgMultiplicity": 1.002931
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 0.5,
+      "res": 512,
+      "n": 256,
+      "occupiedVolume": 0.00305688,
+      "sumTubeVolume": 0.00307493,
+      "maxMultiplicity": 3,
+      "avgMultiplicity": 1.005903
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 1,
+      "res": 512,
+      "n": 64,
+      "occupiedVolume": 0.0007578,
+      "sumTubeVolume": 0.00076984,
+      "maxMultiplicity": 64,
+      "avgMultiplicity": 1.015888
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 1,
+      "res": 512,
+      "n": 128,
+      "occupiedVolume": 0.00150789,
+      "sumTubeVolume": 0.00154187,
+      "maxMultiplicity": 128,
+      "avgMultiplicity": 1.022531
+    },
+    {
+      "deltaExp": 9,
+      "delta": 0.001953125,
+      "packing": 1,
+      "res": 512,
+      "n": 256,
+      "occupiedVolume": 0.0029837,
+      "sumTubeVolume": 0.00307846,
+      "maxMultiplicity": 256,
+      "avgMultiplicity": 1.031758
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 0,
+      "res": 1024,
+      "n": 64,
+      "occupiedVolume": 0.00019222,
+      "sumTubeVolume": 0.00019224,
+      "maxMultiplicity": 2,
+      "avgMultiplicity": 1.000121
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 0,
+      "res": 1024,
+      "n": 128,
+      "occupiedVolume": 0.00038411,
+      "sumTubeVolume": 0.00038424,
+      "maxMultiplicity": 2,
+      "avgMultiplicity": 1.000325
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 0,
+      "res": 1024,
+      "n": 256,
+      "occupiedVolume": 0.000768,
+      "sumTubeVolume": 0.00076843,
+      "maxMultiplicity": 2,
+      "avgMultiplicity": 1.00056
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 0.5,
+      "res": 1024,
+      "n": 64,
+      "occupiedVolume": 0.0001922,
+      "sumTubeVolume": 0.00019228,
+      "maxMultiplicity": 2,
+      "avgMultiplicity": 1.000392
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 0.5,
+      "res": 1024,
+      "n": 128,
+      "occupiedVolume": 0.00038402,
+      "sumTubeVolume": 0.00038431,
+      "maxMultiplicity": 3,
+      "avgMultiplicity": 1.000732
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 0.5,
+      "res": 1024,
+      "n": 256,
+      "occupiedVolume": 0.00076736,
+      "sumTubeVolume": 0.00076849,
+      "maxMultiplicity": 3,
+      "avgMultiplicity": 1.001479
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 1,
+      "res": 1024,
+      "n": 64,
+      "occupiedVolume": 0.00019072,
+      "sumTubeVolume": 0.00019223,
+      "maxMultiplicity": 64,
+      "avgMultiplicity": 1.007891
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 1,
+      "res": 1024,
+      "n": 128,
+      "occupiedVolume": 0.00038039,
+      "sumTubeVolume": 0.00038464,
+      "maxMultiplicity": 128,
+      "avgMultiplicity": 1.011164
+    },
+    {
+      "deltaExp": 10,
+      "delta": 0.0009765625,
+      "packing": 1,
+      "res": 1024,
+      "n": 256,
+      "occupiedVolume": 0.00075753,
+      "sumTubeVolume": 0.00076938,
+      "maxMultiplicity": 256,
+      "avgMultiplicity": 1.015636
     }
   ],
-  "rowCount": 45,
-  "checksumFnv1a": "70699f40b3e9a0cd"
+  "rowCount": 63,
+  "checksumFnv1a": "b0bcbc92ddf1ece1"
 }

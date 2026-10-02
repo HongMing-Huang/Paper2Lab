@@ -149,12 +149,27 @@ int mainImpl(int argc, char** argv) {
       {5, 0.0, 128}, {5, 0.5, 128}, {5, 1.0, 128},
       {6, 0.0, 192}, {6, 0.5, 192}, {6, 1.0, 192},
   };
-  // argv[1] == "large" appends the high-scale tier served by /api/engine —
-  // grids beyond what a browser page can compute interactively (AGENTS §3.2).
-  if (argc > 1 && std::string(argv[1]) == "large") {
+  // argv[1] selects the tier served by /api/engine — grids beyond what a
+  // browser page can compute interactively (AGENTS §3.2):
+  //   (none) standard: δ 2⁻⁴…2⁻⁶, res ≤192³
+  //   "large"          + δ 2⁻⁷@256³, 2⁻⁸@320³        (≈3.3×10⁷ voxels)
+  //   "xl"             + δ 2⁻⁹@512³                  (≈1.3×10⁸ voxels)
+  //   "xxl"            + δ 2⁻¹⁰@1024³                (≈1.07×10⁹ voxels, ~2.1GB counters)
+  const std::string tier = argc > 1 ? argv[1] : "";
+  if (tier == "large" || tier == "xl" || tier == "xxl") {
     CFGS.insert(CFGS.end(), {
         {7, 0.0, 256}, {7, 0.5, 256}, {7, 1.0, 256},
         {8, 0.0, 320}, {8, 0.5, 320}, {8, 1.0, 320},
+    });
+  }
+  if (tier == "xl" || tier == "xxl") {
+    CFGS.insert(CFGS.end(), {
+        {9, 0.0, 512}, {9, 0.5, 512}, {9, 1.0, 512},
+    });
+  }
+  if (tier == "xxl") {
+    CFGS.insert(CFGS.end(), {
+        {10, 0.0, 1024}, {10, 0.5, 1024}, {10, 1.0, 1024},
     });
   }
   std::string checksumInput;

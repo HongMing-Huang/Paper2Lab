@@ -38,7 +38,7 @@
 ## 3. 计算架构（三个执行位置，同一统一执行器）
 
 1. **Kakeya Hero Demo：TypeScript + Web Worker（Comlink RPC 封装）**——最低延迟。Skills：generateDirections / generateTubes / interpolatePacking / measureVoxelCover / measureMultiplicity / measureUnionVolume / runScaleSweep。
-2. **大尺度：离线预计算 `scripts/precompute_kakeya.cpp`**——C++17 `-O3 -pthread`（`pnpm precompute` 编译并以 `large` 档生成：9 档 δ=2⁻⁴…2⁻⁸ × res 至 320³ = 45 行，FNV-1a 封印），`scripts/build_kakeya_bundle.ts` 把每行转成不可变 `kakeya.voxel` ExperimentRun（engine `cpp-precompute`，稳定 runId `kakeya-cpp-d{δ}-p{packing}-n{N}`），后端 `GET /api/engine/kakeya/precomputed` 供给，页面 `ensurePrecomputedRuns()` **原子幂等导入**（失败回退内置 bundle）——大尺度数据点携带真 runId 可回溯。**跨引擎一致性是硬门**：node 执行器与 C++ 同输入 rel<1e-6（曾靠此测试抓出 C++ 两个移植 bug：原点采样区间写错、mulberry32 状态链错），预计算数据必须过此门才能入库。浏览器小尺度实时、大尺度读预计算（参考 bojieli/kakeya-explainer 的教训：δ=1/1000 达数十亿格子，不可傻算）。
+2. **大尺度：离线预计算 `scripts/precompute_kakeya.cpp`**——C++17 `-O3 -pthread`（`pnpm precompute` 编译并以 `xxl` 档生成：δ=2⁻⁴…2⁻¹⁰ × res 至 1024³ ≈ 1.07×10⁹ 体素（十亿格档，2.1GB 计数器）= 63 行，FNV-1a 封印；档位 large/xl/xxl 可选），`scripts/build_kakeya_bundle.ts` 把每行转成不可变 `kakeya.voxel` ExperimentRun（engine `cpp-precompute`，稳定 runId `kakeya-cpp-d{δ}-p{packing}-n{N}`），后端 `GET /api/engine/kakeya/precomputed` 供给，页面 `ensurePrecomputedRuns()` **原子幂等导入**（失败回退内置 bundle）——大尺度数据点携带真 runId 可回溯。**跨引擎一致性是硬门**：node 执行器与 C++ 同输入 rel<1e-6（曾靠此测试抓出 C++ 两个移植 bug：原点采样区间写错、mulberry32 状态链错），预计算数据必须过此门才能入库。浏览器小尺度实时、大尺度读预计算（参考 bojieli/kakeya-explainer 的教训：δ=1/1000 达数十亿格子，不可傻算）。
 3. **后端引擎（0.2）：Node 常驻桥**——`scripts/engine_server.ts`（stdio 行协议，`node --import tsx` 运行**同一份** `src/skills/executor.ts`）+ `server/engine_bridge.py`（子进程管理/按 id 关联/死亡重启）+ `server/engine_api.py`（`POST /api/engine/execute`·`GET /skills|/runs|/kakeya/precomputed`；输入 256KB 上限；PlayPlan 门控与白名单和浏览器完全同构）。后端由此可无头跑通全链路（Agent 编排→真内核→ExperimentRun），浏览器仍是交互执行位置（外部执行协议不变）。ready 检查含 engine（node 缺失=不健康）。
 4. **PythonScientificRuntime（为下一篇论文预留）**：独立 Worker + Comlink + Pyodide（numpy/scipy），接口先行（ensureNumpy/runPython/solveIVP 风格），**不得拖慢 Kakeya Demo**；Kakeya 路径禁止走 Pyodide。
 4. 本地 LLM（web-llm/transformers.js）：非 P0，仅接口调研。
@@ -153,10 +153,10 @@ v6 登记常量：`AGENT_PACKING_CANDIDATES=[1.0,0.95,0.9,0.85,0.8]`（Agent 挑
 v0.2（2026-10-02 深夜②，后端引擎全链路 + 高规模引擎）：
 
 - [x] **后端引擎服务**：`scripts/engine_server.ts`（Node stdio 行协议，跑同一份统一执行器；ops ping/skills/execute/runs/export/import）+ `server/engine_bridge.py`（asyncio 子进程桥，Popen 阻塞管道全部走 to_thread，死亡自动重启，请求严格串行保血缘顺序）+ `server/engine_api.py`（/api/engine 四端点，256KB 输入上限）；main.py lifespan 关停子进程、/api/ready 增 engine 检查（node 存在性）。pytest 8 项真执行（sin(1)=0.84147…、lv.ode、kakeya.measure、needs_input 门、未知技能拒绝、registry 面、runs 历史、precomputed 供给、ready booted）
-- [x] **高规模引擎**：C++ `large` 档（δ=2⁻⁴…2⁻⁸ × packing{0,.5,1} × N{64,128,256} = 45 行，res 至 320³≈3.3×10⁷ 体素，7.1s/389% CPU）→ `build_kakeya_bundle.ts` 转 45 个 cpp-precompute Run → 前端 `precomputedRuns.ts`（API 优先/内置 bundle 回退，幂等原子导入，`precomputedPointsCell` 派生当前 δ/packing 序列）；ChartUnionNode 假 runId `'precomputed'` 废除——朱砂点全部携带真 runId（点击→Trace）
+- [x] **高规模引擎**：C++ 档位化（`large`=2⁻⁷@256³/2⁻⁸@320³ → `xl`=2⁻⁹@512³ → `xxl`=2⁻¹⁰@**1024³≈1.07×10⁹ 体素**，16GB/10 核实测全档 63 行约 1 分钟、2.1GB 计数器、425% CPU）→ `build_kakeya_bundle.ts` 转 63 个 cpp-precompute Run → 前端 `precomputedRuns.ts`（API 优先/内置 bundle 回退，幂等原子导入，`precomputedPointsCell` 派生当前 δ/packing 序列，δ 芯片与选择网格扩展至 2⁻¹⁰）；ChartUnionNode 假 runId `'precomputed'` 废除——朱砂点全部携带真 runId（点击→Trace）；十亿格档不变量 packing=1⇒maxM=N 精确成立（64/128/256）
 - [x] **跨引擎一致性测试抓出两个真 bug**：① C++ 原点采样上界 `1−1.5a`（应为 `1−a/2`，管可出单位立方体）② mulberry32 按值传参导致 RNG 状态链=哈希回写（TS 是 `a+=K` 链），第一抽后流分叉——修复后 node↔C++ rel≈3e-8（边界体素翻转量级），旧 27 行数据集同源错误已随重生成修正
 - [x] **产品路径无头证据**：render-webgl-test 第 9 步——真实页面 fetch→导入 45 cpp runs、按钮 `CALCULATED · C++ 高规模已载入 ✓`、图表 caption 含 C++ 序列、console 0 错误（夹具静态服实现同形 /api/engine 路由以验证真 fetch 链）；tsx 入 devDeps（`pnpm engine` 直起引擎）；vitest 4 项（bundle 形状/幂等导入/真 runId/跨引擎一致）
-- v0.2 登记常量（hardcoded audit 增补，均为生成器档位/供给面配置）：C++ `CFGS` 标准 9 档 + large 6 档、`NS={64,128,256}`；前端 `PRECOMPUTED_DELTA_EXPS=[4..8]`、`PRECOMPUTED_PACKINGS=[0,0.5,1]`（与生成器档位一一对应）；engine 输入上限 256KB、超时 120s（env PAPER2LAB_ENGINE_TIMEOUT）
+- v0.2 登记常量（hardcoded audit 增补，均为生成器档位/供给面配置）：C++ `CFGS` 标准 9 档 + large 6 档 + xl 3 档(512³) + xxl 3 档(1024³)、`NS={64,128,256}`；前端 `PRECOMPUTED_DELTA_EXPS=[4..10]`、`PRECOMPUTED_PACKINGS=[0,0.5,1]`（与生成器档位一一对应，δ 芯片范围 3…10）；engine 输入上限 256KB、超时 120s（env PAPER2LAB_ENGINE_TIMEOUT）
 
 ## 11. 下一阶段（比赛迭代方向）
 
