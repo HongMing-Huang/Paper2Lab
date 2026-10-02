@@ -3,7 +3,7 @@
 // (Cortex compute engine + Kakeya voxel kernel, node fallback) — no mocks.
 import { describe, expect, it } from 'vitest'
 import { executeSkill, replayRun } from './executor'
-import { getSkill, SKILL_REGISTRY } from './registry'
+import { SKILL_REGISTRY } from './registry'
 import { getExperimentRun, listExperimentRuns } from '../experiments/protocol'
 import { compareRuns, importRuns } from '../experiments/runRepository'
 
@@ -33,11 +33,17 @@ describe('unified executor — gates', () => {
     expect(out.status === 'error' || out.status === 'ok').toBe(true)
   })
 
-  it('unimplemented registry entries answer unsupported, never run', async () => {
-    for (const name of ['geometry.2d', 'ode.solve']) {
-      const out = await executeSkill(name, getSkill(name)!.name === 'geometry.2d' ? { construction: 'perron-tree', params: {} } : { system: {}, initialValues: {}, tSpan: [0, 1] }, plan)
-      expect(out.status, name).toBe('unsupported')
-    }
+  it('registry honesty: every entry implemented ⇒ the unsupported branch is reachable only for hypothetical future gaps', async () => {
+    // M5 wired geometry.2d + ode.solve; there are no unimplemented entries
+    // left. The unsupported branch is still contract-pinned via the API shape:
+    // a skill name absent from the registry answers unknown_skill, and an
+    // implemented-but-unwired system kind (lorenz) answers a hard error.
+    const unknown = await executeSkill('geometry.3d', {})
+    expect(unknown.status).toBe('error')
+    if (unknown.status === 'error') expect(unknown.code).toBe('unknown_skill')
+    const unwired = await executeSkill('ode.solve', { system: { kind: 'lorenz' }, initialValues: {}, tSpan: [0, 1] }, plan)
+    expect(unwired.status).toBe('error')
+    expect(SKILL_REGISTRY.every((s) => s.implemented)).toBe(true)
   })
 
   it('formal numeric skills refuse to run without a PlayPlan', async () => {
@@ -53,14 +59,22 @@ describe('unified executor — gates', () => {
   })
 
   it('every registry entry marked implemented resolves in the executor', () => {
-    // executor implements exactly the implemented:true set
-    const implemented = SKILL_REGISTRY.filter((s) => s.implemented).map((s) => s.name)
-    for (const name of implemented) {
-      // each has a live branch: verified by executing a minimal valid input
-      // (cheap ones only here; heavy kakeya ones covered below)
-      expect(getSkill(name)?.implemented, name).toBe(true)
-    }
-    expect(implemented).not.toContain('geometry.2d')
+    // M5 closed the last gaps: all 10 registered skills have real branches
+    const implemented = SKILL_REGISTRY.filter((s) => s.implemented).map((s) => s.name).sort()
+    expect(implemented).toEqual(
+      [
+        'experiment.compare',
+        'experiment.fork',
+        'formula.evaluate',
+        'formula.plot',
+        'geometry.2d',
+        'kakeya.generate',
+        'kakeya.measure',
+        'kakeya.sweep',
+        'ode.solve',
+        'paper.trace-source',
+      ].sort(),
+    )
   })
 })
 

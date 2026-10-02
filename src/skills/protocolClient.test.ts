@@ -160,4 +160,43 @@ describe('protocol client — full turn with REAL execution', () => {
     for await (const e of readSse(chunks())) events.push(e)
     expect(events.map((e) => e.type)).toEqual(['plan_created', 'require_execution', 'done'])
   })
+
+  it('M6 连续两回合：翻倍 fork 后，在分支上减半操作正确分支', async () => {
+    const baseId = seedExplorer('multi-base', 1)
+    await explorerStore.waitForRun('multi-base')
+    const baseRun = explorerStore.get('multi-base')!.run!
+
+    const desk = createDesk(baseId)
+    // turn 1: double a (1→2, in range)
+    const dblScript = [
+      `data: ${JSON.stringify({ type: 'plan_created', plan: { planId: 'mp1', skill: 'formula.plot', metrics: [], nonClaims: [] } })}`,
+      `data: ${JSON.stringify({ type: 'require_execution', toolCallId: 'mt-1', replyId: 'mr-1', tool: 'scientific_execute', args: { deskKind: 'formula', steps: [
+        { op: 'experiment.fork' }, { op: 'formula.scale', param: 'a', value: 2 }, { op: 'formula.plot' },
+      ] } })}`,
+    ]
+    const t1 = await runProtocolTurn(desk, '把 a 翻倍', { deskKind: 'formula', params: ['a', 'b'] }, sopTransport({ 把a翻倍: dblScript, '把 a 翻倍': dblScript }), 'multi-sess')
+    const forkRunId = t1.runs[0].runId
+    expect(forkRunId).toBeTruthy()
+    // desk now points at the fork; the fork's params doubled
+    expect(explorerStore.get(t1.targetExplorerId)!.params.a).toBe(2)
+
+    // turn 2 ON THE BRANCH: halve a (2→1) — operates the fork, not the base
+    const halveScript = [
+      `data: ${JSON.stringify({ type: 'plan_created', plan: { planId: 'mp2', skill: 'formula.plot', metrics: [], nonClaims: [] } })}`,
+      `data: ${JSON.stringify({ type: 'require_execution', toolCallId: 'mt-2', replyId: 'mr-2', tool: 'scientific_execute', args: { deskKind: 'formula', steps: [
+        { op: 'experiment.fork' }, { op: 'formula.scale', param: 'a', value: 0.5 }, { op: 'formula.plot' },
+      ] } })}`,
+    ]
+    const desk2 = createDesk(t1.targetExplorerId)
+    desk2.forkedIds = [...desk.forkedIds]
+    const t2 = await runProtocolTurn(desk2, '在这个分支上减半', { deskKind: 'formula', params: ['a', 'b'], selectedRunId: forkRunId }, sopTransport({ 在这个分支上减半: halveScript }), 'multi-sess')
+
+    const branchRun = getExperimentRun(t2.runs[0].runId)!
+    expect(branchRun.spec.params.a).toBe(1) // 2 × 0.5 — came from the BRANCH value
+    expect(branchRun.parentRunId).toBe(forkRunId) // lineage chains: base → fork1 → fork2
+    // base untouched across both turns
+    expect(explorerStore.get('multi-base')!.params.a).toBe(1)
+    const baseAfter = getExperimentRun(baseRun.runId)!
+    expect((baseAfter.result as { peak: number }).peak).toBeCloseTo((baseRun.result as { peak: number }).peak, 12)
+  })
 })

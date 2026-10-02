@@ -85,7 +85,7 @@ export function createDesk(specId: string): HeadlessDesk {
 export async function runProtocolTurn(
   desk: HeadlessDesk,
   intent: string,
-  context: { deskKind: 'formula' | 'kakeya'; params: string[]; paperTitle?: string },
+  context: { deskKind: 'formula' | 'kakeya'; params: string[]; paperTitle?: string; selectedRunId?: string | null },
   transport: ProtocolTransport,
   sessionId: string,
 ): Promise<ProtocolClientResult> {
