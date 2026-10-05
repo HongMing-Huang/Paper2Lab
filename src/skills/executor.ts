@@ -374,6 +374,25 @@ const COMPUTE_BY_KIND: Record<string, string> = {
   'kakeya.sweep': 'kakeya.sweep',
   'perron.tree': 'geometry.2d',
   'lv.ode': 'ode.solve',
+  'mujoco.sim': 'mujoco.simulate',
+}
+
+// ---------------------------------------------------------------------------
+// Engine-side skill runners: skills whose kernels need Node-only facilities
+// (e.g. the MuJoCo WASM module's VFS) register their implementation from the
+// engine process. The browser bundle sees the SAME registry entry and an
+// honest "engine-only" answer — numbers never differ between surfaces.
+// ---------------------------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const extraRunners = new Map<string, (input: any, opts: ExecuteOptions) => Promise<ExperimentRun>>()
+
+/** register an engine-side implementation for a skill (Node-only kernels) */
+export function registerSkillRunner(
+  name: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  runner: (input: any, opts: ExecuteOptions) => Promise<ExperimentRun>,
+): void {
+  extraRunners.set(name, runner)
 }
 
 /** re-execute a historical run from its recorded spec (real replay, no mocks) */
@@ -440,12 +459,31 @@ function applyForkChanges(skillName: string, forkInput: Input, changes: Record<s
       Object.assign(forkInput, changes)
       return
     }
+    case 'mujoco.simulate': {
+      // physics params live in the nested `params` object (gravityZ/windX/timestep)
+      const params: Record<string, number> = { ...((forkInput.params as Record<string, number>) ?? {}) }
+      const known = ['gravityZ', 'windX', 'timestep']
+      const unknown = Object.keys(changes).filter((k) => !known.includes(k))
+      if (unknown.length) throw new Error(`fork(mujoco.simulate): unknown parameters ${JSON.stringify(unknown)} — known: ${JSON.stringify(known)}`)
+      Object.assign(params, changes)
+      forkInput.params = params
+      return
+    }
     default:
       throw new Error(`fork: parameter changes not supported for skill ${skillName}`)
   }
 }
 
 function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  const model = run.spec.model as Record<string, unknown> | undefined
+  if (skillName === 'mujoco.simulate') {
+    if (!model?.scene) return null
+    return {
+      scene: model.scene,
+      steps: model.steps ?? 100,
+      sampleEvery: model.sampleEvery ?? 10,
+      params: { ...((model.params as Record<string, number>) ?? {}) },
+    }
+  }
   if (skillName === 'formula.plot') {
     if (!model?.expression) return null
     return {
@@ -493,7 +531,7 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  c
 // ---- the single entry -------------------------------------------------------
 
 /** skills whose runs are formal evidence and therefore need a PlayPlan */
-const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve'])
+const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve', 'mujoco.simulate'])
 
 export async function executeSkill<T = unknown>(
   name: string,
@@ -555,6 +593,17 @@ export async function executeSkill<T = unknown>(
       } catch (err) {
         return { status: 'error', code: 'invalid_input', message: err instanceof Error ? err.message : String(err) }
       }
+    }
+    if (name === 'mujoco.simulate') {
+      const runner = extraRunners.get(name)
+      if (!runner) {
+        return {
+          status: 'unsupported',
+          skill: name,
+          message: 'mujoco.simulate runs in the backend engine (Node WASM) — use server execution mode / the engine API; the page imports the resulting Runs',
+        }
+      }
+      return { status: 'ok', run: (await runner(input as Input, opts)) as ExperimentRun<T> }
     }
     if (name === 'paper.trace-source') {
       const { anchorId } = input as { anchorId: string }

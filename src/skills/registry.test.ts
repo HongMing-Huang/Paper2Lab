@@ -11,6 +11,7 @@ describe('Scientific Skill Registry', () => {
         'formula.evaluate',
         'formula.plot',
         'geometry.2d',
+        'mujoco.simulate',
         'kakeya.generate',
         'kakeya.measure',
         'kakeya.sweep',
@@ -25,7 +26,7 @@ describe('Scientific Skill Registry', () => {
       expect(s.description.length, s.name).toBeGreaterThan(10)
       expect(s.inputSchema).toHaveProperty('type', 'object')
       expect(s.outputSchema).toHaveProperty('type')
-      expect(['cortex-js', 'observable-cells', 'kakeya-worker', 'pyodide', 'canvas']).toContain(s.runtime)
+      expect(['cortex-js', 'observable-cells', 'kakeya-worker', 'pyodide', 'wasm', 'canvas']).toContain(s.runtime)
       expect(['jsxgraph', 'r3f', 'plot', 'none', 'canvas']).toContain(s.renderer)
       expect(typeof s.deterministic).toBe('boolean')
       expect(s.version).toMatch(/@/)

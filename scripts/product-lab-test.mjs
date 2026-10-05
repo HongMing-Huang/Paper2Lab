@@ -42,6 +42,7 @@ async function main() {
   const failures = []
   const consoleErrors = []
   page.on('console', (m) => m.type() === 'error' && consoleErrors.push(m.text()))
+  page.on('requestfailed', (r) => console.log(`[reqfail] ${r.url().slice(0, 110)} ${r.failure()?.errorText ?? ''}`))
   page.on('pageerror', (e) => consoleErrors.push(String(e)))
 
   const frameState = () => page.evaluate(() => {
@@ -128,8 +129,13 @@ async function main() {
     if (!box) {
       failures.push('3D experiment paper did not grow')
     } else {
-      const shot = await page.screenshot({ clip: box })
-      console.log(`[desk] 3D pixels in tracked rect: ${shot.length}B`)
+      // clamp the clip rect into the viewport (spotlight hero may overflow)
+      const vw = 1500, vh = 950
+      const cx0 = Math.max(0, Math.round(box.x)), cy0 = Math.max(0, Math.round(box.y))
+      const cx1 = Math.min(vw, Math.round(box.x + box.width)), cy1 = Math.min(vh, Math.round(box.y + box.height))
+      const clip = cx1 - cx0 > 40 && cy1 - cy0 > 40 ? { x: cx0, y: cy0, width: cx1 - cx0, height: cy1 - cy0 } : null
+      const shot = clip ? await page.screenshot({ clip }) : await page.screenshot()
+      console.log(`[desk] 3D pixels in tracked rect: ${shot.length}B${clip ? '' : ' (full page fallback)'}`)
       if (shot.length < 2500) failures.push(`Run-driven 3D view looks empty (${shot.length}B)`)
 
       // drag the family UP → packing reverse-writes → Run badge re-renders.

@@ -9,6 +9,7 @@ export type SkillRuntime =
   | 'observable-cells' // Observable Runtime param→curve DAG
   | 'kakeya-worker' // Comlink voxel/tube worker (ts-kakeya-worker)
   | 'pyodide' // Pyodide scipy runtime
+  | 'wasm' // Emscripten WASM kernel (engine-side Node, e.g. MuJoCo)
   | 'canvas' // pure canvas orchestration (no numerics)
 
 export type SkillRenderer = 'jsxgraph' | 'r3f' | 'plot' | 'none' | 'canvas'
@@ -247,6 +248,29 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     deterministic: true,
     version: 'desk@v6',
     evidence: 'PAPER',
+    implemented: true,
+  },
+  {
+    name: 'mujoco.simulate',
+    description:
+      'Headless MuJoCo simulation of a vendored demo scene (upstream zalo/mujoco_wasm@f6b202c, @mujoco/mujoco 3.12.0 single-thread WASM): real mj_step physics with model-level params (gravityZ/windX/timestep). Runs in the backend engine; the page imports the resulting Runs.',
+    inputSchema: {
+      type: 'object',
+      required: ['scene', 'steps'],
+      properties: {
+        scene: { type: 'string' },
+        steps: { type: 'integer' },
+        sampleEvery: { type: 'integer' },
+        params: { type: 'object' },
+      },
+    },
+    outputSchema: { type: 'object', required: ['metrics'], properties: { metrics: { type: 'object' } } },
+    runtime: 'wasm',
+    renderer: 'r3f',
+    deterministic: true,
+    version: 'mujoco-wasm@3.12.0',
+    evidence: 'CALCULATED',
+    runKind: 'mujoco.sim',
     implemented: true,
   },
 ]

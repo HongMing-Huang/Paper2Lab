@@ -12,7 +12,7 @@
 import { executeSkill } from './executor'
 import type { ExperimentRun } from '../experiments/protocol'
 
-export type DeskKind = 'formula' | 'kakeya' | 'ode' | 'geometry'
+export type DeskKind = 'formula' | 'kakeya' | 'ode' | 'geometry' | 'mujoco'
 
 export interface StepOp {
   op: string
@@ -34,6 +34,7 @@ const TERMINAL_BY_DESK: Record<DeskKind, { skill: string; op: string }> = {
   kakeya: { skill: 'kakeya.measure', op: 'kakeya.measure' },
   ode: { skill: 'ode.solve', op: 'ode.solve' },
   geometry: { skill: 'geometry.2d', op: 'geometry.plot' },
+  mujoco: { skill: 'mujoco.simulate', op: 'mujoco.simulate' },
 }
 
 /** where a parameter lives inside each skill's input (mirrors applyForkChanges) */
@@ -48,6 +49,10 @@ function readParam(desk: DeskKind, base: Record<string, unknown>, param: string)
     return sys?.params?.[param] ?? init?.[param]
   }
   if (desk === 'geometry') {
+    const params = (base.params as Record<string, number>) ?? {}
+    return params[param]
+  }
+  if (desk === 'mujoco') {
     const params = (base.params as Record<string, number>) ?? {}
     return params[param]
   }
@@ -84,9 +89,23 @@ function metricsOf(desk: DeskKind, result: unknown): Record<string, number> {
     }
     return out
   }
-  const computedArea = num(r.computedArea)
-  const boundArea = num(r.boundArea)
-  return { ...(computedArea !== undefined ? { computedArea } : {}), ...(boundArea !== undefined ? { boundArea } : {}) }
+  if (desk === 'geometry') {
+    const computedArea = num(r.computedArea)
+    const boundArea = num(r.boundArea)
+    return { ...(computedArea !== undefined ? { computedArea } : {}), ...(boundArea !== undefined ? { boundArea } : {}) }
+  }
+  if (desk === 'mujoco') {
+    const m = (r.metrics ?? {}) as Record<string, unknown>
+    const finalTime = num(m.finalTime)
+    const qposNormFinal = num(m.qposNormFinal)
+    const comZFinal = num(m.comZFinal)
+    return {
+      ...(finalTime !== undefined ? { finalTime } : {}),
+      ...(qposNormFinal !== undefined ? { qposNormFinal } : {}),
+      ...(comZFinal !== undefined ? { comZFinal } : {}),
+    }
+  }
+  return {}
 }
 
 /**

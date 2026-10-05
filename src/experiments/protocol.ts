@@ -12,6 +12,7 @@ export type ExperimentKind =
   | 'perron.tree' // 2D Perron tree measurement
   | 'formula.curve' // generic formula explorer (Cortex→JS sampling)
   | 'formula.value' // single-point formula evaluation (Cortex→JS)
+  | 'mujoco.sim' // MuJoCo WASM headless simulation (vendored demo scenes)
 
 export interface ExperimentSpec {
   kind: ExperimentKind

@@ -80,6 +80,34 @@ async def test_engine_executes_ode_and_kakeya_kernels() -> None:
 
 
 @pytest.mark.asyncio
+async def test_engine_executes_mujoco_physics() -> None:
+    """the wasm physics kernel runs INSIDE the engine child process — real
+    mj_step numbers come back inside an ExperimentRun (scene provenance kept)"""
+    async with LifespanManager(app) as mgr:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
+            out = await _execute(
+                client,
+                {
+                    "skill": "mujoco.simulate",
+                    "input": {"scene": "simple.xml", "steps": 100, "sampleEvery": 50, "params": {"gravityZ": -1.62}},
+                    "planId": "plan-mujoco",
+                },
+            )
+            assert out["status"] == "ok", out
+            run = out["run"]
+            assert run["spec"]["kind"] == "mujoco.sim"
+            assert run["engine"] == "mujoco-wasm"
+            assert run["engineVersion"] == "3.12.0"
+            assert run["spec"]["params"]["gravityZ"] == -1.62
+            assert run["spec"]["model"]["scene"] == "simple.xml"
+            assert len(run["spec"]["model"]["scenesChecksum"]) == 16
+            m = run["result"]["metrics"]
+            assert m["allFinite"] is True
+            assert m["finalTime"] == pytest.approx(0.2, abs=1e-6)  # 100 × timestep 0.002
+            assert m["qposNormFinal"] > 0
+
+
+@pytest.mark.asyncio
 async def test_engine_playplan_gate_applies_headless() -> None:
     async with LifespanManager(app) as mgr:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
