@@ -1,6 +1,7 @@
 // v0.3 agent foundation: step-runner (four desks, everything through the
 // registered executor) + canonical-skill aliases resolve to real runs.
 import { describe, expect, it } from 'vitest'
+import '../physics/registerMujocoRunner'
 import { runAgentSteps } from './agentSteps'
 import { executeSkill } from './executor'
 import { SKILL_REGISTRY } from './registry'
@@ -70,6 +71,21 @@ describe('agentSteps: every desk completes through the registry', () => {
     expect(out.status).toBe('ok')
     expect(out.runs[0].runId).toMatch(/^perron-tree-/)
     expect(out.runs[0].metrics.computedArea).toBeGreaterThan(0)
+  })
+
+  it('mujoco desk: gravity scale ×2 (downward) + simulate + compare — real physics', async () => {
+    const out = await runAgentSteps('mujoco', [
+      { op: 'experiment.fork' },
+      { op: 'mujoco.scale', param: 'gravityZ', value: -2 },
+      { op: 'mujoco.simulate' },
+      { op: 'experiment.compare' },
+    ], { scene: 'simple.xml', steps: 200, sampleEvery: 100, params: { gravityZ: -9.81 } }, plan.planId)
+    expect(out.status).toBe('ok')
+    expect(out.runs[0].runId).toMatch(/^mujoco-sim-/)
+    expect(out.runs[0].metrics.finalTime).toBeGreaterThan(0)
+    expect(out.runs[0].metrics.qposNormFinal).toBeGreaterThan(0)
+    const cmp = out.comparison as { runA: string; runB: string }
+    expect(cmp.runA).not.toBe(cmp.runB)
   })
 
   it('unknown ops and missing params are explicit errors, never silent no-ops', async () => {

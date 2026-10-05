@@ -11,6 +11,9 @@ importers:
       '@cortex-js/compute-engine':
         specifier: ^0.142.0
         version: 0.142.0
+      '@mujoco/mujoco':
+        specifier: 3.12.0
+        version: 3.12.0
       '@observablehq/plot':
         specifier: ^0.6.17
         version: 0.6.17
@@ -50,6 +53,9 @@ importers:
       three:
         specifier: ^0.186.0
         version: 0.186.1
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
     devDependencies:
       '@types/node':
         specifier: ^26.6.3
@@ -69,9 +75,6 @@ importers:
       playwright-core:
         specifier: ^1.63.0
         version: 1.63.0
-      tsx:
-        specifier: ^4.23.15
-        version: 4.23.15
       typescript:
         specifier: ~5.9.0
         version: 5.9.3
@@ -383,6 +386,9 @@ packages:
     resolution: {integrity: sha512-2Z0FATFHaoYJ8b+Y4y4Hgfn3FRFwuU5zRrk+9dFWp4uGAdHGqVEdP7HP+gLA3X469KXHmfupJaUbKo1b/aDKIg==}
     peerDependencies:
       three: '>= 0.159.0'
+
+  '@mujoco/mujoco@3.12.0':
+    resolution: {integrity: sha512-MPBSdhD7XsVkKD2owRlzf2mZzd8Qiz7v3zK9MaPc6X7ZS7LdBpQ5bgmdSrvXy6AsKHGlSocWRP9UmdV/I5+cZA==}
 
   '@napi-rs/canvas-android-arm64@0.1.100':
     resolution: {integrity: sha512-hjhCKhntPv9+t4ckHymdx0phYNcVW+GKQR6Lzw2zE+pOVjOplSmtx9nNNknTjbEDLcuLZqA1y8ufKg1XfgftzQ==}
@@ -2811,6 +2817,8 @@ snapshots:
     dependencies:
       promise-worker-transferable: 1.0.4
       three: 0.186.1
+
+  '@mujoco/mujoco@3.12.0': {}
 
   '@napi-rs/canvas-android-arm64@0.1.100':
     optional: true

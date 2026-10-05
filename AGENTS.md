@@ -165,6 +165,16 @@ v0.3（2026-10-03 凌晨②，Agent 底座收口：无头全回合 + canonical �
 - [x] **canonical 技能别名**：registry 增 `aliases`（fork_experiment / compare_experiments / simulate_geometry / measure_volume / measure_multiplicity / run_scale_sweep ↔ 对应注册技能，输入输出契约相同）；executeSkill 在分发前归一化别名（同受 PlayPlan 门控）；`/api/engine/skills` 面板暴露别名
 - [x] 验证：vitest **177/177**（+8：四桌面步进/拒绝路径/别名真执行/别名同受门控）· pytest 快集 **36/36**（+5：四桌面 server 模式全回合 SSE 断言 + 守卫；真数字断言 peak≈|a·2|、conservedDrift<1e-3）· 双产品脚本 PASS · 真实 HTTP SSE 冒烟（plan→tool_started(server)→experiment_completed peak=1.99998）。**坑：Python rf-string 里正则量词 `{0,6}` 会被当成 f-string 替换字段渲染成 "(0, 6)"**——量词必须写 `{{0,6}}`（本坑曾令 group 编号偏移、float('设为') 崩溃）
 
+v0.5（2026-10-05②，MuJoCo 物理底座 + 魔搭 Docker Studio 可部署）：
+
+- [x] **上游锁定**：`zalo/mujoco_wasm@f6b202ca…`（其依赖 @mujoco/mujoco@3.12.0 官方单线程 WASM，npm 锁定）；`scripts/vendor_mujoco_scenes.ts` 从该提交 tarball（https+host 白名单、XML 拒 DOCTYPE/ENTITY）内置 **17 场景 54 文件**到 `src/physics/scenes/`（manifest 带 sha256 与 provenance；flex.xml 按上游积分器兼容问题排除）
+- [x] **Stage A 内核**：`src/physics/mujocoKernel.ts`——上游 test_load.mjs 无头范式（MEMFS 挂载 + mj_loadXML + mj_step），参数在步进前写入真 mjModel.opt（gravityZ/windX/timestep），采样 qpos/qvel/qacc + 指标；**17/17 场景 100 步全有限实测**（含上游未测的 humanoid_body）
+- [x] **技能/协议（C）**：registry 新增 `mujoco.simulate`（deterministic/CALCULATED/runKind `mujoco.sim`/PlayPlan 门）；`registerSkillRunner` 引擎侧注册机制（Node-only 内核不进浏览器包；浏览器得到诚实的 engine-only unsupported）；experiment.fork 嵌套 params 合并（gravityZ/windX/timestep 白名单）+ COMPUTE_BY_KIND/inputFromSpec replay
+- [x] **Stage B 接口面**：`src/physics/playback.ts` 纯状态机（set_params/start/pause/reset/export_run；clamp、参数变更暂停并置 needsSimulate、无 Run 拒绝 start）——播放器只消费 Run，证据一律来自 simulate
+- [x] **Stage D Agent**：agentSteps 第五桌面 `mujoco`（set/scale/simulate/compare；重力加倍=向下×2）+ 意图解析 + server 执行模式全回合（引擎子进程内真 WASM 物理）
+- [x] **Stage E 魔搭 Docker**：Dockerfile 三阶段（web 构建 / engine-deps 生产 node_modules（tsx 已移 runtime deps）/ python+node 单源 7860）；`EXPOSE 7860`、`0.0.0.0`、`PAPER2LAB_DATA_DIR=/mnt/workspace`、mujoco.wasm 同源拷贝 public/assets；npmjs 出网不稳时 npmmirror 回退（integrity 锁定不变）；`scripts/ms-container-smoke.sh` 容器冒烟（health/ready/容器内 mujoco 真算/SPA+wasm 200/重启持久化）
+- [x] 验证：vitest **216/216**（+28：17 场景参数化、确定性 replay 1e-12、月球重力改变轨迹、PlayPlan 门、血缘 fork+未知参数拒绝、playback 状态机）· pytest 快集 **37/37**（+mujoco 引擎真算 ASGI + server 模式全回合 finalTime=0.4 精确）· tsc 0 错 · 容器冒烟见脚本输出。**坑：@mujoco/mujoco 的 data.qvel/qacc 长度是 nv≠nq（越界读出 NaN）**；corepack 在构建网络差时用 COREPACK_NPM_REGISTRY=npmmirror；**交互验收待验证：拖拽施力（mj_applyFT+射线选中，参照上游 main.js）、3D 画面、鼠标命中**——本轮未启动 GUI
+
 v0.4（2026-10-05，画布与 Agent 底座升级：Frame Layouts + AgentActionUtil + Drei View，PR #11 关联 issues #11–#13）：
 
 - [x] **Frame Layouts 移植**（源码 tldraw v5.5.0 apps/examples frame-layouts）：`src/desk/boardLayout.ts` 纯函数布局（free/row/grid/spotlight——首个子节点放大为主实验、其余并排缩略，空板不产生 NaN）+ `src/desk/labFrame.tsx` `p2l-lab` 帧（BaseFrameLikeShapeUtil：onChildrenChange 自动重排、onDropShapesOver/onDragShapesOut 动画重排、仅 free 可手动缩放、头栏四种模式切换）；PaperDesk 全部生长点（paper/formula/experiment/chart/source/3d）以 parentId 入帧——论文旁逐步长出实验纸、增删自动重排

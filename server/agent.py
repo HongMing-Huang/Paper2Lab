@@ -251,6 +251,46 @@ def _parse_geometry_intent(q: str) -> list[dict] | None:
     return None
 
 
+def _parse_mujoco_intent(q: str, params: list[str]) -> list[dict] | None:
+    """physics desk: MuJoCo model-level parameters (gravity/wind/timestep)."""
+    if not params:
+        params = ["gravityZ", "windX", "timestep"]
+    target = next((p for p in params if re.search(rf"\b{p}\b", q)), None)
+    if target is None and re.search(r"重力|gravity", q, re.I):
+        target = "gravityZ"
+    if target is None and re.search(r"风|wind", q, re.I):
+        target = "windX"
+    if target is None:
+        return None
+    m = re.search(rf"(设为|改为|置为|调整为|set(?:\s+to)?)\s*{_NUM}", q)
+    if m:
+        return [
+            {"op": "experiment.fork"},
+            {"op": "mujoco.set", "param": target, "value": float(m.group(2))},
+            {"op": "mujoco.simulate"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(rf"(增大|增加|放大|加倍|翻倍)(一倍|1倍|两倍|2倍)?|double\s+{target}", q):
+        scale = -2.0 if target == "gravityZ" else 2.0  # gravity doubles DOWNWARD (−g)
+        return [
+            {"op": "experiment.fork"},
+            {"op": "mujoco.scale", "param": target, "value": scale},
+            {"op": "mujoco.simulate"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(rf"(减少一半|减半|减到一半|缩小一半|halve\s+{target})", q):
+        scale = 0.5 if target != "gravityZ" else -0.5
+        return [
+            {"op": "experiment.fork"},
+            {"op": "mujoco.scale", "param": target, "value": scale},
+            {"op": "mujoco.simulate"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(对比|比较|compare)", q):
+        return [{"op": "experiment.compare"}]
+    return None
+
+
 def sop_plan(intent: str, context: dict) -> dict | None:
     desk = context.get("deskKind", "formula")
     if desk == "kakeya":
@@ -259,6 +299,8 @@ def sop_plan(intent: str, context: dict) -> dict | None:
         steps = _parse_ode_intent(intent, list(context.get("params", ["alpha", "beta", "gamma", "delta"])))
     elif desk == "geometry":
         steps = _parse_geometry_intent(intent)
+    elif desk == "mujoco":
+        steps = _parse_mujoco_intent(intent, list(context.get("params", [])))
     else:
         steps = _parse_formula_intent(intent, list(context.get("params", [])))
     if not steps:
@@ -267,6 +309,7 @@ def sop_plan(intent: str, context: dict) -> dict | None:
         "kakeya": ("kakeya.measure", "ts-kakeya-worker@v3", "r3f", ["unionVolume", "multiplicity"]),
         "ode": ("ode.solve", "ts-rk4@ode-rk4-0.1", "plot", ["finalPrey", "finalPredator", "conservedDrift"]),
         "geometry": ("geometry.2d", "perron-kernel@0.1", "svg", ["computedArea", "boundArea"]),
+        "mujoco": ("mujoco.simulate", "mujoco-wasm@3.12.0", "r3f", ["finalTime", "qposNormFinal", "comZFinal"]),
     }.get(desk, ("formula.plot", "cortex-ce@0.142.0", "jsxgraph", ["curve", "peak", "integral"]))
     return {
         "planId": f"plan-{uuid.uuid4().hex[:8]}",
@@ -597,7 +640,7 @@ async def turn(body: TurnBody) -> StreamingResponse:
     session = _sop_sessions.setdefault(body.sessionId, SopSession(id=body.sessionId))
     desk = str(body.context.get("deskKind", "formula"))
     server_mode = body.context.get("execution") == "server"
-    if not server_mode and desk in ("ode", "geometry"):
+    if not server_mode and desk in ("ode", "geometry", "mujoco"):
         # these desks have no browser execution surface (agentBridge executes
         # formula/kakeya only) — don't promise a turn that can never complete
         return _sse(_single_event("done", reason="not-an-experiment"))

@@ -39,6 +39,7 @@ ODE_BASE = {
     "tSpan": [0, 5],
 }
 GEOMETRY_BASE = {"construction": "perron-tree", "params": {"k": 2, "alpha": 0.7}}
+MUJOCO_BASE = {"scene": "simple.xml", "steps": 200, "sampleEvery": 100, "params": {"gravityZ": -9.81}}
 
 
 async def _turn(client: httpx.AsyncClient, intent: str, context: dict) -> list[dict]:
@@ -108,6 +109,24 @@ async def test_geometry_turn_completes_server_side() -> None:
             run = next(e for e in events if e["type"] == "experiment_completed")
             assert run["runId"].startswith("perron-tree-")
             assert run["metrics"]["computedArea"] > 0
+
+
+@pytest.mark.asyncio
+async def test_mujoco_turn_completes_server_side() -> None:
+    """physics desk: gravity doubling runs REAL MuJoCo wasm physics in the
+    engine child process and streams the resulting ExperimentRun back."""
+    async with LifespanManager(app) as mgr:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
+            events = await _turn(client, "把重力加倍试试", {"deskKind": "mujoco", "execution": "server", "params": ["gravityZ"], "base": MUJOCO_BASE})
+            types = [e["type"] for e in events]
+            assert types[-1] == "done" and events[-1]["reason"] == "completed"
+            assert "require_execution" not in types
+            run = next(e for e in events if e["type"] == "experiment_completed")
+            assert run["runId"].startswith("mujoco-sim-")
+            assert run["metrics"]["finalTime"] == pytest.approx(0.4, abs=1e-6)  # 200 × timestep 0.002
+            assert run["metrics"]["qposNormFinal"] > 0
+            cmp_evt = next(e for e in events if e["type"] == "comparison_created")
+            assert cmp_evt["comparison"]["runA"] != cmp_evt["comparison"]["runB"]
 
 
 @pytest.mark.asyncio

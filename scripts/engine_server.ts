@@ -22,6 +22,8 @@ import { runAgentSteps, type DeskKind } from '../src/skills/agentSteps.ts'
 import { SKILL_REGISTRY } from '../src/skills/registry.ts'
 import { exportExperimentRuns, listExperimentRuns } from '../src/experiments/protocol.ts'
 import { importRuns } from '../src/experiments/runRepository.ts'
+// registers the engine-side mujoco.simulate runner (Node-only kernel)
+import '../src/physics/registerMujocoRunner.ts'
 
 const t0 = Date.now()
 let queue: Promise<unknown> = Promise.resolve()
