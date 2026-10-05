@@ -2,7 +2,7 @@
 // component owns the editor and turns intents into shape growth/camera moves.
 export type DeskEvent =
   | { kind: 'marker-click'; anchorId: string }
-  | { kind: 'play'; anchorId: string }
+  | { kind: 'play'; anchorId: string; latex?: string }
   | { kind: 'fork'; explorerId: string; anchorId: string }
   | { kind: 'compare' }
   | { kind: 'source'; anchorId: string }

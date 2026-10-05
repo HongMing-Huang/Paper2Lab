@@ -25,6 +25,8 @@ import { FormulaChart, SERIES_COLORS } from './FormulaChart'
 import { analyzeFormula } from '../formula/analyze'
 import { explorerStore } from './explorerStore'
 import { agentState } from './agentState'
+import { LabFrameShapeUtil } from './labFrame'
+import { RunView3DHost } from './RunView3D'
 
 // ---- shape props registry (module augmentation) ---------------------------
 
@@ -64,6 +66,11 @@ declare module '@tldraw/tldraw' {
       w: number
       h: number
     }
+    'p2l-3d': {
+      title: string
+      w: number
+      h: number
+    }
   }
   export interface TLGlobalBindingPropsMap {
     'p2l-trace': Record<string, never>
@@ -79,7 +86,7 @@ type SourceShape = TLShape<'p2l-source'>
 /** interactive zone helper — stop events before they reach the tldraw canvas
  *  (tldraw 5 removed the element-based stopEventPropagation; stopping React
  *  synthetic events at this div keeps chip drags / buttons / JSXGraph local) */
-function Interactive({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Interactive({ children, className }: { children: React.ReactNode; className?: string }) {
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   return (
     <div
@@ -540,12 +547,41 @@ class SourceShapeUtil extends ShapeUtil<SourceShape> {
   }
 }
 
+// ---- p2l-3d: Run-driven 3D experiment paper (Drei View host) ----------------
+type Run3DShape = TLShape<'p2l-3d'>
+
+class Run3DShapeUtil extends ShapeUtil<Run3DShape> {
+  static override type = 'p2l-3d' as const
+  static override props = { title: T.string, w: T.number, h: T.number }
+  getDefaultProps(): Run3DShape['props'] {
+    return { title: 'Kakeya 3D（Run 驱动）', w: 380, h: 320 }
+  }
+  getGeometry(shape: Run3DShape) {
+    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true })
+  }
+  component(shape: Run3DShape) {
+    return (
+      <HTMLContainer className="run3d-paper">
+        <div className="run3d-title">{shape.props.title}</div>
+        <RunView3DHost shapeId={shape.id} />
+      </HTMLContainer>
+    )
+  }
+  getIndicatorPath(shape: Run3DShape) {
+    const path = new Path2D()
+    path.rect(0, 0, shape.props.w, shape.props.h)
+    return path
+  }
+}
+
 export const deskShapeUtils: TLAnyShapeUtilConstructor[] = [
+  LabFrameShapeUtil,
   PaperShapeUtil,
   FormulaShapeUtil,
   ExperimentShapeUtil,
   ChartShapeUtil,
   SourceShapeUtil,
+  Run3DShapeUtil,
 ]
 
 /** source-trace binding (AGENTS.md v6 §8): experiment paper → source formula.

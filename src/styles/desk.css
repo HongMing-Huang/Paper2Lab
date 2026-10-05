@@ -529,3 +529,23 @@
   color: #4d4232;
   font-family: 'Menlo', monospace;
 }
+
+/* p2l-lab frame (tldraw frame-layouts pattern) */
+.lab-frame { border: 1px solid rgba(67, 60, 51, 0.18); border-radius: 10px; background: rgba(250, 246, 238, 0.55); }
+.lab-frame__header { display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px dashed rgba(67, 60, 51, 0.15); font-family: var(--serif, Georgia, serif); }
+.lab-frame__name { font-size: 13px; font-weight: 650; color: #433c33; }
+.lab-frame__badge { font-size: 11px; color: #8a7f70; }
+.lab-frame__modes { margin-left: auto; }
+.lab-frame__mode { border: 1px solid rgba(154, 59, 46, 0.35); background: transparent; color: #9a3b2e; border-radius: 3px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+.lab-frame__mode.is-active { background: rgba(154, 59, 46, 0.12); font-weight: 650; }
+
+/* Run-driven 3D paper (Drei View host) */
+.run3d-paper { background: var(--paper, #faf6ee); border: 1px solid rgba(67,60,51,.2); border-radius: 8px; padding: 8px 10px; box-shadow: 0 1px 6px rgba(0,0,0,.06); font-family: var(--serif, Georgia, serif); }
+.run3d-title { font-size: 12.5px; font-weight: 650; color: #433c33; margin-bottom: 6px; }
+.run3d-host { display: flex; flex-direction: column; height: calc(100% - 22px); }
+.run3d-track { flex: 1; min-height: 180px; border: 1px dashed rgba(47,93,138,.4); border-radius: 6px; background: linear-gradient(180deg, rgba(223,232,239,.35), rgba(250,246,238,.1)); cursor: grab; }
+.run3d-track:active { cursor: grabbing; }
+.run3d-caption { font-size: 11px; color: #2f5d8a; margin-top: 5px; }
+.badge-calc { border: 1px solid rgba(47,93,138,.5); color: #2f5d8a; border-radius: 3px; padding: 0 5px; font-size: 10px; }
+.desk3d-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+.run3d-interactive { flex: 1 1 auto; display: flex; min-height: 0; }

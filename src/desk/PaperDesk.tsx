@@ -13,6 +13,9 @@ import {
 import '@tldraw/tldraw/tldraw.css'
 import { DeskContext, type DeskPayload } from './context'
 import { deskShapeUtils, deskBindingUtils, type PaperShape, type FormulaShape } from './shapes'
+import { applyLabLayout } from './labFrame'
+import { runAgentAction, type AgentHelpers } from './agentActions'
+import { Desk3DOverlay } from './RunView3D'
 import { deskBus } from './deskBus'
 import { usePdfPageSize } from './PdfCanvas'
 import { analyzeFormula } from '../formula/analyze'
@@ -49,11 +52,14 @@ function AgentPhaseStrip() {
 export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onOpenKakeya: () => void }) {
   const editorRef = useRef<Editor | null>(null)
   const ids = useRef({
+    lab: createShapeId('lab-frame'),
     paper: createShapeId('paper'),
     formula: null as TLShapeId | null,
     chart: createShapeId('chart'),
     source: null as TLShapeId | null,
+    run3d: createShapeId('run3d'),
   })
+  const deskRootRef = useRef<HTMLDivElement | null>(null)
   const experimentIds = useRef<TLShapeId[]>([])
   const agentSession = useRef(newAgentSessionId())
   const agentTarget = useRef<string | null>(null)
@@ -88,12 +94,13 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
 
   /** fork an explorer and grow its experiment sheet + comparison chart below */
   const createForkShape = useCallback(
-    (srcExplorerId: string, anchorId: string): string | null => {
+    (srcExplorerId: string, anchorId: string, changes: Record<string, number> = {}): string | null => {
       const editor = editorRef.current
       const src = explorerStore.get(srcExplorerId)
       if (!editor || !src) return null
       const newId = explorerStore.nextId()
       explorerStore.fork(srcExplorerId, newId)
+      if (Object.keys(changes).length > 0) explorerStore.setParams(newId, changes)
       const base = experimentIds.current.length
         ? editor.getShape(experimentIds.current[experimentIds.current.length - 1])
         : null
@@ -104,6 +111,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
         type: 'p2l-experiment',
         x: (base?.x ?? 900) + 40,
         y: (base?.y ?? 90) + 440,
+        parentId: ids.current.lab,
         props: { anchorId, latex: src.spec.anchor.latex, explorerId: newId, w: 460, h: 380 },
       })
       if (!editor.getShape(ids.current.chart)) {
@@ -112,25 +120,39 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           type: 'p2l-chart',
           x: (base?.x ?? 900) + 40 + 460 + 70,
           y: (base?.y ?? 90) + 440,
+          parentId: ids.current.lab,
           props: { anchorId, w: 480, h: 340 },
         })
       }
+      applyLabLayout(editor, ids.current.lab)
       editor.select(expId)
       return newId
     },
     [],
   )
 
-  // ---- initial mount: paper + marker only ----------------------------------
+  // ---- initial mount: lab frame + paper inside it ---------------------------
   useEffect(() => {
     const editor = editorRef.current
     if (!editor || !size) return
     if (editor.getShape(ids.current.paper)) return
+    // the research frame hosts everything that grows afterwards; its
+    // onChildrenChange auto-arranges (paper as hero, branches beside it)
+    if (!editor.getShape(ids.current.lab)) {
+      editor.createShape({
+        id: ids.current.lab,
+        type: 'p2l-lab',
+        x: PAPER_X - 16,
+        y: PAPER_Y - 52,
+        props: { w: PAPER_W + 32, h: 726 + 52, name: '研究桌面', layout: 'spotlight' },
+      })
+    }
     editor.createShape({
       id: ids.current.paper,
       type: 'p2l-paper',
       x: PAPER_X,
       y: PAPER_Y,
+      parentId: ids.current.lab,
       props: {
         docId: payload.doc.docId,
         page: 1,
@@ -140,6 +162,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
         highlightAnchorId: '',
       },
     })
+    applyLabLayout(editor, ids.current.lab)
     editor.updateInstanceState({ isGridMode: true })
     window.setTimeout(() => editor.zoomToFit({ animation: { duration: 350 } }), 60)
   }, [size, payload.doc.docId, keyFormula])
@@ -165,6 +188,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           type: 'p2l-formula',
           x: PAPER_X + PAPER_W + 36,
           y: PAPER_Y + anchor.bbox.y * Math.round((PAPER_W * (size?.h ?? 792)) / (size?.w ?? 612)) - 40,
+          parentId: ids.current.lab,
           props: {
             anchorId: e.anchorId,
             latex: anchor.latex ?? '',
@@ -173,6 +197,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
             h: 150,
           },
         })
+        applyLabLayout(editor, ids.current.lab)
         editor.zoomToFit({ animation: { duration: 450 } })
       } else if (existing.props.anchorId !== e.anchorId) {
         // a DIFFERENT marker was selected — retarget the lifted formula sheet
@@ -211,6 +236,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
         type: 'p2l-experiment',
         x: (fshape?.x ?? PAPER_X + PAPER_W + 36) + 300 + 60,
         y: (fshape?.y ?? 120) - 30,
+        parentId: ids.current.lab,
         props: { anchorId: e.anchorId, latex: anchor.latex, explorerId, w: 460, h: 380 },
       })
       // Source chip under the experiment (Trace affordance)
@@ -222,6 +248,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           type: 'p2l-source',
           x: (fshape?.x ?? 0) + 300 + 60,
           y: (fshape?.y ?? 120) - 30 + 380 + 10,
+          parentId: ids.current.lab,
           props: {
             anchorId: e.anchorId,
             label: `p.${anchor.page} · ${anchor.latex.slice(0, 18)}${anchor.latex.length > 18 ? '…' : ''}`,
@@ -230,6 +257,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           },
         })
       }
+      applyLabLayout(editor, ids.current.lab)
       // trace binding: experiment paper → the formula it grew from (survives
       // moving either shape; Source button follows it back to the paper)
       editor.createBinding({ type: 'p2l-trace', fromId: expId, toId: fid })
@@ -259,8 +287,10 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           type: 'p2l-chart',
           x: 900,
           y: 520,
+          parentId: ids.current.lab,
           props: { anchorId: '', w: 480, h: 340 },
         })
+        applyLabLayout(editor, ids.current.lab)
       }
       editor.centerOnPoint({ x: 1140, y: 690 }, { animation: { duration: 450 } })
       return
@@ -294,6 +324,44 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       unsubscribe()
     }
   }, [payload, size, ensureExplorer, message, onOpenKakeya, createForkShape])
+
+  // ---- agent action helpers (AgentActionUtil port; the same desk paths the
+  // UI buttons use — actions never touch the store directly) ------------------
+  const agentHelpers = useCallback((): AgentHelpers => {
+    const editor = editorRef.current!
+    return {
+      editor,
+      docItems: payload.doc.items.map((i) => ({ id: i.id, latex: i.latex, page: i.page })),
+      explorerIds: () => explorerStore.ids(),
+      explorerParams: (id) => {
+        const ex = explorerStore.get(id)
+        if (!ex) return []
+        return Object.entries(ex.spec.parameters ?? {}).map(([name, p]) => ({
+          name,
+          min: (p as { min?: number }).min ?? -10,
+          max: (p as { max?: number }).max ?? 10,
+        }))
+      },
+      selectedExplorerId: () => {
+        const sel = editor.getSelectedShapes()[0]
+        const explorerId = (sel?.props as { explorerId?: string } | undefined)?.explorerId
+        return explorerId || agentTarget.current
+      },
+      play: (anchorId) => {
+        // emit the SAME event the Playable marker uses — the handler is the
+        // single creation path (no duplicate explorers); 'desk' = accepted
+        const anchor = payload.doc.items.find((i) => i.id === anchorId)
+        if (!anchor?.latex) return null
+        deskBus.emit({ kind: 'play', anchorId, latex: anchor.latex })
+        return 'desk'
+      },
+      fork: (id, changes) => {
+        const anchorId = explorerStore.get(id)?.spec.anchor.anchorId ?? ''
+        return createForkShape(id, anchorId, changes)
+      },
+      compare: () => deskBus.emit({ kind: 'compare' }),
+    }
+  }, [payload.doc.items, ensureExplorer, createForkShape])
 
   /** browser-side executor for the Research Orchestrator (server/agent.py):
    *  runs the REAL scientific steps on the same engines the UI uses — the
@@ -347,6 +415,24 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
   const runAskImpl = useCallback(async () => {
     const q = ask.trim()
     if (!q) return
+    // canvas intents first (agent action registry — AgentActionUtil port):
+    // 聚焦/并排/网格/自由/展开实验 are desk operations, not formula math
+    const canvasAction = (() => {
+      if (/并排|排成一行|row/.test(q)) return { type: 'arrange_lab', mode: 'row' } as const
+      if (/网格|grid/.test(q)) return { type: 'arrange_lab', mode: 'grid' } as const
+      if (/自由|free/.test(q)) return { type: 'arrange_lab', mode: 'free' } as const
+      if (/聚焦|放大主实验|spotlight/.test(q)) return { type: 'focus_shape' } as const
+      if (/展开实验|从论文展开/.test(q)) {
+        return { type: 'create_experiment', anchorId: payload.decision.keyFormula?.id ?? '' } as const
+      }
+      return null
+    })()
+    if (canvasAction) {
+      const out = await runAgentAction(agentHelpers(), canvasAction as never)
+      message(out.ok ? `Agent 动作：${out.label ?? canvasAction.type}` : `动作被拒绝：${out.reason ?? '校验失败'}`)
+      if (out.ok) setAsk('')
+      return
+    }
     const selected = editorRef.current?.getOnlySelectedShape()
     const selectedId = selected?.type === 'p2l-experiment' ? (selected.props as { explorerId: string }).explorerId : null
     const available = explorerStore.ids().filter((id) => explorerStore.get(id)?.spec.anchor.docId === payload.doc.docId)
@@ -445,7 +531,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     await scientificExecute({ deskKind: 'formula', steps: actions.map((a) => ({ ...a, op: opNames[a.op] })) })
     setAsk('')
     message(`Agent：${actions.map((a) => (a.param ? `${a.op} ${a.param}${a.value ? (a.op === 'scale' ? '×' : '=') + a.value : ''}` : a.op)).join(' → ')}`)
-  }, [ask, message, payload.decision.keyFormula?.id, payload.doc.title, createForkShape, scientificExecute, canvasApply])
+  }, [ask, message, payload.decision.keyFormula?.id, payload.doc.title, createForkShape, scientificExecute, canvasApply, agentHelpers])
 
   const runAsk = useCallback(async () => {
     if (busy.current) return
@@ -457,7 +543,9 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
 
   return (
     <DeskContext.Provider value={payload}>
-      <div className="desk-root">
+      <div className="desk-root" ref={deskRootRef}>
+        {/* one shared Canvas for every Run-driven 3D paper on the desk */}
+        <Desk3DOverlay rootRef={deskRootRef} />
         <Tldraw
           shapeUtils={deskShapeUtils}
           bindingUtils={deskBindingUtils}
@@ -467,6 +555,10 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
             ;(window as unknown as { __deskEditor?: Editor }).__deskEditor = editor
             ;(window as unknown as { __explorerStore?: typeof explorerStore }).__explorerStore =
               explorerStore
+            // agent action surface (headless evidence + future LLM backends)
+            ;(window as unknown as { __P2L_ACTIONS__?: { run(a: unknown): Promise<{ ok: boolean; reason?: string }> } }).__P2L_ACTIONS__ = {
+              run: (a) => runAgentAction(agentHelpers(), a as never),
+            }
           }}
         >
           <div className="desk-topbar">
@@ -480,6 +572,31 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
                 → 打开 3D Kakeya Lab
               </button>
             )}
+            <button
+              type="button"
+              className="desk-btn"
+              data-testid="grow-3d"
+              onClick={() => {
+                const editor = editorRef.current
+                if (!editor) return
+                if (editor.getShape(ids.current.run3d)) {
+                  message('3D 实验纸已在桌面上')
+                  return
+                }
+                editor.createShape({
+                  id: ids.current.run3d,
+                  type: 'p2l-3d',
+                  x: PAPER_X + PAPER_W + 60,
+                  y: PAPER_Y + 40,
+                  parentId: ids.current.lab,
+                  props: { title: 'Kakeya 3D（Run 驱动 · 拖管族反写 packing）', w: 380, h: 320 },
+                })
+                applyLabLayout(editor, ids.current.lab)
+                message('3D 实验纸已长出 — 画面由 kakeya.geometry Run 驱动，拖动管族反写参数')
+              }}
+            >
+              ◈ 长出 3D 实验纸
+            </button>
             <button type="button" className="desk-btn" onClick={() => window.location.reload()}>
               ← 换一篇论文
             </button>

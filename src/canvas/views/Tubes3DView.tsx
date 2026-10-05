@@ -30,7 +30,7 @@ function multiplicityColor(m: number, maxM: number, out: THREE.Color): THREE.Col
   return out
 }
 
-function TubesScene({
+export function TubesScene({
   tubes,
   visGrid,
   visMaxM,
