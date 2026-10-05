@@ -165,6 +165,13 @@ v0.3（2026-10-03 凌晨②，Agent 底座收口：无头全回合 + canonical �
 - [x] **canonical 技能别名**：registry 增 `aliases`（fork_experiment / compare_experiments / simulate_geometry / measure_volume / measure_multiplicity / run_scale_sweep ↔ 对应注册技能，输入输出契约相同）；executeSkill 在分发前归一化别名（同受 PlayPlan 门控）；`/api/engine/skills` 面板暴露别名
 - [x] 验证：vitest **177/177**（+8：四桌面步进/拒绝路径/别名真执行/别名同受门控）· pytest 快集 **36/36**（+5：四桌面 server 模式全回合 SSE 断言 + 守卫；真数字断言 peak≈|a·2|、conservedDrift<1e-3）· 双产品脚本 PASS · 真实 HTTP SSE 冒烟（plan→tool_started(server)→experiment_completed peak=1.99998）。**坑：Python rf-string 里正则量词 `{0,6}` 会被当成 f-string 替换字段渲染成 "(0, 6)"**——量词必须写 `{{0,6}}`（本坑曾令 group 编号偏移、float('设为') 崩溃）
 
+v0.4（2026-10-05，画布与 Agent 底座升级：Frame Layouts + AgentActionUtil + Drei View，PR #11 关联 issues #11–#13）：
+
+- [x] **Frame Layouts 移植**（源码 tldraw v5.5.0 apps/examples frame-layouts）：`src/desk/boardLayout.ts` 纯函数布局（free/row/grid/spotlight——首个子节点放大为主实验、其余并排缩略，空板不产生 NaN）+ `src/desk/labFrame.tsx` `p2l-lab` 帧（BaseFrameLikeShapeUtil：onChildrenChange 自动重排、onDropShapesOver/onDragShapesOut 动画重排、仅 free 可手动缩放、头栏四种模式切换）；PaperDesk 全部生长点（paper/formula/experiment/chart/source/3d）以 parentId 入帧——论文旁逐步长出实验纸、增删自动重排
+- [x] **AgentActionUtil 移植**（源码 tldraw agent-template@7385b3f）：`src/desk/agentActions.ts` 注册表 + 基类契约（sanitizeAction 校验/钳制/拒绝-null、applyAction 单次 editor.run=单步撤销、savesToHistory、getInfo）；五动作：create_experiment（锚点必须存在且有 latex，绝不猜造）/ fork_experiment（参数按 explorer 自身范围钳制，默认取选区）/ compare_experiments（需≥2 实验否则拒绝）/ arrange_lab / focus_shape（spotlight 聚焦选区）；Ask 输入框先走画布意图（聚焦/并排/网格/自由/展开实验）再落公式 planner；`window.__P2L_ACTIONS__.run` 无头证据面；科学执行仍走 explorerStore/executeSkill 同一路径
+- [x] **Drei View 3D**（drei 10.7.9 web/View）：`src/desk/RunView3D.tsx` 单一共享 Canvas（fixed + pointerEvents none）+ 每张 `p2l-3d` 实验纸注册 tracked div → `<View track>` 渲染 **kakeya.geometry Run 驱动的管族**（复用导出的 TubesScene），跟随纸的位置/尺寸（帧重排即跟随）；拖拽管族经 Interactive 包装（tldraw v5 形状 HTML 默认 pointer-transparent——必须包 Interactive 才可命中）反写 `kakeya.packing` 进同一响应式 Runtime（badge 0.00→0.70 实测）；顶栏「◈ 长出 3D 实验纸」
+- [x] 验证：vitest **188/188**（+11：boardLayout 纯函数 5 + agentActions 校验/拒绝/钳制 6）· tsc 0 错 · pytest 36/36 · 新 `scripts/product-lab-test.mjs`（真实单源 uvicorn+dist）**PASS**：上传→帧内 4 纸生长→arrange row 对齐→spotlight→未知动作拒绝→3D 纸 focus 后 tracked rect 43KB 像素→派发拖拽 badge 0.00→0.70→console 0 错；render/formula 双脚本回归 PASS。**坑：page.mouse 无法命中 tldraw 形状内 HTML（elementFromPoint 落在 tl-background）——产品交互证据用 DOM dispatchEvent 派发到真实 React 处理器（marker/Play 早已如此）；p2l-lab 子形状过小会令内部 min-height 内容 hidden，测试需先 focus_shape 放大**
+
 ## 11. 下一阶段（比赛迭代方向）
 
 ### 2026-10-01 源码审查后的开发门槛
