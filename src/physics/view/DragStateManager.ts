@@ -54,6 +54,11 @@ export class DragStateManager {
 
   updateRaycaster(x: number, y: number) {
     const rect = this.renderer.domElement.getBoundingClientRect()
+    // camera matrices must be CURRENT before casting — after an orbit the
+    // stale view matrix bends the ray, and the drag force then pushes the
+    // wrong way (Lane C: direction error after camera rotation)
+    this.camera.updateMatrixWorld()
+    this.camera.updateProjectionMatrix()
     this.mousePos.x = ((x - rect.left) / rect.width) * 2 - 1
     this.mousePos.y = -((y - rect.top) / rect.height) * 2 + 1
     this.raycaster.setFromCamera(this.mousePos, this.camera)

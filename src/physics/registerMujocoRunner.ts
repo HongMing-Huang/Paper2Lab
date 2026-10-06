@@ -11,7 +11,7 @@ registerSkillRunner('mujoco.simulate', async (input, opts) => {
     scene: string
     steps: number
     sampleEvery?: number
-    params?: { gravityZ?: number; windX?: number; timestep?: number }
+    params?: { gravityZ?: number; windX?: number; timestep?: number; forces?: Array<{ bodyId: number; f: [number, number, number]; p: [number, number, number] }> }
   }
   const sampleEvery = typeof i.sampleEvery === 'number' ? i.sampleEvery : 10
   const params = i.params ?? {}
@@ -22,6 +22,7 @@ registerSkillRunner('mujoco.simulate', async (input, opts) => {
         ...(params.gravityZ !== undefined ? { gravityZ: params.gravityZ } : {}),
         ...(params.windX !== undefined ? { windX: params.windX } : {}),
         ...(params.timestep !== undefined ? { timestep: params.timestep } : {}),
+        ...(params.forces !== undefined ? { forces: params.forces.length } : {}),
       },
       seed: 0,
       model: { scene: i.scene, steps: i.steps, sampleEvery, params, scenesChecksum: scenesChecksum() },

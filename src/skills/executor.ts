@@ -477,8 +477,9 @@ function applyForkChanges(skillName: string, forkInput: Input, changes: Record<s
       return
     }
     case 'mujoco.simulate': {
-      // physics params live in the nested `params` object (gravityZ/windX/timestep)
-      const params: Record<string, number> = { ...((forkInput.params as Record<string, number>) ?? {}) }
+      // physics params live in the nested `params` object; forces (event
+      // replay) survive a fork untouched — only numeric params change
+      const params = { ...((forkInput.params as Record<string, unknown>) ?? {}) }
       const known = ['gravityZ', 'windX', 'timestep']
       const unknown = Object.keys(changes).filter((k) => !known.includes(k))
       if (unknown.length) throw new Error(`fork(mujoco.simulate): unknown parameters ${JSON.stringify(unknown)} — known: ${JSON.stringify(known)}`)
@@ -494,11 +495,13 @@ function applyForkChanges(skillName: string, forkInput: Input, changes: Record<s
 function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  const model = run.spec.model as Record<string, unknown> | undefined
   if (skillName === 'mujoco.simulate') {
     if (!model?.scene) return null
+    const params = (model.params ?? {}) as Record<string, unknown>
     return {
       scene: model.scene,
       steps: model.steps ?? 100,
       sampleEvery: model.sampleEvery ?? 10,
-      params: { ...((model.params as Record<string, number>) ?? {}) },
+      // forces are part of the event contract — replay/fork keep them
+      params: { ...params, ...(Array.isArray(params.forces) ? { forces: params.forces } : {}) },
     }
   }
   if (skillName === 'formula.plot') {
