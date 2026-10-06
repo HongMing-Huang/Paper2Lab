@@ -410,7 +410,7 @@ export function ChartUnionNode() {
   const liveRunId = exact.status === 'resolved' ? exact.value?.runId : 'preview'
   const points = useMemo<CurvePoint[]>(
     () => [
-      ...live.map((p) => ({ ...p, runId: 'main' })),
+      ...live.map((p) => ({ ...p })), // Lane D: keep the sweep's REAL runIds
       ...(pre.value ?? []),
       ...forkPoints,
       // the CURRENT experiment's point — moves live during drags (preview)
