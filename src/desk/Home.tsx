@@ -7,9 +7,11 @@ import { routeAdapterWithLlm } from '../skills/adapterRouter'
 export function Home({
   onDesk,
   onKakeya,
+  onPhysics,
 }: {
   onDesk: (file: File, pdfUrl: string, doc: Awaited<ReturnType<typeof ingestPdf>>, decision: Awaited<ReturnType<typeof routeAdapterWithLlm>>) => void
   onKakeya: () => void
+  onPhysics: () => void
 }) {
   const [state, setState] = useState<'idle' | 'parsing' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -90,6 +92,10 @@ export function Home({
         <div className="home-sep">· 或 ·</div>
         <button type="button" className="home-kakeya" onClick={onKakeya}>
           打开 Wang–Zahl Kakeya Lab（内置论文 · 3D 专用 Adapter）→
+        </button>
+        <div className="home-sep">· 或 ·</div>
+        <button type="button" className="home-kakeya home-physics" onClick={onPhysics}>
+          打开 Physics Lab（MuJoCo · 17 场景 · 拖拽施力真物理）→
         </button>
         <div className="home-foot">
           PDF 解析 Docling · 公式 Cortex Compute Engine · 曲线 JSXGraph · 画布 tldraw · 数值全部本地真实计算
