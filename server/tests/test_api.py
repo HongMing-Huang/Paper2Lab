@@ -18,6 +18,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+import uuid as _uuid
+_RUN = _uuid.uuid4().hex[:6]  # unique session suffix per test run
 
 # isolated data dir per test session (restart-recovery tests remount it)
 _DATA_DIR = Path(tempfile.mkdtemp(prefix="p2l-test-data-"))
@@ -159,7 +161,7 @@ async def test_agent_turn_plan_then_require_execution_then_done():
         r = await c.post(
             "/api/agent/turn",
             json={
-                "sessionId": "pytest-1",
+                "sessionId": "pytest-1-" + _RUN,
                 "intent": "如果 a 增大一倍会怎样？",
                 "context": {"deskKind": "formula", "params": ["a", "b"]},
             },
@@ -180,6 +182,7 @@ async def test_agent_turn_plan_then_require_execution_then_done():
         # browser (test double at the transport level ONLY — numbers below are
         # what a real client computed) replies with the batch
         resume = {
+            "roundId": req.get("roundId"),
             "replyId": req.get("replyId", ""),
             "executionResults": [
                 {
@@ -197,7 +200,7 @@ async def test_agent_turn_plan_then_require_execution_then_done():
         }
         r2 = await c.post(
             "/api/agent/turn",
-            json={"sessionId": "pytest-1", "intent": "", "context": {}, "resume": resume},
+            json={"sessionId": "pytest-1-" + _RUN, "intent": "", "context": {}, "resume": resume},
         )
         events2 = sse_events(r2.text)
         kinds2 = [e["type"] for e in events2]
@@ -217,14 +220,15 @@ async def test_duplicate_resume_is_rejected():
             )
             return next(e for e in sse_events(r.text) if e["type"] == "require_execution")
 
-        req = await first_round("pytest-dup")
+        req = await first_round("pytest-dup-" + _RUN)
         resume = {
+            "roundId": req.get("roundId"),
             "executionResults": [{"toolCallId": req["toolCallId"], "tool": "scientific_execute", "status": "ok", "result": {"runs": []}}],
         }
-        r1 = await c.post("/api/agent/turn", json={"sessionId": "pytest-dup", "intent": "", "context": {}, "resume": resume})
+        r1 = await c.post("/api/agent/turn", json={"sessionId": "pytest-dup-" + _RUN, "intent": "", "context": {}, "resume": resume})
         assert "done" in [e["type"] for e in sse_events(r1.text)]
         # replaying the SAME resume must be rejected, not re-executed
-        r2 = await c.post("/api/agent/turn", json={"sessionId": "pytest-dup", "intent": "", "context": {}, "resume": resume})
+        r2 = await c.post("/api/agent/turn", json={"sessionId": "pytest-dup-" + _RUN, "intent": "", "context": {}, "resume": resume})
         kinds = [e["type"] for e in sse_events(r2.text)]
         assert "error" in kinds
         assert "done" not in kinds
@@ -235,16 +239,17 @@ async def test_failed_execution_reports_failure_not_success():
     async with await _client() as c:
         r = await c.post(
             "/api/agent/turn",
-            json={"sessionId": "pytest-fail", "intent": "a 增大一倍", "context": {"deskKind": "formula", "params": ["a"]}},
+            json={"sessionId": "pytest-fail-" + _RUN, "intent": "a 增大一倍", "context": {"deskKind": "formula", "params": ["a"]}},
         )
         req = next(e for e in sse_events(r.text) if e["type"] == "require_execution")
         r2 = await c.post(
             "/api/agent/turn",
             json={
-                "sessionId": "pytest-fail",
+                "sessionId": "pytest-fail-" + _RUN,
                 "intent": "",
                 "context": {},
                 "resume": {
+                    "roundId": req.get("roundId"),
                     "executionResults": [
                         {"toolCallId": req["toolCallId"], "tool": "scientific_execute", "status": "error", "error": "compile failed"}
                     ]
@@ -280,11 +285,11 @@ async def test_resume_without_results_is_rejected():
     async with await _client() as c:
         r = await c.post(
             "/api/agent/turn",
-            json={"sessionId": "pytest-bad", "intent": "a 设为 2", "context": {"deskKind": "formula", "params": ["a"]}},
+            json={"sessionId": "pytest-bad-" + _RUN, "intent": "a 设为 2", "context": {"deskKind": "formula", "params": ["a"]}},
         )
         req = next(e for e in sse_events(r.text) if e["type"] == "require_execution")
         r2 = await c.post(
             "/api/agent/turn",
-            json={"sessionId": "pytest-bad", "intent": "", "context": {}, "resume": {"executionResults": []}},
+            json={"sessionId": "pytest-bad-" + _RUN, "intent": "", "context": {}, "resume": {"executionResults": []}},
         )
         assert "error" in [e["type"] for e in sse_events(r2.text)]
