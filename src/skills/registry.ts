@@ -74,7 +74,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
         independent: { type: 'string' },
         range,
         values: { type: 'object' },
-        samples: { type: 'integer' },
+        samples: { type: 'integer', minimum: 2, maximum: 20001 },
       },
     },
     outputSchema: {
@@ -160,7 +160,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
         deltaExp: num,
         nTubes: { type: 'integer' },
         packing: num,
-        res: { type: 'integer' },
+        res: { type: 'integer', minimum: 1, maximum: 1024 },
       },
     },
     outputSchema: {
@@ -189,7 +189,7 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
         nTubes: { type: 'integer' },
         deltaExp: num,
         packing: num,
-        res: { type: 'integer' },
+        res: { type: 'integer', minimum: 1, maximum: 1024 },
       },
     },
     outputSchema: {
@@ -259,8 +259,8 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
       required: ['scene', 'steps'],
       properties: {
         scene: { type: 'string' },
-        steps: { type: 'integer' },
-        sampleEvery: { type: 'integer' },
+        steps: { type: 'integer', minimum: 1, maximum: 100000 },
+        sampleEvery: { type: 'integer', minimum: 1, maximum: 100000 },
         params: { type: 'object' },
       },
     },
@@ -291,6 +291,10 @@ export function schemaError(schema: Record<string, unknown>, value: unknown, pat
       (type === 'number' && (typeof value !== 'number' || !Number.isFinite(value))) ||
       (type === 'integer' && (typeof value !== 'number' || !Number.isSafeInteger(value)))) return `${path}: expected ${type}`
   if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return `${path}: invalid choice`
+  if (typeof value === 'number') {
+    if (typeof schema.minimum === 'number' && value < schema.minimum) return `${path}: below minimum ${schema.minimum}`
+    if (typeof schema.maximum === 'number' && value > schema.maximum) return `${path}: above maximum ${schema.maximum}`
+  }
   if (Array.isArray(value)) {
     if (typeof schema.minItems === 'number' && value.length < schema.minItems) return `${path}: too few items`
     if (typeof schema.maxItems === 'number' && value.length > schema.maxItems) return `${path}: too many items`

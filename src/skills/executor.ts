@@ -52,7 +52,7 @@ function compileExpr(expression: MathJsonExpression) {
   return compiled
 }
 
-async function runFormulaEvaluate(input: Input): Promise<ExperimentRun<{ value: number }>> {
+async function runFormulaEvaluate(input: Input, opts: ExecuteOptions = {}): Promise<ExperimentRun<{ value: number }>> {
   const compiled = compileExpr(input.expression as MathJsonExpression)
   return executeSpec(
     {
@@ -60,6 +60,7 @@ async function runFormulaEvaluate(input: Input): Promise<ExperimentRun<{ value: 
       params: {},
       seed: 0,
       model: { expression: input.expression, bindings: input.bindings },
+      source: opts.source,
     },
     ENGINES.cortexJs,
     () => {
@@ -150,6 +151,7 @@ async function runKakeyaGenerate(input: Input, opts: ExecuteOptions): Promise<Ex
       params: { delta: 2 ** -deltaExp, packing, nTubes },
       seed: KAKEYA_SEED,
       model: { deltaExp, packing, nTubes },
+      source: opts.source,
     },
     ENGINES.kakeyaWorker,
     () => tubes,
@@ -170,6 +172,7 @@ async function runKakeyaMeasure(input: Input, opts: ExecuteOptions): Promise<Exp
       seed: KAKEYA_SEED,
       res,
       model: { deltaExp, packing, nTubes, res },
+      source: opts.source,
     },
     ENGINES.kakeyaWorker,
     () => measureVoxels(tubes, res),
@@ -197,6 +200,7 @@ async function runKakeyaSweep(input: Input, opts: ExecuteOptions): Promise<Exper
       seed: KAKEYA_SEED,
       res,
       model: { param, values, deltaExp, packing, res, ...(nTubes ? { nTubes } : {}) },
+      source: opts.source,
     },
     ENGINES.kakeyaWorker,
     async () => {
@@ -265,6 +269,7 @@ async function runGeometry2D(input: Input, opts: ExecuteOptions): Promise<Experi
       seed: 0,
       res: grid,
       model: { construction, grid },
+      source: opts.source,
     },
     ENGINES.kakeyaWorker,
     () => {
@@ -579,6 +584,9 @@ export async function executeSkill<T = unknown>(
         planId: `fork:${sourceRunId}`,
         replay: true,
         parentRunId: sourceRunId,
+        // Lane A source inheritance: a fork keeps its parent's provenance
+        // anchor (paper/doc reference) — losing it orphaned desk charts
+        source: source.spec.source,
       })
       if (outcome.status === 'ok' && outcome.run) {
         return { status: 'ok', run: outcome.run as ExperimentRun<T>, payload: { forkRunId: outcome.run.runId } }
