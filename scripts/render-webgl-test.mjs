@@ -190,8 +190,8 @@ async function productPhase(browser, failures) {
   try {
     // 5. real home → Kakeya entry
     await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'domcontentloaded', timeout: 60000 })
-    await page.locator('button.home-kakeya').waitFor({ timeout: 30000 })
-    await page.locator('button.home-kakeya').click()
+    await page.locator('button.home-kakeya').first().waitFor({ timeout: 30000 })
+    await page.locator('button.home-kakeya').first().click()
     await page.waitForSelector('.param-chip', { timeout: 30000 }) // Paper Mode loaded
     console.log('[product] Paper Mode loaded')
 

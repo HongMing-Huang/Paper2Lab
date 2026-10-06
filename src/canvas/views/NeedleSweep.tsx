@@ -69,12 +69,19 @@ export function NeedleSweep({
       const prev = angleRef.current
       angleRef.current += running ? speed * dt : 0
       const a = angleRef.current
-      // needle pivots at the centre, unit length scaled to the frame
-      const ax = Math.cos(prev) * half
-      const ay = Math.sin(prev) * half
-      const bx = Math.cos(a) * half
-      const by = Math.sin(a) * half
-      if (running) rasterSegment(ax, ay, bx, by)
+      // Lane D: the needle spans −half→+half (see the draw call below) — the
+      // measured sweep must cover the WHOLE needle's motion, not just the tip
+      // chord. Raster the full needle at intermediate angles between frames;
+      // the swept sector is then what the counter actually counts.
+      if (running) {
+        const SUB = 6
+        for (let s = 0; s <= SUB; s++) {
+          const ang = prev + ((a - prev) * s) / SUB
+          const c = Math.cos(ang) * half
+          const si = Math.sin(ang) * half
+          rasterSegment(-c, -si, c, si)
+        }
+      }
 
       // draw
       ctx.clearRect(0, 0, size, size)

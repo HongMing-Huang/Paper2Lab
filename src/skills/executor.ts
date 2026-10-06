@@ -52,7 +52,7 @@ function compileExpr(expression: MathJsonExpression) {
   return compiled
 }
 
-async function runFormulaEvaluate(input: Input): Promise<ExperimentRun<{ value: number }>> {
+async function runFormulaEvaluate(input: Input, opts: ExecuteOptions = {}): Promise<ExperimentRun<{ value: number }>> {
   const compiled = compileExpr(input.expression as MathJsonExpression)
   return executeSpec(
     {
@@ -60,6 +60,7 @@ async function runFormulaEvaluate(input: Input): Promise<ExperimentRun<{ value: 
       params: {},
       seed: 0,
       model: { expression: input.expression, bindings: input.bindings },
+      source: opts.source,
     },
     ENGINES.cortexJs,
     () => {
@@ -150,6 +151,7 @@ async function runKakeyaGenerate(input: Input, opts: ExecuteOptions): Promise<Ex
       params: { delta: 2 ** -deltaExp, packing, nTubes },
       seed: KAKEYA_SEED,
       model: { deltaExp, packing, nTubes },
+      source: opts.source,
     },
     ENGINES.kakeyaWorker,
     () => tubes,
@@ -170,6 +172,7 @@ async function runKakeyaMeasure(input: Input, opts: ExecuteOptions): Promise<Exp
       seed: KAKEYA_SEED,
       res,
       model: { deltaExp, packing, nTubes, res },
+      source: opts.source,
     },
     ENGINES.kakeyaWorker,
     () => measureVoxels(tubes, res),
@@ -197,6 +200,7 @@ async function runKakeyaSweep(input: Input, opts: ExecuteOptions): Promise<Exper
       seed: KAKEYA_SEED,
       res,
       model: { param, values, deltaExp, packing, res, ...(nTubes ? { nTubes } : {}) },
+      source: opts.source,
     },
     ENGINES.kakeyaWorker,
     async () => {
@@ -265,6 +269,7 @@ async function runGeometry2D(input: Input, opts: ExecuteOptions): Promise<Experi
       seed: 0,
       res: grid,
       model: { construction, grid },
+      source: opts.source,
     },
     ENGINES.kakeyaWorker,
     () => {
@@ -375,6 +380,7 @@ const COMPUTE_BY_KIND: Record<string, string> = {
   'perron.tree': 'geometry.2d',
   'lv.ode': 'ode.solve',
   'mujoco.sim': 'mujoco.simulate',
+  'challenge.attempt': 'challenge.attempt',
 }
 
 // ---------------------------------------------------------------------------
@@ -393,6 +399,18 @@ export function registerSkillRunner(
   runner: (input: any, opts: ExecuteOptions) => Promise<ExperimentRun>,
 ): void {
   extraRunners.set(name, runner)
+}
+
+/** the replayable skill input of a historical run (agent chaining: a follow-up
+ *  turn uses this as its base instead of the original first-run input) */
+export function inputForRun(runId: string): { skill: string; input: Input } | { error: string } {
+  const run = getExperimentRun(runId)
+  if (!run) return { error: `Unknown run: ${runId}` }
+  const skillName = COMPUTE_BY_KIND[run.spec.kind]
+  if (!skillName) return { error: `No compute skill mapped for kind ${run.spec.kind}` }
+  const input = inputFromSpec(skillName, run)
+  if (!input) return { error: `Run ${runId} spec lacks the model fields needed for replay` }
+  return { skill: skillName, input }
 }
 
 /** re-execute a historical run from its recorded spec (real replay, no mocks) */
@@ -460,8 +478,9 @@ function applyForkChanges(skillName: string, forkInput: Input, changes: Record<s
       return
     }
     case 'mujoco.simulate': {
-      // physics params live in the nested `params` object (gravityZ/windX/timestep)
-      const params: Record<string, number> = { ...((forkInput.params as Record<string, number>) ?? {}) }
+      // physics params live in the nested `params` object; forces (event
+      // replay) survive a fork untouched — only numeric params change
+      const params = { ...((forkInput.params as Record<string, unknown>) ?? {}) }
       const known = ['gravityZ', 'windX', 'timestep']
       const unknown = Object.keys(changes).filter((k) => !known.includes(k))
       if (unknown.length) throw new Error(`fork(mujoco.simulate): unknown parameters ${JSON.stringify(unknown)} — known: ${JSON.stringify(known)}`)
@@ -475,13 +494,23 @@ function applyForkChanges(skillName: string, forkInput: Input, changes: Record<s
 }
 
 function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  const model = run.spec.model as Record<string, unknown> | undefined
+  if (skillName === 'challenge.attempt') {
+    if (!model?.challenge) return null
+    return {
+      challenge: model.challenge,
+      changes: { ...(model.changes ?? {}) },
+      level: { ...(model.level ?? {}) },
+    }
+  }
   if (skillName === 'mujoco.simulate') {
     if (!model?.scene) return null
+    const params = (model.params ?? {}) as Record<string, unknown>
     return {
       scene: model.scene,
       steps: model.steps ?? 100,
       sampleEvery: model.sampleEvery ?? 10,
-      params: { ...((model.params as Record<string, number>) ?? {}) },
+      // forces are part of the event contract — replay/fork keep them
+      params: { ...params, ...(Array.isArray(params.forces) ? { forces: params.forces } : {}) },
     }
   }
   if (skillName === 'formula.plot') {
@@ -531,7 +560,7 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  c
 // ---- the single entry -------------------------------------------------------
 
 /** skills whose runs are formal evidence and therefore need a PlayPlan */
-const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve', 'mujoco.simulate'])
+const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve', 'mujoco.simulate', 'challenge.attempt'])
 
 export async function executeSkill<T = unknown>(
   name: string,
@@ -579,6 +608,9 @@ export async function executeSkill<T = unknown>(
         planId: `fork:${sourceRunId}`,
         replay: true,
         parentRunId: sourceRunId,
+        // Lane A source inheritance: a fork keeps its parent's provenance
+        // anchor (paper/doc reference) — losing it orphaned desk charts
+        source: source.spec.source,
       })
       if (outcome.status === 'ok' && outcome.run) {
         return { status: 'ok', run: outcome.run as ExperimentRun<T>, payload: { forkRunId: outcome.run.runId } }
@@ -594,13 +626,13 @@ export async function executeSkill<T = unknown>(
         return { status: 'error', code: 'invalid_input', message: err instanceof Error ? err.message : String(err) }
       }
     }
-    if (name === 'mujoco.simulate') {
+    if (name === 'mujoco.simulate' || name === 'challenge.attempt') {
       const runner = extraRunners.get(name)
       if (!runner) {
         return {
           status: 'unsupported',
           skill: name,
-          message: 'mujoco.simulate runs in the backend engine (Node WASM) — use server execution mode / the engine API; the page imports the resulting Runs',
+          message: `${name} runs in the backend engine (Node WASM) — use server execution mode / the engine API; the page imports the resulting Runs`,
         }
       }
       return { status: 'ok', run: (await runner(input as Input, opts)) as ExperimentRun<T> }

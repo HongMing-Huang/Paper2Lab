@@ -182,6 +182,17 @@ v0.4（2026-10-05，画布与 Agent 底座升级：Frame Layouts + AgentActionUt
 - [x] **Drei View 3D**（drei 10.7.9 web/View）：`src/desk/RunView3D.tsx` 单一共享 Canvas（fixed + pointerEvents none）+ 每张 `p2l-3d` 实验纸注册 tracked div → `<View track>` 渲染 **kakeya.geometry Run 驱动的管族**（复用导出的 TubesScene），跟随纸的位置/尺寸（帧重排即跟随）；拖拽管族经 Interactive 包装（tldraw v5 形状 HTML 默认 pointer-transparent——必须包 Interactive 才可命中）反写 `kakeya.packing` 进同一响应式 Runtime（badge 0.00→0.70 实测）；顶栏「◈ 长出 3D 实验纸」
 - [x] 验证：vitest **188/188**（+11：boardLayout 纯函数 5 + agentActions 校验/拒绝/钳制 6）· tsc 0 错 · pytest 36/36 · 新 `scripts/product-lab-test.mjs`（真实单源 uvicorn+dist）**PASS**：上传→帧内 4 纸生长→arrange row 对齐→spotlight→未知动作拒绝→3D 纸 focus 后 tracked rect 43KB 像素→派发拖拽 badge 0.00→0.70→console 0 错；render/formula 双脚本回归 PASS。**坑：page.mouse 无法命中 tldraw 形状内 HTML（elementFromPoint 落在 tl-background）——产品交互证据用 DOM dispatchEvent 派发到真实 React 处理器（marker/Play 早已如此）；p2l-lab 子形状过小会令内部 min-height 内容 hidden，测试需先 focus_shape 放大**
 
+v0.6（2026-10-06，可玩 0.1：三关挑战 + 方向修正取消生图，PR 链 5b408f4→9f2c4df→912d187）：
+
+- [x] **方向修正**：取消 ComfyUI 生图接入；底座改为「代码生成模型→真实计算→直接操纵→目标反馈→重试与比较」。复用 MuJoCo 官方 WASM（程序化几何/`mj_loadXML` 从字符串路径）+ PhET 轨迹/目标判定玩法机制，保留现有引擎与 Run 协议
+- [x] **引擎 Run 持久化**：`scripts/engine_persist.ts`（resolved Run 追加 `engine-runs.jsonl`、启动原子恢复）——容器/引擎重启后原 Run 仍可 baseRunId 链续实验（子进程实证 restoredRuns→run_input 可解析）
+- [x] **三关内核 `src/challenges/`**：投射命中（程序化 MJCF+keyframe 发射，落点/误差/命中读实测轨迹）、摆周期匹配（keyframe 释放角，周期由真实摆动零交叉测量，T∝√L 实测）、管束压缩（**逐簇偏移**替代全局 packing 标量，真体素计数）；validateSpec 全范围门；三关 replay 逐字节一致
+- [x] **ChallengeSpec/事件/Run 统一**：SceneSpec（冻结目标+约束+预算）/ store（用户+Agent 共享一本预算账、失败也扣费、逐 actor 最佳、solved、save/load）/ challenge.attempt 注册技能（PlayPlan 门/COMPUTE_BY_KIND/inputFromSpec 回放链/引擎侧 runner）
+- [x] **Agent 同条件**：agentSteps 第六桌面 challenge（多参数一句收齐→set→attempt）+ server 模式回合（pytest 4：命中>1000 分/重试改进/tubes 真体积/浏览器模式诚实拒绝）
+- [x] **挑战页 `ChallengesLab`**：三关原子切换/滑杆/即时反馈/历史轨迹 SVG（投射保留历次轨迹）/最佳记录/预算/Agent 按钮——页面执行全走后端引擎并导入 Run（levels.ts 浏览器安全模块隔离 node 依赖）
+- [x] 验证：vitest **252/252**（+15 三关验收）/ pytest **49/49**（+4 Agent 挑战回合）/ **product-challenges-test 真实鼠标 PASS**（命中/失败重试匹配/超预算反馈/共享预算 19→18/0 错误）/ render+physics+formula+lab 四脚本回归 PASS · build ✓。**坑**：React 切桌面时 kind 与 level 必须原子更新（渲染竞态 undefined.toFixed 整页崩）；uvicorn 常驻后改 engine_server 需重启后端；vite 把 node:fs 静态图污染浏览器包——类型+常量放 levels.ts、内核留 kernel.ts；Mimosa 会把名为 exec 的回调参数判为命令注入（纯类型回调改名 runAttempt）
+- 待验证（开放）：拖拽直接反写（当前为滑杆+按钮发射）、Worker 预览层、WebGL 3D 视图渲染细节、真实 Qwen
+
 ## 11. 下一阶段（比赛迭代方向）
 
 ### 2026-10-01 源码审查后的开发门槛

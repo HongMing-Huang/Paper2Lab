@@ -300,6 +300,16 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       const anchor = anchorOf(e.anchorId)
       const paper = editor.getShape(ids.current.paper) as PaperShape | undefined
       if (!anchor || !paper) return
+      // Lane D: the anchor may live on ANOTHER page — turn the paper to it
+      // first, then highlight + centre (Source used to centre on the wrong
+      // page's coordinates whenever the anchor was cross-page)
+      if (anchor.page !== paper.props.page) {
+        editor.updateShape({
+          id: ids.current.paper,
+          type: 'p2l-paper',
+          props: { page: anchor.page },
+        })
+      }
       const ax = paper.x + (anchor.bbox.x + anchor.bbox.w / 2) * paper.props.w
       const ay = paper.y + (anchor.bbox.y + anchor.bbox.h / 2) * paper.props.h
       editor.updateShape({

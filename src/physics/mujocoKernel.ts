@@ -17,6 +17,15 @@ import { fileURLToPath } from 'node:url'
 
 export const MUJOCO_ENGINE = { engine: 'mujoco-wasm', version: '3.12.0' } as const
 
+export interface MjForce {
+  /** body to push (1..nbody-1; 0 is world) */
+  bodyId: number
+  /** force vector in MuJoCo world frame */
+  f: [number, number, number]
+  /** application point in MuJoCo world frame */
+  p: [number, number, number]
+}
+
 export interface MjParams {
   /** gravity z component (m/s², MuJoCo default −9.81) */
   gravityZ?: number
@@ -24,6 +33,11 @@ export interface MjParams {
   windX?: number
   /** integrator timestep (s; scene default when omitted) */
   timestep?: number
+  /** external forces replayed EVERY step before mj_step (the drag-force
+   *  event contract: a fork keeps these — forces live in the spec) */
+  forces?: MjForce[]
+  /** start from this keyframe index (challenge launches; −1 = none) */
+  keyframe?: number
 }
 
 export interface MjSimulateResult {
@@ -35,6 +49,14 @@ export interface MjSimulateResult {
   t: number[]
   /** qpos sampled at those stamps: number[T][nq] */
   qpos: number[][]
+  /** static scene summary — enough to RENDER the model (bodies, geom
+   *  types/sizes/materials) without re-loading the XML (Lane C contract) */
+  geomSummary: {
+    nbody: number
+    nq: number
+    nv: number
+    geoms: Array<{ bodyId: number; type: number; size: [number, number, number]; rgba: [number, number, number, number] }>
+  }
   metrics: {
     finalTime: number
     qposNormFinal: number
@@ -111,16 +133,27 @@ export async function mujocoSimulate(
   opts: { steps: number; sampleEvery: number; params?: MjParams } ,
 ): Promise<MjSimulateResult> {
   const manifest = scenesManifest()
-  if (!manifest.scenes.includes(scene)) {
+  // generated challenge scenes mount under the reserved p2l-* prefix (they
+  // are written by src/challenges with the same entity guard); everything
+  // else must be a vendored demo from the locked manifest
+  if (!scene.startsWith('p2l-') && !manifest.scenes.includes(scene)) {
     throw new Error(`unknown scene '${scene}' — registered: ${manifest.scenes.join(', ')}`)
   }
   const steps = Math.floor(opts.steps)
   const sampleEvery = Math.max(1, Math.floor(opts.sampleEvery))
   if (!(steps >= 1) || steps > 100000) throw new Error(`steps must be in [1, 100000]: ${steps}`)
-  const { gravityZ, windX, timestep } = opts.params ?? {}
+  const { gravityZ, windX, timestep, forces, keyframe } = opts.params ?? {}
   for (const v of [gravityZ, windX, timestep]) {
     if (v !== undefined && (!finite(v) || Math.abs(v) > 1e4)) throw new Error(`param out of range: ${v}`)
   }
+  // force events: validated once (body in range, finite components) and
+  // replayed EVERY step — they are part of the spec, so forks keep them
+  const forceEvents = (forces ?? []).filter((f) => {
+    if (typeof f.bodyId !== 'number' || !Number.isInteger(f.bodyId)) throw new Error(`force.bodyId must be an integer: ${f.bodyId}`)
+    if (!Array.isArray(f.f) || f.f.length !== 3 || !Array.isArray(f.p) || f.p.length !== 3) throw new Error('force.f/p must be 3-vectors')
+    for (const v of [...f.f, ...f.p]) if (!finite(v) || Math.abs(v) > 1e6) throw new Error(`force component out of range: ${v}`)
+    return true
+  })
 
   const mujoco = await getMujoco()
   const model = mujoco.MjModel.mj_loadXML(`/working/${scene}`) as {
@@ -149,6 +182,13 @@ export async function mujocoSimulate(
   if (gravityZ !== undefined) gravity[2] = gravityZ
   if (windX !== undefined) wind[0] = windX
   if (timestep !== undefined) model.opt.timestep = timestep
+  if (keyframe !== undefined) {
+    const mk = model as unknown as { nkey: number }
+    if (!Number.isInteger(keyframe) || keyframe < 0 || keyframe >= mk.nkey) {
+      throw new Error(`keyframe must be an integer in [0, nkey=${mk.nkey})`)
+    }
+    ;(mujoco as unknown as { mj_resetDataKeyframe(m: unknown, d: unknown, k: number): void }).mj_resetDataKeyframe(model, data, keyframe)
+  }
 
   const nq = model.nq
   const nv = model.nv
@@ -165,8 +205,20 @@ export async function mujocoSimulate(
 
   const step = (m: unknown, d: unknown) =>
     (mujoco as unknown as { mj_step(m: unknown, d: unknown): void }).mj_step(m, d)
+  const applyFT = (m: unknown, d: unknown, f: MjForce) =>
+    (mujoco as unknown as { mj_applyFT(...a: unknown[]): void }).mj_applyFT(
+      m, d, f.f, [0, 0, 0], f.p, f.bodyId, (d as { qfrc_applied: ArrayLike<number> }).qfrc_applied,
+    )
+  const clearFT = (d: unknown) => {
+    const q = (d as { qfrc_applied: ArrayLike<number> }).qfrc_applied
+    for (let i = 0; i < q.length; i++) (q as unknown as number[])[i] = 0
+  }
 
   for (let i = 1; i <= steps; i++) {
+    if (forceEvents.length > 0) {
+      clearFT(data)
+      for (const f of forceEvents) applyFT(model, data, f)
+    }
     step(model, data)
     let qaccNorm = 0
     for (let k = 0; k < nv; k++) {
@@ -198,11 +250,31 @@ export async function mujocoSimulate(
   // non-world body" for fall-style scenes
   const comZFinal = model.nbody > 1 ? Number((data.xpos as ArrayLike<number>)[5]) : null
 
+  // static scene summary — a renderer can draw the model from this + the
+  // sampled qpos WITHOUT touching the XML (Lane C render contract)
+  const geoms: MjSimulateResult['geomSummary']['geoms'] = []
+  const gm = model as unknown as {
+    ngeom: number
+    geom_bodyid: ArrayLike<number>
+    geom_type: ArrayLike<number>
+    geom_size: ArrayLike<number>
+    geom_rgba: ArrayLike<number>
+  }
+  for (let g = 0; g < gm.ngeom; g++) {
+    geoms.push({
+      bodyId: Number(gm.geom_bodyid[g]),
+      type: Number(gm.geom_type[g]),
+      size: [Number(gm.geom_size[g * 3]), Number(gm.geom_size[g * 3 + 1]), Number(gm.geom_size[g * 3 + 2])],
+      rgba: [Number(gm.geom_rgba[g * 4]), Number(gm.geom_rgba[g * 4 + 1]), Number(gm.geom_rgba[g * 4 + 2]), Number(gm.geom_rgba[g * 4 + 3])],
+    })
+  }
+
   const result: MjSimulateResult = {
     scene,
     steps,
     sampleEvery,
     nq,
+    geomSummary: { nbody: model.nbody, nq: model.nq, nv: model.nv, geoms },
     t,
     qpos,
     metrics: {

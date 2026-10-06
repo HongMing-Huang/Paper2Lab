@@ -11,6 +11,8 @@ export interface AgentSseEvent {
   tool?: string
   toolCallId?: string
   replyId?: string
+  /** Lane B round token — echoed back on resume; stale rounds are rejected */
+  roundId?: string
   args?: { deskKind?: 'formula' | 'kakeya'; steps?: Array<Record<string, unknown>>; ops?: Array<Record<string, unknown>> }
   runId?: string
   parentRunId?: string
@@ -137,7 +139,7 @@ export async function runAgentTurn(
         })
       }
     }
-    resume = { replyId, executionResults }
+    resume = { replyId, executionResults, roundId: pending[0].roundId }
     // if every call in the batch failed, this turn is over after the resume —
     // surface locally too (badges/notes) but do NOT throw before feeding back
     const allFailed = executionResults.every((r) => r.status === 'error')

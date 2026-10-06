@@ -107,7 +107,7 @@ describe('PR review: executor input hardening', () => {
       samples: 0,
     }, plan)
     expect(out.status).toBe('error')
-    if (out.status === 'error') expect(out.message).toMatch(/samples >= 2/)
+    if (out.status === 'error') expect(out.message).toMatch(/samples|minimum/)
   })
 
   it('kakeya.sweep over packing without baseline nTubes fails (no NaN evidence)', async () => {

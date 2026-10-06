@@ -12,6 +12,7 @@ describe('Scientific Skill Registry', () => {
         'formula.plot',
         'geometry.2d',
         'mujoco.simulate',
+        'challenge.attempt',
         'kakeya.generate',
         'kakeya.measure',
         'kakeya.sweep',

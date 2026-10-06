@@ -13,6 +13,7 @@ export type ExperimentKind =
   | 'formula.curve' // generic formula explorer (Cortex→JS sampling)
   | 'formula.value' // single-point formula evaluation (Cortex→JS)
   | 'mujoco.sim' // MuJoCo WASM headless simulation (vendored demo scenes)
+  | 'challenge.attempt' // playable-challenge attempt (code-built model, real compute)
 
 export interface ExperimentSpec {
   kind: ExperimentKind
@@ -94,6 +95,27 @@ function freezeRecord<T>(value: T): T {
   }
   return value
 }
+
+/**
+ * Finite-value gate (constitution §0.6): every NUMBER in a result must be
+ * finite. NaN/±Infinity means the compute diverged (e.g. a degenerate input
+ * slipped through) — such a run is recorded as an ERROR, never as
+ * CALCULATED evidence. null/undefined leaves are allowed (a metric may be
+ * legitimately absent, e.g. comZFinal when a model has one body).
+ */
+export function assertFiniteNumbers(value: unknown, path = 'result'): void {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error(`non-finite number at ${path}: ${value}`)
+    return
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) assertFiniteNumbers(value[i], `${path}[${i}]`)
+    return
+  }
+  if (value && typeof value === 'object' && !ArrayBuffer.isView(value)) {
+    for (const [key, child] of Object.entries(value)) assertFiniteNumbers(child, `${path}.${key}`)
+  }
+}
 export class ExperimentExecutionError extends Error {
   constructor(public readonly run: ExperimentRun) {
     super(run.errors.join('; '))
@@ -112,7 +134,11 @@ export async function executeSpec<T>(
   const input = structuredClone(spec)
   let result: T | undefined
   let failure: string | undefined
-  try { result = await compute() } catch (err) { failure = err instanceof Error ? err.message : String(err) }
+  try {
+    result = await compute()
+    // finite gate BEFORE the run can be stamped CALCULATED (Lane A contract)
+    assertFiniteNumbers(result)
+  } catch (err) { failure = err instanceof Error ? err.message : String(err) }
   const run: ExperimentRun<T> = {
     runId: nextRunId(spec.kind.replace(/\./g, '-')),
     spec: input,

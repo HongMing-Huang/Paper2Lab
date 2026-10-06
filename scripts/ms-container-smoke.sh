@@ -59,12 +59,29 @@ SESS_HOST=$(ls "$DATA"/agent-session-ms-smoke.json 2>/dev/null)
 [[ -n "$SESS_HOST" ]] || fail=1
 say "   session file on host mount: ${SESS_HOST:-MISSING}"
 
+say "-- Lane E: engine runs survive restart and CONTINUE (read original run, fork it)"
+# record a real run BEFORE restart
+PRE=$(curl -s -m 120 -X POST "http://127.0.0.1:${PORT}/api/engine/execute" \
+  -H 'content-type: application/json' \
+  -d '{"skill":"formula.plot","input":{"expression":["Multiply","a",["Sin","x"]],"parameters":["a","x"],"values":{"a":1,"x":0},"independent":"x","range":[-7,7],"samples":61},"planId":"p-pre"}')
+PRE_ID=$(print -- "$PRE" | python3 -c "import json,sys;print(json.load(sys.stdin)['outcome']['run']['runId'])")
+say "   pre-restart run: $PRE_ID"
+
 say "-- restart container; state must survive"
 docker rm -f p2l-ms-smoke >/dev/null 2>&1
 docker run -d --name p2l-ms-smoke -p 127.0.0.1:${PORT}:7860 -v "${DATA}:/mnt/workspace" "$IMG" >/dev/null
 for i in {1..60}; do curl -sf -m 3 "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1 && break; sleep 3; done
 [[ -f "$DATA/agent-session-ms-smoke.json" ]] || fail=1
 say "   after restart, session file still present: $(ls "$DATA"/agent-session-ms-smoke.json 2>/dev/null || echo MISSING)"
+
+# the ORIGINAL run must still be resolvable in the restarted engine, and a
+# FORK of it must execute — the experiment CONTINUES, not just files exist
+POST=$(curl -s -m 120 -X POST "http://127.0.0.1:${PORT}/api/agent/turn" \
+  -H 'content-type: application/json' \
+  -d "{\"sessionId\":\"ms-smoke-cont\",\"intent\":\"把 a 加倍\",\"context\":{\"deskKind\":\"formula\",\"execution\":\"server\",\"params\":[\"a\"],\"baseRunId\":\"$PRE_ID\"}}" )
+CONT_ID=$(print -- "$POST" | grep -o '"targetRunId": *"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//')
+say "   continue-from-run target: ${CONT_ID:-MISSING}"
+[[ -n "$CONT_ID" ]] || fail=1
 
 docker rm -f p2l-ms-smoke >/dev/null 2>&1
 rm -rf "$DATA"
