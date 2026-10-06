@@ -126,5 +126,12 @@ jobs:
         run: node scripts/product-challenges-test.mjs
       - name: formula desk — multi-formula + multi-page
         run: node scripts/product-formula-test.mjs
-      - name: desk upgrade — frames/actions/3D
-        run: node scripts/product-lab-test.mjs
+      - name: desk upgrade — frames/actions/3D (own origin on :8798)
+        run: |
+          nohup python -m uvicorn server.main:app --host 127.0.0.1 --port 8798 \
+            > /tmp/uvicorn-8798.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -sf -m 3 http://127.0.0.1:8798/api/health && break
+            sleep 3
+          done
+          node scripts/product-lab-test.mjs
