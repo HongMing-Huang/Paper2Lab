@@ -65,6 +65,13 @@ class SopSession:
     issued_calls: set[str] = field(default_factory=set)
     """how many external-execution rounds this session has consumed"""
     rounds: int = 0
+    """Lane B round token: the nonce of the round currently awaiting a resume.
+    A resume must carry it — stale/replayed rounds from an earlier turn are
+    rejected, and it survives restarts via _persist_session."""
+    current_round: str | None = None
+    """calls issued in the CURRENT round (batch completeness check: a resume
+    must answer exactly these, no partials, no extras from other rounds)"""
+    round_calls: set[str] = field(default_factory=set)
 
 
 _sop_sessions: dict[str, SopSession] = {}
@@ -98,6 +105,8 @@ def _persist_session(session: SopSession) -> None:
                     "answered_calls": sorted(session.answered_calls),
                     "issued_calls": sorted(session.issued_calls),
                     "rounds": session.rounds,
+                    "current_round": session.current_round,
+                    "round_calls": sorted(session.round_calls),
                 },
                 ensure_ascii=False,
             )
@@ -120,6 +129,8 @@ def _load_sessions() -> None:
                 answered_calls=set(data.get("answered_calls", [])),
                 issued_calls=set(data.get("issued_calls", [])),
                 rounds=int(data.get("rounds", 0)),
+                current_round=data.get("current_round"),
+                round_calls=set(data.get("round_calls", [])),
             )
             _sop_sessions[s.id] = s
     except (OSError, ValueError):
@@ -336,6 +347,10 @@ async def sop_turn(session: SopSession, intent: str, context: dict) -> AsyncGene
     yield ev("plan_created", plan=plan)
     call_id = f"tc-{uuid.uuid4().hex[:10]}"
     session.issued_calls.add(call_id)
+    # Lane B round token: this resume round is identified by a nonce the
+    # browser must echo back — replayed/stale rounds are rejected
+    session.current_round = f"round-{uuid.uuid4().hex[:8]}"
+    session.round_calls = {call_id}
     # persist BEFORE yielding: if the server dies after the event reaches the
     # browser, the reloaded session must still accept this call's result
     _persist_session(session)
@@ -344,6 +359,7 @@ async def sop_turn(session: SopSession, intent: str, context: dict) -> AsyncGene
         toolCallId=call_id,
         replyId="",
         tool="scientific_execute",
+        roundId=session.current_round,
         args={"deskKind": context.get("deskKind", "formula"), "steps": plan["steps"]},
     )
 
@@ -351,11 +367,29 @@ async def sop_turn(session: SopSession, intent: str, context: dict) -> AsyncGene
 async def sop_turn_server(session: SopSession, intent: str, context: dict) -> AsyncGenerator[dict, None]:
     """Server-execution mode: instead of pausing for the browser, the engine
     bridge runs the plan steps through the SAME unified executor — the turn
-    completes headless (formula / kakeya / ode / geometry desks all covered)."""
+    completes headless (formula / kakeya / ode / geometry / mujoco desks)."""
     desk = str(context.get("deskKind", "formula"))
     base = context.get("base")
+    base_run_id = context.get("baseRunId")
+    # Lane B chaining: a follow-up turn may name the PREVIOUS target run —
+    # the engine resolves its replayable input, so consecutive turns operate
+    # on the LATEST run instead of silently re-forking the first one
+    if base_run_id:
+        from server.engine_bridge import bridge
+
+        try:
+            resolved = await bridge.call("run_input", runId=str(base_run_id))
+        except TimeoutError:
+            resolved = {"ok": False, "error": "engine timed out"}
+        if not resolved.get("ok"):
+            yield ev("error", message=f"baseRunId cannot be resolved: {resolved.get('error', 'unknown')}")
+            yield ev("done", reason="execution_failed")
+            return
+        base = resolved.get("input")
+        if str(resolved.get("skill", "")).startswith("kakeya") and desk == "formula":
+            desk = "kakeya"  # the run's kind decides the desk, not the stale context
     if not isinstance(base, dict) or not base:
-        yield ev("error", message="server execution mode requires context.base (the experiment's skill input)")
+        yield ev("error", message="server execution mode requires context.base or a resolvable context.baseRunId")
         yield ev("done", reason="execution_failed")
         return
     plan = sop_plan(intent, context)
@@ -391,7 +425,7 @@ async def sop_turn_server(session: SopSession, intent: str, context: dict) -> As
         yield ev("done", reason="execution_failed")
         return
     result = resp.get("result", {})
-    session.history.append({"answered": [call_id], "status": "ok"})
+    session.history.append({"answered": [call_id], "status": "ok", "targetRunId": result.get("targetRunId")})
     session.answered_calls.add(call_id)
     _persist_session(session)
     for row in result.get("runs", []):
@@ -408,7 +442,8 @@ async def sop_turn_server(session: SopSession, intent: str, context: dict) -> As
         text=result.get("summary") or "实验完成——数字全部来自后端引擎（与浏览器同一执行器）的真实 ExperimentRun。",
         evidence="AI_INFERENCE",
     )
-    yield ev("done", reason="completed")
+    # chaining contract: the NEXT turn's baseRunId (latest run of this turn)
+    yield ev("done", reason="completed", targetRunId=result.get("targetRunId"))
 
 
 async def sop_resume(result: dict) -> AsyncGenerator[dict, None]:
@@ -464,6 +499,11 @@ def _build_agent() -> Any:
 
     class _ExternalTool(ToolBase):
         """external tool — the browser is the executor; the agent parks."""
+
+        # Lane B: scientific execution MUTATES desk/engine lineage — never run
+        # two of our tool calls concurrently in one LLM batch (AgentScope
+        # splits batches on this flag; default True was wrong for us)
+        is_concurrency_safe = False
 
         def __init__(self, name: str, description: str, input_schema: dict) -> None:
             super().__init__()
@@ -653,6 +693,12 @@ async def turn(body: TurnBody) -> StreamingResponse:
         rows = body.resume.get("executionResults", [])
         if not rows:
             return _sse(_single_error("resume without executionResults"))
+        # Lane B tool-name guard: results must answer an ALLOWED tool — a
+        # forged row claiming another tool never reached the executor
+        for row in rows:
+            tool = str(row.get("tool", "scientific_execute"))
+            if tool not in ALLOWED_TOOLS:
+                return _sse(_single_error(f"resume carries a tool this orchestrator never registers: {tool}"))
         # issued-guard: every resumed toolCallId must be one THIS session
         # actually emitted via require_execution — unknown/never-issued ids
         # are rejected (the server used to accept results for calls it never
@@ -661,6 +707,22 @@ async def turn(body: TurnBody) -> StreamingResponse:
             call_id = str(row.get("toolCallId", ""))
             if call_id not in session.issued_calls:
                 return _sse(_single_error(f"toolCallId was never issued by this session: {call_id or '(missing)'}"))
+        # Lane B round guard: the resume must echo the CURRENT round nonce.
+        # A stale round (replaying an earlier turn's pause after the next
+        # turn already started) is rejected instead of silently mis-merging.
+        resume_round = body.resume.get("roundId")
+        if session.current_round and resume_round != session.current_round:
+            return _sse(_single_error(
+                f"resume round mismatch: expected {session.current_round}, got {resume_round or '(missing)'} — stale replayed rounds are rejected",
+            ))
+        # Lane B batch completeness: the resume must answer EXACTLY the calls
+        # issued in the current round — no partial batches, no extras
+        answered_ids = {str(row.get("toolCallId", "")) for row in rows}
+        pending = session.round_calls - session.answered_calls
+        if pending and answered_ids != pending:
+            return _sse(_single_error(
+                f"batch incomplete: round issued {sorted(pending)}, resume answers {sorted(answered_ids)} — partial or extra rows are rejected",
+            ))
         # duplicate-resume guard: a toolCallId may be answered exactly once
         fresh = [row for row in rows if row.get("toolCallId") not in session.answered_calls]
         if not fresh:
@@ -669,6 +731,10 @@ async def turn(body: TurnBody) -> StreamingResponse:
             call_id = str(row.get("toolCallId", ""))
             if call_id:
                 session.answered_calls.add(call_id)
+        # the round is settled — clear the token so a later duplicate is
+        # caught by the batch/duplicate guards rather than the round guard
+        session.current_round = None
+        session.round_calls = set()
         _persist_session(session)
         failed = [row for row in fresh if row.get("status") == "error"]
         if failed:

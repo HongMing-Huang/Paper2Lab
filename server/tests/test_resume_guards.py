@@ -44,7 +44,9 @@ async def _issue(session_id: str, client: httpx.AsyncClient) -> dict:
         "/api/agent/turn",
         json={"sessionId": session_id, "intent": "a 设为 2", "context": {"deskKind": "formula", "params": ["a"]}},
     )
-    return next(e for e in _events(r.text) if e["type"] == "require_execution")
+    ev = next(e for e in _events(r.text) if e["type"] == "require_execution")
+    ev["_roundId"] = ev.get("roundId")
+    return ev
 
 
 async def test_resume_with_never_issued_tool_call_id_is_rejected():
@@ -61,6 +63,7 @@ async def test_resume_with_never_issued_tool_call_id_is_rejected():
                 "intent": "",
                 "context": {},
                 "resume": {
+                    "roundId": req_b["roundId"],
                     "executionResults": [
                         {"toolCallId": req_b["toolCallId"], "tool": "scientific_execute", "status": "ok", "result": {"runs": []}}
                     ]
@@ -75,7 +78,7 @@ async def test_resume_with_never_issued_tool_call_id_is_rejected():
 
 async def test_resume_with_forged_unknown_tool_call_id_is_rejected():
     async with await _client() as c:
-        await _issue("guard-forged", c)
+        req = await _issue("guard-forged", c)
         r = await c.post(
             "/api/agent/turn",
             json={
@@ -83,6 +86,7 @@ async def test_resume_with_forged_unknown_tool_call_id_is_rejected():
                 "intent": "",
                 "context": {},
                 "resume": {
+                    "roundId": req["roundId"],
                     "executionResults": [
                         {"toolCallId": "tc-does-not-exist", "tool": "scientific_execute", "status": "ok", "result": {"runs": [{"runId": "forged"}]}}
                     ]
@@ -104,6 +108,7 @@ async def test_legitimately_issued_call_still_round_trips():
                 "intent": "",
                 "context": {},
                 "resume": {
+                    "roundId": req["roundId"],
                     "executionResults": [
                         {"toolCallId": req["toolCallId"], "tool": "scientific_execute", "status": "ok", "result": {"runs": [{"runId": "r-ok", "metrics": {}}]}}
                     ]
@@ -125,6 +130,7 @@ async def test_error_status_resume_yields_experiment_failed():
                 "intent": "",
                 "context": {},
                 "resume": {
+                    "roundId": req["roundId"],
                     "executionResults": [
                         {"toolCallId": req["toolCallId"], "tool": "scientific_execute", "status": "error", "error": "compile failed"}
                     ]

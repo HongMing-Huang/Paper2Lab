@@ -17,7 +17,7 @@
 //   {id, op:"import", bundle:"..."}                         → {id, ok, imported:n}
 //   {id, op:"shutdown"}                                     → {id, ok} then exit
 import { createInterface } from 'node:readline'
-import { executeSkill } from '../src/skills/executor.ts'
+import { executeSkill, inputForRun } from '../src/skills/executor.ts'
 import { runAgentSteps, type DeskKind } from '../src/skills/agentSteps.ts'
 import { SKILL_REGISTRY } from '../src/skills/registry.ts'
 import { exportExperimentRuns, listExperimentRuns } from '../src/experiments/protocol.ts'
@@ -66,6 +66,12 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
       typeof req.planId === 'string' ? req.planId : `plan-engine-${Date.now()}`,
     )
     return { ok: true, result }
+  }
+  if (op === 'run_input') {
+    // chaining contract: the replayable base input of a recorded run, so a
+    // follow-up turn continues from the LATEST run (not the first one)
+    const out = inputForRun(String(req.runId))
+    return 'error' in out ? { ok: false, error: out.error } : { ok: true, skill: out.skill, input: out.input }
   }
   if (op === 'runs') {
     const runs = listExperimentRuns({

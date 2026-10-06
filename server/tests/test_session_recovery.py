@@ -58,6 +58,7 @@ async def test_session_state_survives_restart_and_guards_still_enforced():
                 "intent": "",
                 "context": {},
                 "resume": {
+                    "roundId": req["roundId"],
                     "executionResults": [
                         {"toolCallId": req["toolCallId"], "tool": "scientific_execute", "status": "ok", "result": {"runs": []}}
                     ]
@@ -81,6 +82,7 @@ async def test_session_state_survives_restart_and_guards_still_enforced():
                 "intent": "",
                 "context": {},
                 "resume": {
+                    "roundId": req["roundId"],
                     "executionResults": [
                         {"toolCallId": req["toolCallId"], "tool": "scientific_execute", "status": "ok", "result": {"runs": []}}
                     ]
@@ -120,6 +122,7 @@ async def test_multi_turn_branch_continuity_via_recorded_history():
                 "intent": "",
                 "context": {},
                 "resume": {
+                    "roundId": req1["roundId"],
                     "executionResults": [
                         {"toolCallId": req1["toolCallId"], "tool": "scientific_execute", "status": "ok", "result": {"runs": [{"runId": fork_run, "metrics": {"peak": 2}}]}}
                     ]

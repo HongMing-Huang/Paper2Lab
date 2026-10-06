@@ -400,6 +400,18 @@ export function registerSkillRunner(
   extraRunners.set(name, runner)
 }
 
+/** the replayable skill input of a historical run (agent chaining: a follow-up
+ *  turn uses this as its base instead of the original first-run input) */
+export function inputForRun(runId: string): { skill: string; input: Input } | { error: string } {
+  const run = getExperimentRun(runId)
+  if (!run) return { error: `Unknown run: ${runId}` }
+  const skillName = COMPUTE_BY_KIND[run.spec.kind]
+  if (!skillName) return { error: `No compute skill mapped for kind ${run.spec.kind}` }
+  const input = inputFromSpec(skillName, run)
+  if (!input) return { error: `Run ${runId} spec lacks the model fields needed for replay` }
+  return { skill: skillName, input }
+}
+
 /** re-execute a historical run from its recorded spec (real replay, no mocks) */
 export async function replayRun(runId: string): Promise<SkillOutcome> {
   const run = getExperimentRun(runId)
