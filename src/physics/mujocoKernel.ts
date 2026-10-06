@@ -83,7 +83,29 @@ let modulePromise: Promise<MujocoModule> | null = null
 let scenesSeeded = false
 
 const here = dirname(fileURLToPath(import.meta.url))
-const SCENES_DIR = resolve(here, 'scenes')
+
+/**
+ * vendored scenes location. In source it sits next to the kernel
+ * (src/physics/scenes); in the prebuilt engine bundle import.meta.url points
+ * at scripts/, so candidates are probed (plus a PAPER2LAB_SCENES_DIR
+ * override). Throws with the tried paths when none carries the manifest.
+ */
+function findScenesDir(): string {
+  const candidates = [
+    process.env.PAPER2LAB_SCENES_DIR,
+    resolve(here, 'scenes'),                    // source layout
+    resolve(here, '../src/physics/scenes'),     // bundle in scripts/, repo layout
+    resolve(here, '../../src/physics/scenes'),  // bundle one level deeper
+  ].filter((p): p is string => typeof p === 'string' && p.length > 0)
+  for (const dir of candidates) {
+    try {
+      readFileSync(join(dir, 'manifest.json'))
+      return dir
+    } catch { /* try next */ }
+  }
+  throw new Error(`vendored scenes not found — tried: ${candidates.join(', ')}`)
+}
+const SCENES_DIR = findScenesDir()
 
 /** the manifest written by scripts/vendor_mujoco_scenes.ts (upstream lock) */
 export function scenesManifest(): { upstream: string; commit: string; scenes: string[]; files: Record<string, string> } {

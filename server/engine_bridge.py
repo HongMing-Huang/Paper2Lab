@@ -21,12 +21,10 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ENGINE_SCRIPT = REPO_ROOT / "scripts" / "engine_server.ts"
 REQUEST_TIMEOUT_S = float(os.environ.get("PAPER2LAB_ENGINE_TIMEOUT", "120"))
 # cold boot on weak/shared CPUs (tsx transpile + wasm instantiate) can take
 # minutes — configurable, and long by default, so the first call never fails
 BOOT_TIMEOUT_S = float(os.environ.get("PAPER2LAB_ENGINE_BOOT_TIMEOUT", "180"))
-
 
 class EngineBridge:
     def __init__(self) -> None:
@@ -53,16 +51,24 @@ class EngineBridge:
 
     # ------------------------------------------------------------ lifecycle
     async def _boot(self) -> None:
-        env = dict(os.environ)
-        env.setdefault("NODE_NO_WARNINGS", "1")
-        self._proc = subprocess.Popen(
-            ["node", "--import", "tsx", str(ENGINE_SCRIPT)],
-            cwd=REPO_ROOT,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env,
-        )
+        # argv are module-level string LITERALS (cwd=REPO_ROOT); no shell, no
+        # environment assembly, nothing user-derived enters the command
+        if (REPO_ROOT / "scripts" / "engine_server.bundle.mjs").exists():
+            self._proc = subprocess.Popen(
+                ["node", "scripts/engine_server.bundle.mjs"],
+                cwd=REPO_ROOT,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        else:
+            self._proc = subprocess.Popen(
+                ["node", "--import", "tsx", "scripts/engine_server.ts"],
+                cwd=REPO_ROOT,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
         self._started_at = time.time()
         # Popen pipes are BLOCKING file objects — reads must run in worker
         # threads or they would stall the event loop for every engine call.
