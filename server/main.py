@@ -32,12 +32,23 @@ from server.ingest_core import convert_pdf
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
-    # engine boots lazily on first /api/engine call (keeps ingest-only
-    # deployments cheap); teardown always stops the child process
+    # WARM the engine at startup in the background: on weak/shared CPUs the
+    # cold boot (tsx transpile + wasm instantiate) can take minutes, and the
+    # first user request must not pay that (or time out) — booting here means
+    # the engine is hot by the time anyone calls /api/engine
+    warmup = asyncio.get_running_loop().create_task(_warm_engine())
     try:
         yield
     finally:
+        warmup.cancel()
         await bridge.stop()
+
+
+async def _warm_engine() -> None:
+    try:
+        await bridge.start()
+    except Exception as exc:  # noqa: BLE001 — readiness surfaces the state
+        print(f"[engine-warmup] failed (will retry on first call): {exc}", flush=True)
 
 
 app = FastAPI(title="Paper2Lab backend", version="0.4", lifespan=_lifespan)

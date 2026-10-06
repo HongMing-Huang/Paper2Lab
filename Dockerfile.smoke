@@ -43,6 +43,8 @@ RUN mkdir -p dist/assets/mujoco public/assets/mujoco \
   && cp node_modules/@mujoco/mujoco/mujoco.wasm public/assets/mujoco/mujoco.wasm
 
 ENV PAPER2LAB_DATA_DIR=/mnt/workspace
+ENV PAPER2LAB_ENGINE_BOOT_TIMEOUT=300 \
+    PAPER2LAB_ENGINE_TIMEOUT=600
 EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=5s --start-period=180s \
   CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:7860/api/health')" || exit 1

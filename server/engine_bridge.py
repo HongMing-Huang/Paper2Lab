@@ -23,19 +23,33 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ENGINE_SCRIPT = REPO_ROOT / "scripts" / "engine_server.ts"
 REQUEST_TIMEOUT_S = float(os.environ.get("PAPER2LAB_ENGINE_TIMEOUT", "120"))
-BOOT_TIMEOUT_S = 20.0
+# cold boot on weak/shared CPUs (tsx transpile + wasm instantiate) can take
+# minutes — configurable, and long by default, so the first call never fails
+BOOT_TIMEOUT_S = float(os.environ.get("PAPER2LAB_ENGINE_BOOT_TIMEOUT", "180"))
 
 
 class EngineBridge:
     def __init__(self) -> None:
         self._proc: subprocess.Popen[bytes] | None = None
-        self._lock = asyncio.Lock()
+        self._lock: asyncio.Lock | None = None
+        self._lock_loop: asyncio.AbstractEventLoop | None = None
         self._next_id = 0
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._reader: asyncio.Task[None] | None = None
         self._drain: asyncio.Task[None] | None = None
         self._last_error: str | None = None
         self._started_at: float | None = None
+
+    def _guard(self) -> asyncio.Lock:
+        """a module-level Lock binds to its FIRST event loop forever — under
+        pytest each test gets a new loop and the old (possibly still held,
+        dead-loop) lock would raise. Rebuild the lock when the running loop
+        changed; sequential owners keep mutual exclusion."""
+        loop = asyncio.get_running_loop()
+        if self._lock is None or self._lock_loop is not loop:
+            self._lock = asyncio.Lock()
+            self._lock_loop = loop
+        return self._lock
 
     # ------------------------------------------------------------ lifecycle
     async def _boot(self) -> None:
@@ -65,16 +79,22 @@ class EngineBridge:
                     self._last_error = text[-2000:]
 
         self._drain = asyncio.get_running_loop().create_task(_drain_stderr())
-        # wait for the engine-ready banner (or first response) before serving
+        # wait for the engine-ready banner (or first response) before serving;
+        # a boot failure must surface the child's stderr tail in the logs
         deadline = time.monotonic() + BOOT_TIMEOUT_S
+        last: dict[str, Any] = {}
         while time.monotonic() < deadline:
-            pong = await self._roundtrip({"op": "ping"}, timeout=BOOT_TIMEOUT_S)
-            if pong.get("ok"):
+            last = await self._roundtrip({"op": "ping"}, timeout=BOOT_TIMEOUT_S)
+            if last.get("ok"):
                 return
-        raise RuntimeError("engine did not become ready in time")
+        self._teardown_proc()
+        raise RuntimeError(
+            f"engine did not become ready in {BOOT_TIMEOUT_S}s "
+            f"(stderr tail: {self._last_error or 'none'})"
+        )
 
     async def start(self) -> None:
-        async with self._lock:
+        async with self._guard():
             if self._proc is None or self._proc.poll() is not None:
                 await self._boot()
 
@@ -98,6 +118,16 @@ class EngineBridge:
             await asyncio.to_thread(proc.wait, 5)
         except subprocess.TimeoutExpired:
             proc.kill()
+
+    def _teardown_proc(self) -> None:
+        """drop the child reference WITHOUT waiting (boot-failure path — the
+        process may be mid-startup; the next call reboots a fresh one)"""
+        self._proc = None
+        for task in (self._reader, self._drain):
+            if task:
+                task.cancel()
+        self._reader = None
+        self._drain = None
 
     def alive(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
@@ -150,13 +180,13 @@ class EngineBridge:
 
     async def call(self, op: str, **payload: Any) -> dict[str, Any]:
         """Send one op; restart the child once if it died mid-call."""
-        async with self._lock:
+        async with self._guard():
             if self._proc is None or self._proc.poll() is not None:
                 await self._boot()
         try:
             return await self._roundtrip({"op": op, **payload}, REQUEST_TIMEOUT_S)
         except (RuntimeError, asyncio.TimeoutError):
-            async with self._lock:
+            async with self._guard():
                 if self._proc is not None and self._proc.poll() is not None:
                     await self._boot()
                 else:  # hung child — replace it

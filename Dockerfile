@@ -70,6 +70,10 @@ RUN mkdir -p dist/assets/mujoco public/assets/mujoco \
 # ModelScope Studio: listen on 7860 (8080 is platform-reserved); the only
 # persistent path is /mnt/workspace — all job/doc/session state lives there
 ENV PAPER2LAB_DATA_DIR=/mnt/workspace
+# weak/shared CPUs need a long engine cold-boot window (tsx+wasm) and roomy
+# request timeouts — the lifespan warmup covers the boot at deploy time
+ENV PAPER2LAB_ENGINE_BOOT_TIMEOUT=300 \
+    PAPER2LAB_ENGINE_TIMEOUT=600
 EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=5s --start-period=180s \
   CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:7860/api/health')" || exit 1
