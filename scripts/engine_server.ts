@@ -24,6 +24,8 @@ import { exportExperimentRuns, listExperimentRuns } from '../src/experiments/pro
 import { importRuns } from '../src/experiments/runRepository.ts'
 // registers the engine-side mujoco.simulate runner (Node-only kernel)
 import '../src/physics/registerMujocoRunner.ts'
+// challenge.attempt (playable levels; engine-side kernels)
+import '../src/challenges/registerChallengeRunner.ts'
 // Lane E: run persistence — every resolved run appends to DATA_DIR; boot
 // restores them so a container restart resumes with the original history
 import { persistRun, restoreRuns } from './engine_persist.ts'

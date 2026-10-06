@@ -69,6 +69,7 @@ describe('unified executor — gates', () => {
         'formula.plot',
         'geometry.2d',
         'mujoco.simulate',
+        'challenge.attempt',
         'kakeya.generate',
         'kakeya.measure',
         'kakeya.sweep',

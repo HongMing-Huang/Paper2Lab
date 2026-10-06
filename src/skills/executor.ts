@@ -380,6 +380,7 @@ const COMPUTE_BY_KIND: Record<string, string> = {
   'perron.tree': 'geometry.2d',
   'lv.ode': 'ode.solve',
   'mujoco.sim': 'mujoco.simulate',
+  'challenge.attempt': 'challenge.attempt',
 }
 
 // ---------------------------------------------------------------------------
@@ -493,6 +494,14 @@ function applyForkChanges(skillName: string, forkInput: Input, changes: Record<s
 }
 
 function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  const model = run.spec.model as Record<string, unknown> | undefined
+  if (skillName === 'challenge.attempt') {
+    if (!model?.challenge) return null
+    return {
+      challenge: model.challenge,
+      changes: { ...(model.changes ?? {}) },
+      level: { ...(model.level ?? {}) },
+    }
+  }
   if (skillName === 'mujoco.simulate') {
     if (!model?.scene) return null
     const params = (model.params ?? {}) as Record<string, unknown>
@@ -551,7 +560,7 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  c
 // ---- the single entry -------------------------------------------------------
 
 /** skills whose runs are formal evidence and therefore need a PlayPlan */
-const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve', 'mujoco.simulate'])
+const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve', 'mujoco.simulate', 'challenge.attempt'])
 
 export async function executeSkill<T = unknown>(
   name: string,
@@ -617,13 +626,13 @@ export async function executeSkill<T = unknown>(
         return { status: 'error', code: 'invalid_input', message: err instanceof Error ? err.message : String(err) }
       }
     }
-    if (name === 'mujoco.simulate') {
+    if (name === 'mujoco.simulate' || name === 'challenge.attempt') {
       const runner = extraRunners.get(name)
       if (!runner) {
         return {
           status: 'unsupported',
           skill: name,
-          message: 'mujoco.simulate runs in the backend engine (Node WASM) — use server execution mode / the engine API; the page imports the resulting Runs',
+          message: `${name} runs in the backend engine (Node WASM) — use server execution mode / the engine API; the page imports the resulting Runs`,
         }
       }
       return { status: 'ok', run: (await runner(input as Input, opts)) as ExperimentRun<T> }

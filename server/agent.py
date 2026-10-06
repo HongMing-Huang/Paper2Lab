@@ -302,6 +302,25 @@ def _parse_mujoco_intent(q: str, params: list[str]) -> list[dict] | None:
     return None
 
 
+def _parse_challenge_intent(q: str) -> list[dict] | None:
+    """challenge desk: collect EVERY named parameter, then attempt once."""
+    steps: list[dict] = []
+    for name, words in [
+        ("angleDeg", ["角度", "angle"]),
+        ("speed", ["力度", "速度", "speed"]),
+        ("length", ["杆长", "摆长", "length"]),
+    ]:
+        for w in words:
+            m = re.search(rf"{w}.{{0,6}}?(设为|改为|置为|调整为)\s*{_NUM}", q)
+            if m:
+                steps.append({"op": "challenge.set", "param": name, "value": float(m.group(2))})
+                break
+    if re.search(r"试一次|再试|重试|attempt|try", q, re.I) or steps:
+        steps.append({"op": "challenge.attempt"})
+        return steps
+    return None
+
+
 def sop_plan(intent: str, context: dict) -> dict | None:
     desk = context.get("deskKind", "formula")
     if desk == "kakeya":
@@ -312,6 +331,8 @@ def sop_plan(intent: str, context: dict) -> dict | None:
         steps = _parse_geometry_intent(intent)
     elif desk == "mujoco":
         steps = _parse_mujoco_intent(intent, list(context.get("params", [])))
+    elif desk == "challenge":
+        steps = _parse_challenge_intent(intent)
     else:
         steps = _parse_formula_intent(intent, list(context.get("params", [])))
     if not steps:
@@ -321,6 +342,7 @@ def sop_plan(intent: str, context: dict) -> dict | None:
         "ode": ("ode.solve", "ts-rk4@ode-rk4-0.1", "plot", ["finalPrey", "finalPredator", "conservedDrift"]),
         "geometry": ("geometry.2d", "perron-kernel@0.1", "svg", ["computedArea", "boundArea"]),
         "mujoco": ("mujoco.simulate", "mujoco-wasm@3.12.0", "r3f", ["finalTime", "qposNormFinal", "comZFinal"]),
+        "challenge": ("challenge.attempt", "challenge-kernel@0.1", "r3f", ["score", "error", "hit"]),
     }.get(desk, ("formula.plot", "cortex-ce@0.142.0", "jsxgraph", ["curve", "peak", "integral"]))
     return {
         "planId": f"plan-{uuid.uuid4().hex[:8]}",
@@ -680,7 +702,7 @@ async def turn(body: TurnBody) -> StreamingResponse:
     session = _sop_sessions.setdefault(body.sessionId, SopSession(id=body.sessionId))
     desk = str(body.context.get("deskKind", "formula"))
     server_mode = body.context.get("execution") == "server"
-    if not server_mode and desk in ("ode", "geometry", "mujoco"):
+    if not server_mode and desk in ("ode", "geometry", "mujoco", "challenge"):
         # these desks have no browser execution surface (agentBridge executes
         # formula/kakeya only) — don't promise a turn that can never complete
         return _sse(_single_event("done", reason="not-an-experiment"))

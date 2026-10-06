@@ -36,6 +36,8 @@ export interface MjParams {
   /** external forces replayed EVERY step before mj_step (the drag-force
    *  event contract: a fork keeps these — forces live in the spec) */
   forces?: MjForce[]
+  /** start from this keyframe index (challenge launches; −1 = none) */
+  keyframe?: number
 }
 
 export interface MjSimulateResult {
@@ -131,13 +133,16 @@ export async function mujocoSimulate(
   opts: { steps: number; sampleEvery: number; params?: MjParams } ,
 ): Promise<MjSimulateResult> {
   const manifest = scenesManifest()
-  if (!manifest.scenes.includes(scene)) {
+  // generated challenge scenes mount under the reserved p2l-* prefix (they
+  // are written by src/challenges with the same entity guard); everything
+  // else must be a vendored demo from the locked manifest
+  if (!scene.startsWith('p2l-') && !manifest.scenes.includes(scene)) {
     throw new Error(`unknown scene '${scene}' — registered: ${manifest.scenes.join(', ')}`)
   }
   const steps = Math.floor(opts.steps)
   const sampleEvery = Math.max(1, Math.floor(opts.sampleEvery))
   if (!(steps >= 1) || steps > 100000) throw new Error(`steps must be in [1, 100000]: ${steps}`)
-  const { gravityZ, windX, timestep, forces } = opts.params ?? {}
+  const { gravityZ, windX, timestep, forces, keyframe } = opts.params ?? {}
   for (const v of [gravityZ, windX, timestep]) {
     if (v !== undefined && (!finite(v) || Math.abs(v) > 1e4)) throw new Error(`param out of range: ${v}`)
   }
@@ -177,6 +182,13 @@ export async function mujocoSimulate(
   if (gravityZ !== undefined) gravity[2] = gravityZ
   if (windX !== undefined) wind[0] = windX
   if (timestep !== undefined) model.opt.timestep = timestep
+  if (keyframe !== undefined) {
+    const mk = model as unknown as { nkey: number }
+    if (!Number.isInteger(keyframe) || keyframe < 0 || keyframe >= mk.nkey) {
+      throw new Error(`keyframe must be an integer in [0, nkey=${mk.nkey})`)
+    }
+    ;(mujoco as unknown as { mj_resetDataKeyframe(m: unknown, d: unknown, k: number): void }).mj_resetDataKeyframe(model, data, keyframe)
+  }
 
   const nq = model.nq
   const nv = model.nv

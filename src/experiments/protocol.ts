@@ -13,6 +13,7 @@ export type ExperimentKind =
   | 'formula.curve' // generic formula explorer (Cortex→JS sampling)
   | 'formula.value' // single-point formula evaluation (Cortex→JS)
   | 'mujoco.sim' // MuJoCo WASM headless simulation (vendored demo scenes)
+  | 'challenge.attempt' // playable-challenge attempt (code-built model, real compute)
 
 export interface ExperimentSpec {
   kind: ExperimentKind

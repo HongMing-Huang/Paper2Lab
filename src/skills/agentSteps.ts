@@ -12,7 +12,7 @@
 import { executeSkill } from './executor'
 import type { ExperimentRun } from '../experiments/protocol'
 
-export type DeskKind = 'formula' | 'kakeya' | 'ode' | 'geometry' | 'mujoco'
+export type DeskKind = 'formula' | 'kakeya' | 'ode' | 'geometry' | 'mujoco' | 'challenge'
 
 export interface StepOp {
   op: string
@@ -35,6 +35,7 @@ const TERMINAL_BY_DESK: Record<DeskKind, { skill: string; op: string }> = {
   ode: { skill: 'ode.solve', op: 'ode.solve' },
   geometry: { skill: 'geometry.2d', op: 'geometry.plot' },
   mujoco: { skill: 'mujoco.simulate', op: 'mujoco.simulate' },
+  challenge: { skill: 'challenge.attempt', op: 'challenge.attempt' },
 }
 
 /** where a parameter lives inside each skill's input (mirrors applyForkChanges) */
@@ -52,9 +53,9 @@ function readParam(desk: DeskKind, base: Record<string, unknown>, param: string)
     const params = (base.params as Record<string, number>) ?? {}
     return params[param]
   }
-  if (desk === 'mujoco') {
+  if (desk === 'mujoco' || desk === 'challenge') {
     const params = (base.params as Record<string, number>) ?? {}
-    return params[param]
+    return params[param] ?? (base.changes as Record<string, number> | undefined)?.[param]
   }
   return base[param] as number | undefined // kakeya inputs are flat
 }
@@ -93,6 +94,14 @@ function metricsOf(desk: DeskKind, result: unknown): Record<string, number> {
     const computedArea = num(r.computedArea)
     const boundArea = num(r.boundArea)
     return { ...(computedArea !== undefined ? { computedArea } : {}), ...(boundArea !== undefined ? { boundArea } : {}) }
+  }
+  if (desk === 'challenge') {
+    const out: Record<string, number> = {}
+    for (const key of ['score', 'error', 'landingX', 'measuredPeriod', 'occupiedVolume']) {
+      const v = (r as Record<string, unknown>)[key]
+      if (typeof v === 'number' && Number.isFinite(v)) out[key] = v
+    }
+    return out
   }
   if (desk === 'mujoco') {
     const m = (r.metrics ?? {}) as Record<string, unknown>
@@ -175,6 +184,15 @@ export async function runAgentSteps(
         if (n === undefined) throw new Error('base input has no nTubes to halve')
         changes.nTubes = Math.max(8, Math.floor(n / 2))
         changed = true
+      } else if (desk === 'challenge' && op === 'challenge.attempt') {
+        const r = await executeSkill('challenge.attempt', {
+          challenge: base.challenge,
+          changes: { ...(base.changes ?? {}), ...changes },
+          ...(base.level ? { level: base.level } : {}),
+        }, { planId })
+        if (r.status !== 'ok' || !r.run) throw new Error(r.status === 'error' ? r.message : `challenge.attempt returned ${r.status}`)
+        out.runs.push({ runId: r.run.runId, parentRunId: r.run.parentRunId, metrics: metricsOf(desk, r.run.result) })
+        current = r.run
       } else if (op === terminal.op || op === 'kakeya.sweep') {
         const skillName = op === 'kakeya.sweep' ? 'kakeya.sweep' : terminal.skill
         const run = await materialise(skillName, base)

@@ -273,6 +273,28 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     runKind: 'mujoco.sim',
     implemented: true,
   },
+  {
+    name: 'challenge.attempt',
+    description:
+      'Play one attempt of a playable challenge (projectile / pendulum / tubes): a code-built model (programmatic MJCF or Kakeya geometry) computed by the REAL engine; hit, error, period and score are read from the computed result — never asserted. Shares goal, constraints and budget between user and agent.',
+    inputSchema: {
+      type: 'object',
+      required: ['challenge', 'changes'],
+      properties: {
+        challenge: { type: 'string', enum: ['projectile', 'pendulum', 'tubes'] },
+        changes: { type: 'object' },
+        level: { type: 'object' },
+      },
+    },
+    outputSchema: { type: 'object', required: ['result'], properties: { result: { type: 'object' } } },
+    runtime: 'wasm',
+    renderer: 'r3f',
+    deterministic: true,
+    version: 'challenge-kernel@0.1',
+    evidence: 'CALCULATED',
+    runKind: 'challenge.attempt',
+    implemented: true,
+  },
 ]
 
 const byName = new Map(SKILL_REGISTRY.map((s) => [s.name, s]))
