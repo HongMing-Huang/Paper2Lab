@@ -32,9 +32,13 @@ export function restoreRuns(): number {
     if (!existsSync(path)) return 0
     const lines = readFileSync(path, 'utf8').split('\n').filter((l) => l.trim())
     const known = new Set(listExperimentRuns({ limit: 100000 }).map((r) => r.runId))
+    // dedupe by runId: the log is append-only (an agent turn persists the
+    // target run once from runs[] and once as targetRunId) — a duplicate
+    // inside one import bundle would fail importRuns' atomic preflight
+    const seen = new Set<string>()
     const fresh = lines
       .map((l) => JSON.parse(l) as ExperimentRun)
-      .filter((r) => !known.has(r.runId))
+      .filter((r) => !known.has(r.runId) && !seen.has(r.runId) && seen.add(r.runId))
     if (fresh.length === 0) return 0
     importRuns(JSON.stringify(fresh))
     return fresh.length
