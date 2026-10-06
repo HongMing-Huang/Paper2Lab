@@ -185,8 +185,20 @@ class EngineBridge:
         return await asyncio.wait_for(fut, timeout=timeout)
 
     async def call(self, op: str, **payload: Any) -> dict[str, Any]:
-        """Send one op; restart the child once if it died mid-call."""
+        """Send one op. Serverless (FC) freezes the instance ~130s after the
+        last request; the child process survives as a ZOMBIE that poll()==0
+        misses (process alive, never answers). So: quick-probe any existing
+        child with a 3s ping — zombie → teardown → fresh boot (the prebuilt
+        bundle boots in <1s, well inside the platform's 120s gateway window).
+        """
         async with self._guard():
+            if self._proc is not None and self._proc.poll() is None:
+                try:
+                    probe = await self._roundtrip({"op": "ping"}, timeout=3.0)
+                    if not probe.get("ok"):
+                        raise RuntimeError("ping rejected")
+                except Exception:
+                    await self.stop()
             if self._proc is None or self._proc.poll() is not None:
                 await self._boot()
         try:

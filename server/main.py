@@ -32,23 +32,15 @@ from server.ingest_core import convert_pdf
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
-    # WARM the engine at startup in the background: on weak/shared CPUs the
-    # cold boot (tsx transpile + wasm instantiate) can take minutes, and the
-    # first user request must not pay that (or time out) — booting here means
-    # the engine is hot by the time anyone calls /api/engine
-    warmup = asyncio.get_running_loop().create_task(_warm_engine())
+    # NO startup warmup: on serverless (ModelScope FC) the instance is frozen
+    # ~130s after the last request and a background child becomes a zombie —
+    # the next request then waited on it and blew the gateway window. The
+    # engine boots lazily per request; the prebuilt bundle boots in <1s and
+    # the bridge fast-probes/replaces stale children (see engine_bridge).
     try:
         yield
     finally:
-        warmup.cancel()
         await bridge.stop()
-
-
-async def _warm_engine() -> None:
-    try:
-        await bridge.start()
-    except Exception as exc:  # noqa: BLE001 — readiness surfaces the state
-        print(f"[engine-warmup] failed (will retry on first call): {exc}", flush=True)
 
 
 app = FastAPI(title="Paper2Lab backend", version="0.4", lifespan=_lifespan)
