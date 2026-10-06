@@ -20,7 +20,7 @@ import { createInterface } from 'node:readline'
 import { executeSkill, inputForRun } from '../src/skills/executor.ts'
 import { runAgentSteps, type DeskKind } from '../src/skills/agentSteps.ts'
 import { SKILL_REGISTRY } from '../src/skills/registry.ts'
-import { exportExperimentRuns, listExperimentRuns } from '../src/experiments/protocol.ts'
+import { exportExperimentRuns, getExperimentRun, listExperimentRuns, type ExperimentRun } from '../src/experiments/protocol.ts'
 import { importRuns } from '../src/experiments/runRepository.ts'
 // registers the engine-side mujoco.simulate runner (Node-only kernel)
 import '../src/physics/registerMujocoRunner.ts'
@@ -76,6 +76,14 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
       (req.base ?? {}) as Record<string, unknown>,
       typeof req.planId === 'string' ? req.planId : `plan-engine-${Date.now()}`,
     )
+    // agent-turn runs must persist too (the reply rows carry only summaries;
+    // the full records live in this process's history — persist them here)
+    for (const row of result.runs) {
+      const full = getExperimentRun(row.runId)
+      if (full?.status === 'resolved') persistRun(full as ExperimentRun)
+    }
+    const target = result.targetRunId ? getExperimentRun(result.targetRunId) : undefined
+    if (target?.status === 'resolved') persistRun(target as ExperimentRun)
     return { ok: true, result }
   }
   if (op === 'run_input') {
