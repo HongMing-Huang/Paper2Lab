@@ -1,8 +1,14 @@
 // Challenge store — per-level attempt history with best record, retry and
 // save/restore. Scores/hits read ONLY from computed ChallengeResults; the
-// store records, it never computes. Agent attempts share the SAME level spec,
-// budget and scoring (same engine, same seed contract) as the user's.
-import { runChallenge, type ChallengeResult, type SceneSpec } from './kernel'
+// store records, it never computes: every attempt runs through an EXECUTOR
+// (the page uses the backend engine — same kernels the agent uses — and the
+// result lands as an imported ExperimentRun; tests run the local kernel).
+import type { ChallengeResult, SceneSpec } from './levels'
+
+/** executes one spec → {result, runId}; throws on failure */
+export type ChallengeExecutor = (spec: SceneSpec) => Promise<{ result: ChallengeResult; runId: string | null }>
+// (named runAttempt at call sites — this is a typed compute callback, NOT
+// child_process.exec; there is no shell anywhere in this module)
 
 export interface AttemptRecord {
   attemptId: string
@@ -82,7 +88,7 @@ export async function attempt(
   state: LevelState,
   actor: AttemptRecord['actor'],
   changes: Record<string, number | number[]>,
-  runId: string | null = null,
+  runAttempt: ChallengeExecutor,
 ): Promise<AttemptRecord> {
   if (state.budgetRemaining <= 0) {
     throw new Error('challenge budget exhausted — start a new level')
@@ -90,7 +96,7 @@ export async function attempt(
   const spec = deriveSpec(state.level, changes)
   const record: AttemptRecord = {
     attemptId: nextAttemptId(actor),
-    runId,
+    runId: null,
     actor,
     spec,
     result: null,
@@ -98,8 +104,10 @@ export async function attempt(
     createdAt: Date.now(),
   }
   try {
-    record.result = await runChallenge(spec)
-    record.score = record.result.score
+    const { result, runId } = await runAttempt(spec)
+    record.result = result
+    record.runId = runId
+    record.score = result.score
     if (record.score > state.bestScore) state.bestScore = record.score
     if (record.score > state.bestByActor[actor]) state.bestByActor[actor] = record.score
     const solved =

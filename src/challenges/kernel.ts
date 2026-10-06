@@ -16,53 +16,13 @@ import { computeVoxelCoverage } from '../kakeya/voxels3d'
 import { fibonacciDirections } from '../kakeya/directions'
 import { makeTubes, type Tube3 } from '../kakeya/tubes'
 import { assertFiniteNumbers } from '../experiments/protocol'
+import type { SceneSpec, ProjectileSpec, PendulumSpec, TubesSpec, ProjectileResult, PendulumResult, TubesResult, ChallengeResult } from './levels'
 
-// ---------------------------------------------------------------- SceneSpec
-export type ChallengeKind = 'projectile' | 'pendulum' | 'tubes'
-
-export interface ProjectileSpec {
-  kind: 'projectile'
-  /** launch angle in degrees above horizon (0..85) */
-  angleDeg: number
-  /** launch speed in m/s (1..30) */
-  speed: number
-  /** gravity in m/s² (downward magnitude; the challenge freezes it) */
-  gravity: number
-  /** target distance from the launcher along ground (m) */
-  targetX: number
-  /** hit tolerance radius (m) */
-  tolerance: number
-}
-
-export interface PendulumSpec {
-  kind: 'pendulum'
-  /** rod length in m (0.2..2) */
-  length: number
-  /** initial angular displacement in degrees (5..90) */
-  angleDeg: number
-  /** gravity in m/s² */
-  gravity: number
-  /** period to match (s) */
-  targetPeriod: number
-  /** tolerance (s) */
-  tolerance: number
-}
-
-export interface TubesSpec {
-  kind: 'tubes'
-  /** per-cluster offsets in [0,1]: each cluster of 8 tubes translates its
-   * origins toward (offset, offset, offset)*½ — the player manipulates each
-   * cluster individually (no single global packing scalar) */
-  offsets: number[]
-  /** fixed by the level (constraints): direction count, δ, grid */
-  nTubes: number
-  deltaExp: number
-  res: number
-  /** occupied-volume budget to beat (fraction of the unit cube) */
-  budget: number
-}
-
-export type SceneSpec = ProjectileSpec | PendulumSpec | TubesSpec
+export type {
+  ChallengeKind, SceneSpec, ProjectileSpec, PendulumSpec, TubesSpec,
+  ProjectileResult, PendulumResult, TubesResult, ChallengeResult,
+} from './levels'
+export { DEFAULT_LEVELS } from './levels'
 
 // ---------------------------------------------------------------- MJCF build
 /** programmatic projectile MJCF: launcher at origin, ball fired at t=0,
@@ -112,45 +72,6 @@ export function pendulumMjcf(spec: PendulumSpec): string {
 }
 
 // ---------------------------------------------------------------- compute
-export interface ProjectileResult {
-  kind: 'projectile'
-  /** sampled ball centres from the real integration */
-  t: number[]
-  x: number[]
-  z: number[]
-  /** where the ball first touched the ground (real qpos crossing) */
-  landingX: number
-  targetX: number
-  /** |landingX − targetX| (m) — read from the trajectory, never asserted */
-  error: number
-  hit: boolean
-  tolerance: number
-  score: number
-}
-
-export interface PendulumResult {
-  kind: 'pendulum'
-  t: number[]
-  theta: number[]
-  /** period measured from successive same-direction zero crossings (s) */
-  measuredPeriod: number | null
-  targetPeriod: number
-  error: number | null
-  matched: boolean
-  tolerance: number
-  score: number
-}
-
-export interface TubesResult {
-  kind: 'tubes'
-  occupiedVolume: number
-  budget: number
-  withinBudget: boolean
-  score: number
-}
-
-export type ChallengeResult = ProjectileResult | PendulumResult | TubesResult
-
 const SCORE_MAX = 1000
 
 /** write a GENERATED MJCF into the VFS and simulate it under a fixed name
@@ -289,6 +210,8 @@ export function runTubesSync(spec: TubesSpec): TubesResult {
   assertFiniteNumbers({ v: result.occupiedVolume, score: result.score })
   return result
 }
+
+/** default frozen levels (goals + constraints + budgets) — browser-safe */
 
 /** dispatch — the ONLY entry the skill/store call */
 export async function runChallenge(spec: SceneSpec): Promise<ChallengeResult> {

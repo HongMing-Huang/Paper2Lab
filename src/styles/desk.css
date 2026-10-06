@@ -564,3 +564,18 @@
 .physics-hint { font-size: 11px; color: #7d8fa0; }
 .physics-error { position: absolute; left: 14px; bottom: 64px; background: #5c1f1f; color: #ffd9d9; padding: 6px 12px; border-radius: 4px; font-size: 12px; }
 .home-physics { color: #7fb3e0 !important; border-color: rgba(127, 179, 224, 0.5) !important; }
+
+/* Challenges Lab */
+.challenges-lab { position: fixed; inset: 0; display: flex; flex-direction: column; background: #faf6ee; color: #433c33; font-family: var(--serif, Georgia, serif); }
+.challenges-lab .physics-topbar { background: #f2ece0; border-bottom: 1px solid #d8cfc0; }
+.challenges-lab .physics-status { color: #6b6154; }
+.challenges-main { flex: 1; display: flex; min-height: 0; }
+.challenges-side { width: 340px; padding: 16px; border-right: 1px dashed #d8cfc0; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.challenges-goal { font-size: 13.5px; background: #f2ece0; border-radius: 6px; padding: 10px; }
+.challenges-actions { display: flex; gap: 8px; }
+.challenges-note { font-size: 13px; background: rgba(47,93,138,0.08); border-left: 3px solid #2f5d8a; padding: 8px 10px; border-radius: 3px; }
+.challenges-stage { flex: 1; min-width: 0; background: #fdfbf6; overflow: hidden; }
+.challenges-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #8a7f70; font-size: 13px; }
+.challenges-history { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px dashed #d8cfc0; font-size: 12px; flex-wrap: wrap; }
+.challenges-attempt { background: #f2ece0; border-radius: 10px; padding: 2px 10px; }
+.home-challenges { color: #2e7d4f !important; border-color: rgba(46,125,79,0.5) !important; }

@@ -4,14 +4,7 @@
 // caller). Node-only import chain (mujoco wasm VFS).
 import { registerSkillRunner } from '../skills/executor'
 import { executeSpec } from '../experiments/protocol'
-import { runChallenge, validateSpec, type SceneSpec } from './kernel'
-
-/** default frozen levels (goals + constraints + budgets) */
-export const DEFAULT_LEVELS: Record<string, SceneSpec> = {
-  projectile: { kind: 'projectile', angleDeg: 30, speed: 10, gravity: 9.81, targetX: 22.9, tolerance: 0.5 },
-  pendulum: { kind: 'pendulum', length: 0.6, angleDeg: 25, gravity: 9.81, targetPeriod: 2.0, tolerance: 0.05 },
-  tubes: { kind: 'tubes', offsets: [0, 0, 0, 0], nTubes: 32, deltaExp: 4, res: 24, budget: 0.19 },
-}
+import { runChallenge, validateSpec, DEFAULT_LEVELS, type SceneSpec } from './kernel'
 
 registerSkillRunner('challenge.attempt', async (input, opts) => {
   const i = input as {

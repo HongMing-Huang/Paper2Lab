@@ -9,7 +9,10 @@ import {
   runChallenge, validateSpec, projectileMjcf,
   type ProjectileResult, type PendulumResult, type TubesResult, type ProjectileSpec, type PendulumSpec, type TubesSpec,
 } from './kernel'
-import { attempt, createLevel, deriveSpec, loadLevel, saveLevel } from './store'
+import { attempt, createLevel, deriveSpec, loadLevel, saveLevel, type ChallengeExecutor } from './store'
+
+/** local-kernel executor (headless tests run the REAL kernels in-process) */
+const localExec: ChallengeExecutor = async (spec) => ({ result: await runChallenge(spec), runId: null })
 
 const plan = { planId: 'plan-challenges' }
 const PROJ: ProjectileSpec = { kind: 'projectile', angleDeg: 30, speed: 10, gravity: 9.81, targetX: 22.9, tolerance: 0.5 }
@@ -135,20 +138,20 @@ describe('store — shared budget, retry, best record, save/restore', () => {
   it('user and agent share ONE budget; failures still consume it; best tracked per actor', async () => {
     const state = createLevel(PEND, 4)
     // user fails (L=0.5 far off)
-    const miss = await attempt(state, 'user', { length: 0.5 })
+    const miss = await attempt(state, 'user', { length: 0.5 }, localExec)
     expect((miss.result as PendulumResult | null)?.matched).toBe(false)
     // agent fails too (invalid length → compute error, budget still spent)
-    await expect(attempt(state, 'agent', { length: 99 })).rejects.toThrow(/length/)
+    await expect(attempt(state, 'agent', { length: 99 }, localExec)).rejects.toThrow(/length/)
     expect(state.budgetRemaining).toBe(2)
     // user retries and matches
-    const hit = await attempt(state, 'user', { length: 0.994 })
+    const hit = await attempt(state, 'user', { length: 0.994 }, localExec)
     expect((hit.result as PendulumResult | null)?.matched).toBe(true)
     expect(state.solved).toBe(true)
     expect(state.bestByActor.user).toBe(hit.score)
     expect(state.bestByActor.agent).toBe(0)
     // budget exhausted → explicit error, no silent skip
-    await attempt(state, 'agent', { length: 1.0 })
-    await expect(attempt(state, 'user', { length: 0.994 })).rejects.toThrow(/budget exhausted/)
+    await attempt(state, 'agent', { length: 1.0 }, localExec)
+    await expect(attempt(state, 'user', { length: 0.994 }, localExec)).rejects.toThrow(/budget exhausted/)
   })
   it('deriveSpec keeps the frozen goal/constraints; only the manipulable surface moves', () => {
     const s = deriveSpec(PROJ, { angleDeg: 60 }) as ProjectileSpec
@@ -161,7 +164,7 @@ describe('store — shared budget, retry, best record, save/restore', () => {
   })
   it('save/restore round-trips the attempt history', async () => {
     const state = createLevel(PROJ, 10)
-    await attempt(state, 'user', { angleDeg: 45, speed: 15 })
+    await attempt(state, 'user', { angleDeg: 45, speed: 15 }, localExec)
     const text = saveLevel(state)
     const restored = loadLevel(text)
     expect(restored.attempts).toHaveLength(1)
