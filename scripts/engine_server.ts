@@ -24,12 +24,21 @@ import { exportExperimentRuns, listExperimentRuns } from '../src/experiments/pro
 import { importRuns } from '../src/experiments/runRepository.ts'
 // registers the engine-side mujoco.simulate runner (Node-only kernel)
 import '../src/physics/registerMujocoRunner.ts'
+// Lane E: run persistence — every resolved run appends to DATA_DIR; boot
+// restores them so a container restart resumes with the original history
+import { persistRun, restoreRuns } from './engine_persist.ts'
+
+const restoredRuns = restoreRuns()
 
 const t0 = Date.now()
 let queue: Promise<unknown> = Promise.resolve()
 
 function send(obj: unknown): void {
   process.stdout.write(JSON.stringify(obj) + '\n')
+  // Lane E: outgoing execute outcomes append to the run log (best-effort)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const run = (obj as any)?.outcome?.run
+  if (run?.runId && run?.status === 'resolved') persistRun(run)
 }
 
 async function handle(req: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -118,4 +127,4 @@ rl.on('line', (line) => {
     .catch(() => {})
 })
 process.on('SIGTERM', () => process.exit(0))
-send({ ok: true, event: 'engine-ready', node: process.version })
+send({ ok: true, event: 'engine-ready', node: process.version, restoredRuns })
