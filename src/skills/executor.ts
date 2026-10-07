@@ -14,6 +14,7 @@ import { computeVoxelCoverage, type VoxelResult } from '../kakeya/voxels3d'
 import { perronTree } from '../kakeya/perron'
 import { isWorkerAvailable, measureVoxelCover } from '../workers/voxelClient'
 import { analyzeFormula } from '../formula/analyze'
+import { getPlan, planCoversSkill } from './playPlan'
 import { compileFormula } from '../formula/compile'
 
 /** the Kakeya family seed pinned across UI cells and C++ precompute */
@@ -692,8 +693,37 @@ export async function executeSkill<T = unknown>(
   if (skill.name !== name) name = skill.name
   const inputError = schemaError(skill.inputSchema, input, name)
   if (inputError) return { status: 'error', code: 'invalid_input', message: inputError }
-  if (FORMAL_SKILLS.has(name) && !opts.planId && !opts.replay) {
-    return { status: 'needs_input', missing: ['planId'], message: `${name} refuses to run without a PlayPlan` }
+  if (FORMAL_SKILLS.has(name) && !opts.replay) {
+    // #32: a bare planId string proves nothing — the plan must be REGISTERED
+    // (builder/plan-op) and COVER this skill. Env escape hatch is for local
+    // probes only; the browser has none.
+    const allowUnregistered = (() => {
+      try {
+        return (globalThis as { process?: { env?: Record<string, string> } }).process?.env?.PAPER2LAB_ALLOW_UNREGISTERED_PLANS === '1'
+      } catch {
+        return false
+      }
+    })()
+    if (!opts.planId) {
+      return { status: 'needs_input', missing: ['planId'], message: `${name} refuses to run without a PlayPlan` }
+    }
+    if (!allowUnregistered) {
+      const registered = getPlan(opts.planId)
+      if (!registered) {
+        return {
+          status: 'needs_input',
+          missing: ['plan'],
+          message: `planId '${opts.planId.slice(0, 40)}' is not a registered PlayPlan — submit the full plan (plan op / inline plan field) before executing ${name}`,
+        }
+      }
+      if (!planCoversSkill(registered, name)) {
+        return {
+          status: 'needs_input',
+          missing: ['plan.skill'],
+          message: `PlayPlan '${registered.planId}' (skill ${registered.skill}) does not cover '${name}' — a plan governs its own experiment`,
+        }
+      }
+    }
   }
   try {
     if (name === 'formula.evaluate') return { status: 'ok', run: (await runFormulaEvaluate(input as Input)) as ExperimentRun<T> }

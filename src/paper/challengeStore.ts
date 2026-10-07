@@ -6,6 +6,7 @@
 import type { ExperimentRun } from '../experiments/protocol'
 import { executeSkill } from '../skills/executor'
 import type { VoxelResult } from '../kakeya/voxels3d'
+import { buildPlan } from '../skills/playPlan'
 
 export interface ChallengeAttempt {
   by: 'user' | 'agent'
@@ -72,10 +73,22 @@ export async function runChallengeMeasurement(
   res: number,
   parentRunId?: string,
 ): Promise<ExperimentRun<VoxelResult>> {
+  // #32: a real registered plan governs the challenge measurements — bare
+  // planId strings no longer pass the executor gate
+  let challengePlan = (globalThis as { __p2lChallengePlan?: ReturnType<typeof buildPlan> }).__p2lChallengePlan
+  if (!challengePlan) {
+    challengePlan = buildPlan({
+      skill: 'kakeya.measure',
+      goal: 'Packing Challenge：同一 worker/seed/res 下比较用户与 Agent 的管束排布',
+      metrics: ['occupiedVolume', 'maxMultiplicity'],
+      inputs: { challenge: 'packing' },
+    })
+    ;(globalThis as { __p2lChallengePlan?: ReturnType<typeof buildPlan> }).__p2lChallengePlan = challengePlan
+  }
   const outcome = await executeSkill<VoxelResult>(
     'kakeya.measure',
     { deltaExp, nTubes, packing, res },
-    { planId: `challenge:${deltaExp}/${nTubes}/${res}`, parentRunId },
+    { planId: challengePlan.planId, parentRunId },
   )
   if (outcome.status !== 'ok' || !outcome.run) {
     throw new Error(outcome.status === 'error' ? outcome.message : `kakeya.measure returned ${outcome.status}`)

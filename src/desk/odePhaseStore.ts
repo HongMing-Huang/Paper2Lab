@@ -10,6 +10,7 @@ import type { ExperimentRun } from '../experiments/protocol'
 import { analyzeFormula } from '../formula/analyze'
 import { compileFormula, type CompiledFormula } from '../formula/compile'
 import { executeSkill } from '../skills/executor'
+import { buildPlan, type PlayPlan } from '../skills/playPlan'
 
 /** registered config (#24): preview integration steps during a drag */
 export const ODE_PREVIEW_STEPS = 400
@@ -88,6 +89,7 @@ export function previewTrajectory(
 export class OdePhaseStore {
   private experiments = new Map<string, OdePhaseExperiment>()
   private kernels = new Map<string, { f0: (x: number, y: number) => number; f1: (x: number, y: number) => number }>()
+  private plans = new Map<string, PlayPlan>()
   private listeners = new Set<() => void>()
   private version = 0
   private seq = 0
@@ -141,6 +143,12 @@ export class OdePhaseStore {
     const f1 = compileRhsFn(init.rhs[1], init.states)
     if (!f0 || !f1) throw new Error('ODE 右端编译失败——论文公式无法执行')
     this.kernels.set(id, { f0, f1 })
+    this.plans.set(id, buildPlan({
+      skill: 'ode.phase',
+      goal: `从论文初值 (${init.initial[0]}, ${init.initial[1]}) 出发积分论文方程，观察轨迹/周期随初值的变化`,
+      metrics: ['trajectory', 'period0'],
+      inputs: { states: init.states, rhs: init.rhs, tSpan: init.tSpan ?? [0, 20] },
+    }))
     this.experiments.set(id, ex)
     void this.commit(id, [...ex.initial])
     return ex
@@ -189,7 +197,7 @@ export class OdePhaseStore {
           initialState: { [s0name]: initial[0], [s1name]: initial[1] },
           tSpan: ex.tSpan,
         },
-        { planId: `ode-phase-${id}` },
+        { planId: this.plans.get(id)?.planId ?? `ode-phase-${id}` },
       )
       if (this.commitSeq.get(id) !== seq) return null // superseded by a newer release
       if (outcome.status !== 'ok' || !outcome.run?.result) {

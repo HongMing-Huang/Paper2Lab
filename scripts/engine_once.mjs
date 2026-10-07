@@ -1007,6 +1007,61 @@ function analyzeFormula(latex) {
   };
 }
 
+// src/skills/playPlan.ts
+var PLAN_REGISTRY = /* @__PURE__ */ new Map();
+var PLAN_COMPANION_SKILLS = /* @__PURE__ */ new Set([
+  "experiment.fork",
+  "experiment.compare",
+  "paper.trace-source",
+  "kakeya.sweep",
+  // companion measurement of a kakeya plan's terminal run
+  "kakeya.generate"
+  // geometry prerequisite of a kakeya measurement plan
+]);
+function registerPlan(plan) {
+  if (!plan || typeof plan.planId !== "string" || typeof plan.skill !== "string" || typeof plan.goal !== "string") {
+    throw new Error("registerPlan: plan must carry planId/skill/goal");
+  }
+  if (!PLAN_REGISTRY.has(plan.planId)) PLAN_REGISTRY.set(plan.planId, plan);
+  return plan;
+}
+function getPlan(planId) {
+  return PLAN_REGISTRY.get(planId);
+}
+function planCoversSkill(plan, skill2) {
+  if (plan.skill === skill2) return true;
+  if (PLAN_COMPANION_SKILLS.has(skill2)) return true;
+  const target = getSkill(skill2);
+  const planned = getSkill(plan.skill);
+  if (target && planned) {
+    return (target.aliases?.includes(plan.skill) ?? false) || (planned.aliases?.includes(skill2) ?? false);
+  }
+  return false;
+}
+function registerPlanFromJson(raw) {
+  const p = raw;
+  if (!p || typeof p.planId !== "string" || typeof p.skill !== "string" || typeof p.goal !== "string") {
+    throw new Error("plan JSON must carry planId, skill and goal");
+  }
+  return registerPlan({
+    planId: p.planId,
+    goal: p.goal,
+    source: p.source ?? { docId: "engine", title: "engine-submitted plan" },
+    variables: Array.isArray(p.variables) ? p.variables : [],
+    assumptions: Array.isArray(p.assumptions) ? p.assumptions : [],
+    skill: p.skill,
+    skillVersion: p.skillVersion ?? "?",
+    renderer: p.renderer ?? "none",
+    metrics: Array.isArray(p.metrics) ? p.metrics : [],
+    inputs: p.inputs ?? {},
+    evidenceBasis: p.evidenceBasis ?? "engine-submitted PlayPlan",
+    successCriteria: p.successCriteria ?? "",
+    nonClaims: Array.isArray(p.nonClaims) ? p.nonClaims : [],
+    binding: p.binding,
+    createdAt: typeof p.createdAt === "number" ? p.createdAt : Date.now()
+  });
+}
+
 // src/formula/compile.ts
 import { compile } from "@cortex-js/compute-engine";
 function compileFormula(rhs) {
@@ -1568,8 +1623,34 @@ async function executeSkill(name, input2, opts2 = {}) {
   if (skill2.name !== name) name = skill2.name;
   const inputError = schemaError(skill2.inputSchema, input2, name);
   if (inputError) return { status: "error", code: "invalid_input", message: inputError };
-  if (FORMAL_SKILLS.has(name) && !opts2.planId && !opts2.replay) {
-    return { status: "needs_input", missing: ["planId"], message: `${name} refuses to run without a PlayPlan` };
+  if (FORMAL_SKILLS.has(name) && !opts2.replay) {
+    const allowUnregistered = (() => {
+      try {
+        return globalThis.process?.env?.PAPER2LAB_ALLOW_UNREGISTERED_PLANS === "1";
+      } catch {
+        return false;
+      }
+    })();
+    if (!opts2.planId) {
+      return { status: "needs_input", missing: ["planId"], message: `${name} refuses to run without a PlayPlan` };
+    }
+    if (!allowUnregistered) {
+      const registered = getPlan(opts2.planId);
+      if (!registered) {
+        return {
+          status: "needs_input",
+          missing: ["plan"],
+          message: `planId '${opts2.planId.slice(0, 40)}' is not a registered PlayPlan \u2014 submit the full plan (plan op / inline plan field) before executing ${name}`
+        };
+      }
+      if (!planCoversSkill(registered, name)) {
+        return {
+          status: "needs_input",
+          missing: ["plan.skill"],
+          message: `PlayPlan '${registered.planId}' (skill ${registered.skill}) does not cover '${name}' \u2014 a plan governs its own experiment`
+        };
+      }
+    }
   }
   try {
     if (name === "formula.evaluate") return { status: "ok", run: await runFormulaEvaluate(input2) };
@@ -1939,6 +2020,9 @@ var opts = {
   planId: process.argv[4] ?? `plan-once-${Date.now()}`,
   ...process.argv[5] ? { parentRunId: process.argv[5] } : {}
 };
+if (process.argv[6]) {
+  registerPlanFromJson(JSON.parse(process.argv[6]));
+}
 var outcome = await executeSkill(skill, input, opts);
 if (outcome.status === "ok" && outcome.run?.status === "resolved") {
   persistRun(outcome.run);

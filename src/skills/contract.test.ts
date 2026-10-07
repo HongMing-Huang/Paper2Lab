@@ -10,8 +10,10 @@ import { describe, expect, it } from 'vitest'
 import '../physics/registerMujocoRunner'
 import { executeSkill, replayRun } from './executor'
 import { schemaError } from './registry'
+import { buildPlan } from './playPlan'
 
-const plan = { planId: 'plan-contract' }
+const plan = buildPlan({ skill: 'formula.plot', goal: 'test contract plan' })
+const planFor = (skill: string) => buildPlan({ skill, goal: `test plan: ${skill}` })
 
 describe('Lane A: input ranges', () => {
   it('res=0 is rejected by the schema (not a NaN CALCULATED run)', async () => {
@@ -22,7 +24,7 @@ describe('Lane A: input ranges', () => {
     )
     expect(err).toMatch(/below minimum/)
 
-    const out = await executeSkill('kakeya.measure', { deltaExp: 4, packing: 0, res: 0, nTubes: 32 }, plan)
+    const out = await executeSkill('kakeya.measure', { deltaExp: 4, packing: 0, res: 0, nTubes: 32 }, planFor('kakeya.measure'))
     expect(out.status).toBe('error')
     if (out.status === 'error') expect(out.message).toMatch(/res/)
   })
@@ -30,9 +32,9 @@ describe('Lane A: input ranges', () => {
   it('out-of-range samples/steps are rejected before any compute', async () => {
     const plot = await executeSkill('formula.plot', {
       expression: ['Sin', 'x'], parameters: ['x'], values: { x: 0 }, independent: 'x', range: [-1, 1], samples: 1,
-    }, plan)
+    }, planFor('formula.plot'))
     expect(plot.status).toBe('error')
-    const mj = await executeSkill('mujoco.simulate', { scene: 'simple.xml', steps: 0 }, plan)
+    const mj = await executeSkill('mujoco.simulate', { scene: 'simple.xml', steps: 0 }, planFor('mujoco.simulate'))
     expect(mj.status).toBe('error')
   })
 })
@@ -42,7 +44,7 @@ describe('Lane A: finite-value gate', () => {
     // formula.evaluate is the easiest NaN producer: log(-1) is NaN in JS
     const out = await executeSkill('formula.evaluate', {
       expression: ['Ln', -1], bindings: {},
-    }, plan)
+    }, planFor('formula.evaluate'))
     expect(out.status).toBe('error')
     if (out.status === 'error') expect(out.message).toMatch(/non-finite|NaN|finite/i)
     const failedRun = (out as { run?: { status: string; evidence: string } }).run
@@ -66,7 +68,7 @@ describe('Lane A: fork source inheritance', () => {
     const fork = await executeSkill('experiment.fork', {
       sourceRunId: base.run.runId,
       parameterChanges: { a: 3 },
-    }, plan)
+    }, planFor('formula.plot'))
     expect(fork.status).toBe('ok')
     if (fork.status !== 'ok' || !fork.run) return
     expect(fork.run.parentRunId).toBe(base.run.runId)
@@ -74,7 +76,7 @@ describe('Lane A: fork source inheritance', () => {
     // kakeya forks inherit too
     const kb = await executeSkill('kakeya.measure', { deltaExp: 4, packing: 0, res: 16, nTubes: 16 }, { ...plan, source: { anchorId: 'k1' } })
     if (kb.status === 'ok' && kb.run) {
-      const kf = await executeSkill('experiment.fork', { sourceRunId: kb.run.runId, parameterChanges: { packing: 1 } }, plan)
+      const kf = await executeSkill('experiment.fork', { sourceRunId: kb.run.runId, parameterChanges: { packing: 1 } }, planFor('kakeya.measure'))
       if (kf.status === 'ok' && kf.run) expect(kf.run.spec.source).toEqual({ anchorId: 'k1' })
     }
   })
@@ -100,7 +102,7 @@ describe('Lane A: replay gate — every numeric kind round-trips', () => {
   ]
 
   it.each(CASES)('%s replays to identical metrics', async (kind, skill, input) => {
-    const first = await executeSkill(skill, input, plan)
+    const first = await executeSkill(skill, input, planFor(skill))
     expect(first.status, `${skill} first run`).toBe('ok')
     if (first.status !== 'ok' || !first.run) return
     expect(first.run.spec.kind).toBe(kind)

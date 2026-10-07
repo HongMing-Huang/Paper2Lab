@@ -1040,6 +1040,61 @@ function analyzeFormula(latex) {
   };
 }
 
+// src/skills/playPlan.ts
+var PLAN_REGISTRY = /* @__PURE__ */ new Map();
+var PLAN_COMPANION_SKILLS = /* @__PURE__ */ new Set([
+  "experiment.fork",
+  "experiment.compare",
+  "paper.trace-source",
+  "kakeya.sweep",
+  // companion measurement of a kakeya plan's terminal run
+  "kakeya.generate"
+  // geometry prerequisite of a kakeya measurement plan
+]);
+function registerPlan(plan) {
+  if (!plan || typeof plan.planId !== "string" || typeof plan.skill !== "string" || typeof plan.goal !== "string") {
+    throw new Error("registerPlan: plan must carry planId/skill/goal");
+  }
+  if (!PLAN_REGISTRY.has(plan.planId)) PLAN_REGISTRY.set(plan.planId, plan);
+  return plan;
+}
+function getPlan(planId) {
+  return PLAN_REGISTRY.get(planId);
+}
+function planCoversSkill(plan, skill) {
+  if (plan.skill === skill) return true;
+  if (PLAN_COMPANION_SKILLS.has(skill)) return true;
+  const target = getSkill(skill);
+  const planned = getSkill(plan.skill);
+  if (target && planned) {
+    return (target.aliases?.includes(plan.skill) ?? false) || (planned.aliases?.includes(skill) ?? false);
+  }
+  return false;
+}
+function registerPlanFromJson(raw) {
+  const p = raw;
+  if (!p || typeof p.planId !== "string" || typeof p.skill !== "string" || typeof p.goal !== "string") {
+    throw new Error("plan JSON must carry planId, skill and goal");
+  }
+  return registerPlan({
+    planId: p.planId,
+    goal: p.goal,
+    source: p.source ?? { docId: "engine", title: "engine-submitted plan" },
+    variables: Array.isArray(p.variables) ? p.variables : [],
+    assumptions: Array.isArray(p.assumptions) ? p.assumptions : [],
+    skill: p.skill,
+    skillVersion: p.skillVersion ?? "?",
+    renderer: p.renderer ?? "none",
+    metrics: Array.isArray(p.metrics) ? p.metrics : [],
+    inputs: p.inputs ?? {},
+    evidenceBasis: p.evidenceBasis ?? "engine-submitted PlayPlan",
+    successCriteria: p.successCriteria ?? "",
+    nonClaims: Array.isArray(p.nonClaims) ? p.nonClaims : [],
+    binding: p.binding,
+    createdAt: typeof p.createdAt === "number" ? p.createdAt : Date.now()
+  });
+}
+
 // src/formula/compile.ts
 import { compile } from "@cortex-js/compute-engine";
 function compileFormula(rhs) {
@@ -1610,8 +1665,34 @@ async function executeSkill(name, input, opts = {}) {
   if (skill.name !== name) name = skill.name;
   const inputError = schemaError(skill.inputSchema, input, name);
   if (inputError) return { status: "error", code: "invalid_input", message: inputError };
-  if (FORMAL_SKILLS.has(name) && !opts.planId && !opts.replay) {
-    return { status: "needs_input", missing: ["planId"], message: `${name} refuses to run without a PlayPlan` };
+  if (FORMAL_SKILLS.has(name) && !opts.replay) {
+    const allowUnregistered = (() => {
+      try {
+        return globalThis.process?.env?.PAPER2LAB_ALLOW_UNREGISTERED_PLANS === "1";
+      } catch {
+        return false;
+      }
+    })();
+    if (!opts.planId) {
+      return { status: "needs_input", missing: ["planId"], message: `${name} refuses to run without a PlayPlan` };
+    }
+    if (!allowUnregistered) {
+      const registered = getPlan(opts.planId);
+      if (!registered) {
+        return {
+          status: "needs_input",
+          missing: ["plan"],
+          message: `planId '${opts.planId.slice(0, 40)}' is not a registered PlayPlan \u2014 submit the full plan (plan op / inline plan field) before executing ${name}`
+        };
+      }
+      if (!planCoversSkill(registered, name)) {
+        return {
+          status: "needs_input",
+          missing: ["plan.skill"],
+          message: `PlayPlan '${registered.planId}' (skill ${registered.skill}) does not cover '${name}' \u2014 a plan governs its own experiment`
+        };
+      }
+    }
   }
   try {
     if (name === "formula.evaluate") return { status: "ok", run: await runFormulaEvaluate(input) };
@@ -2199,7 +2280,22 @@ async function handle(req) {
       }))
     };
   }
+  if (op === "plan") {
+    try {
+      const plan = registerPlanFromJson(req.plan);
+      return { ok: true, planId: plan.planId, known: getPlan(plan.planId) === plan };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
   if (op === "execute") {
+    if (req.plan !== void 0) {
+      try {
+        registerPlanFromJson(req.plan);
+      } catch (err) {
+        return { ok: false, error: `invalid plan: ${err instanceof Error ? err.message : String(err)}` };
+      }
+    }
     const outcome = await executeSkill(String(req.skill), req.input ?? {}, {
       planId: typeof req.planId === "string" ? req.planId : void 0,
       parentRunId: typeof req.parentRunId === "string" ? req.parentRunId : void 0
@@ -2207,6 +2303,13 @@ async function handle(req) {
     return { ok: true, outcome };
   }
   if (op === "agent_steps") {
+    if (req.plan !== void 0) {
+      try {
+        registerPlanFromJson(req.plan);
+      } catch (err) {
+        return { ok: false, error: `invalid plan: ${err instanceof Error ? err.message : String(err)}` };
+      }
+    }
     const result = await runAgentSteps(
       String(req.deskKind),
       Array.isArray(req.steps) ? req.steps : [],

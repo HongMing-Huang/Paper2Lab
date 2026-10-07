@@ -289,6 +289,13 @@ export function PhysicsLab({ onExit }: { onExit: () => void }) {
           skill: 'mujoco.simulate',
           input: { scene: st.current.sceneName, steps: 500, sampleEvery: 25, params: { gravityZ: st.current.params.gravityZ } },
           planId: 'plan-physics-lab',
+          plan: {
+            planId: 'plan-physics-lab',
+            skill: 'mujoco.simulate',
+            goal: '重放当前场景的真实物理（MuJoCo 内核）',
+            metrics: ['finalTime'],
+            nonClaims: ['数值仿真，不构成解析证明'],
+          },
         }),
       })
       if (!res.ok) throw new Error(`engine HTTP ${res.status}`)

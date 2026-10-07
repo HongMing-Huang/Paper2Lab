@@ -14,6 +14,7 @@ import { computeVoxelCoverage } from '../src/kakeya/voxels3d'
 import { fibonacciDirections } from '../src/kakeya/directions'
 import { makeTubes } from '../src/kakeya/tubes'
 import { Runtime } from '../src/runtime/cell'
+import { buildPlan } from '../src/skills/playPlan'
 
 function stats(samples: number[]): { p50: number; p95: number; min: number; max: number; n: number } {
   const s = samples.slice().sort((a, b) => a - b)
@@ -56,7 +57,7 @@ await bench(`formula.plot exact (${CURVE_SAMPLES} samples, executor)`, 50, () =>
       values: { a: 1.5, b: 2 },
       samples: CURVE_SAMPLES,
     },
-    { planId: 'perf-probe-plan' },
+    { planId: buildPlan({ skill: 'formula.plot', goal: 'perf probe formula' }).planId },
   ),
 )
 
@@ -78,7 +79,7 @@ await bench('kakeya sweep point (res 40, node kernel)', 15, () => computeVoxelCo
 
 // ---- challenge kernel (side-effect import registers the runner) --------------
 await bench('challenge tubes attempt (res 24)', 50, () =>
-  executeSkill('challenge.attempt', { challenge: 'tubes', changes: { offsets: [0.5, 0.5, 0.5, 0.5] } }, { planId: 'perf-probe-plan' }),
+  executeSkill('challenge.attempt', { challenge: 'tubes', changes: { offsets: [0.5, 0.5, 0.5, 0.5] } }, { planId: buildPlan({ skill: 'challenge.attempt', goal: 'perf probe challenge' }).planId }),
 )
 
 // ---- runtime queue latency: setParam → preview notification ------------------

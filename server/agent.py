@@ -440,6 +440,7 @@ async def sop_turn_server(session: SopSession, intent: str, context: dict) -> As
             steps=plan["steps"],
             base=base,
             planId=plan["planId"],
+            plan=plan,  # #32: the FULL contract registers in the engine — a bare planId proves nothing
         )
     except TimeoutError:
         resp = {"ok": False, "error": "engine timed out"}

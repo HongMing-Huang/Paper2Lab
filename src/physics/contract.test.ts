@@ -7,8 +7,9 @@ import './registerMujocoRunner'
 import { executeSkill, replayRun } from '../skills/executor'
 import { mujocoSimulate, type MjForce } from './mujocoKernel'
 import { getPosition, getQuaternion, toMujocoPos } from './view/loadScene'
+import { buildPlan } from '../skills/playPlan'
 
-const plan = { planId: 'plan-physics-c' }
+const plan = buildPlan({ skill: 'mujoco.simulate', goal: 'test contract plan' })
 
 beforeAll(async () => {
   await mujocoSimulate('simple.xml', { steps: 1, sampleEvery: 1 })

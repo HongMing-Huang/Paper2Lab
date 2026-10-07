@@ -8,6 +8,7 @@ import { routeAdapter } from './adapterRouter'
 import { odeSystemOf, parseDataPairs } from './paperBinding'
 import { executeSkill } from './executor'
 import { normalizeDocling } from '../ingest/doclingSchema'
+import { buildPlan } from './playPlan'
 
 const PREY_DOC = normalizeDocling({
   docId: 'prey',
@@ -99,7 +100,7 @@ describe('routing two ODE papers with different conditions (#24)', () => {
 })
 
 describe('ode.phase — the paper LaTeX actually executes (#24)', () => {
-  const PLAN = { planId: 'plan-ode-phase-test' }
+  const PLAN = buildPlan({ skill: 'ode.phase', goal: 'test contract plan' })
   it('predator–prey paper system integrates to a periodic orbit', async () => {
     const sys = odeSystemOf(PREY_DOC)!
     const out = await executeSkill<{ t: number[]; s0: number[]; s1: number[]; period0: number | null }>(

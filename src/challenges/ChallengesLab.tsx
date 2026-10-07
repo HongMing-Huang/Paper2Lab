@@ -53,6 +53,13 @@ export function ChallengesLab({ onExit }: { onExit: () => void }) {
         skill: 'challenge.attempt',
         input: { challenge: spec.kind, changes: specToChanges(spec), level: { ...spec } },
         planId: `plan-challenge-${spec.kind}`,
+        plan: {
+          planId: `plan-challenge-${spec.kind}`,
+          skill: 'challenge.attempt',
+          goal: `${KIND_LABEL[spec.kind]}：冻结条件下真实内核通关`,
+          metrics: ['score'],
+          nonClaims: ['有限尺度挑战，不构成定理证明'],
+        },
       }),
     })
     if (!res.ok) throw new Error(`engine HTTP ${res.status}`)
