@@ -193,6 +193,13 @@ v0.6（2026-10-06，可玩 0.1：三关挑战 + 方向修正取消生图，PR �
 - [x] 验证：vitest **252/252**（+15 三关验收）/ pytest **49/49**（+4 Agent 挑战回合）/ **product-challenges-test 真实鼠标 PASS**（命中/失败重试匹配/超预算反馈/共享预算 19→18/0 错误）/ render+physics+formula+lab 四脚本回归 PASS · build ✓。**坑**：React 切桌面时 kind 与 level 必须原子更新（渲染竞态 undefined.toFixed 整页崩）；uvicorn 常驻后改 engine_server 需重启后端；vite 把 node:fs 静态图污染浏览器包——类型+常量放 levels.ts、内核留 kernel.ts；Mimosa 会把名为 exec 的回调参数判为命令注入（纯类型回调改名 runAttempt）
 - 待验证（开放）：拖拽直接反写（当前为滑杆+按钮发射）、Worker 预览层、WebGL 3D 视图渲染细节、真实 Qwen
 
+v0.6 补充（2026-10-07，魔搭部署实跑与云侧限制确诊）：
+
+- [x] **ms-studio-deploy 技能落地**：`npx skills add` 注册表无此技能（npm skills ≠ 魔搭技能中心）——从官方 GitHub `modelscope/modelscope-skills` 装入 `~/.agents/skills/ms-studio-deploy/`；按 10 步 OpenAPI 工作流完成：Studio `Jack0702/paper2lab`（Docker 型/免费 2v-cpu-8g/已公开 https://jack0702-paper2lab.ms.show）创建、git 推送（--allow-unrelated-histories+README 冲突 keep-ours）、deploy、build/run 日志诊断多轮
+- [x] **云侧 Bug 修复链**（线上 504 根因逐层剥）：① 首次构建缺 bundle（Dockerfile.smoke 未产出 engine_once.mjs）② YAML step 名裸冒号 ③ tsx 冷启动 >300s（弱 CPU）→ esbuild 预打包 `scripts/engine_once.mjs`+`engine_server.bundle.mjs` ④ serverless 内联执行路径（`engine_api.execute` 优先 spawn 短命 `engine_once.mjs`，进程生命周期完全在 HTTP 调用内——**本地容器模拟 FC 冻结 130s 后 0.12s 即答**）⑤ `engine_bridge._guard()` 修 asyncio.Lock 跨事件循环绑定
+- [x] **线上已验证**：SPA 200 · /api/ready ready:true（storage=/mnt/workspace）· CI 三段 Actions 全绿（PR #20 合并）
+- [ ] **开放（平台限制确诊）**：免费 FC runtime 对 spawn 的 node 子进程调度不保证——`[engine-boot] spawned pid=N` 后无 engine-ready，网关 120s 取消，多轮复现；本地同镜像同 env（2cpu/1.5g+冻结模拟）全部通过。需付费硬件（paid/ecs.*）或平台工单确认后台子进程调度策略后方可关闭。once-runner 内联路径即为绕开此限制设计，但 spawn 本身仍受调度影响。
+
 ## 11. 下一阶段（比赛迭代方向）
 
 ### 2026-10-01 源码审查后的开发门槛
