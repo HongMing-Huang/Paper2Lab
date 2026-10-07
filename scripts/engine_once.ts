@@ -11,7 +11,11 @@ import '../src/physics/registerMujocoRunner.ts'
 import '../src/challenges/registerChallengeRunner.ts'
 import { persistRun } from './engine_persist.ts'
 import { registerPlanFromJson } from '../src/skills/playPlan.ts'
+import { restoreRuns } from './engine_persist.ts'
 
+// #34: a fresh once-process must see earlier runs (fork lineage over
+// HTTP spans multiple once invocations) — restore from the shared runlog
+restoreRuns()
 const skill = process.argv[2]
 if (!skill) {
   console.error('usage: engine_once.mjs <skill> <inputJson> [planId] [parentRunId]')
