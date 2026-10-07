@@ -14,7 +14,7 @@
 // programmatic-model path this repo already verified via mj_loadXML).
 import { computeVoxelCoverage } from '../kakeya/voxels3d'
 import { fibonacciDirections } from '../kakeya/directions'
-import { makeTubes, type Tube3 } from '../kakeya/tubes'
+import { makeTubes, segmentOf, type Tube3 } from '../kakeya/tubes'
 import { assertFiniteNumbers } from '../experiments/protocol'
 import type { SceneSpec, ProjectileSpec, PendulumSpec, TubesSpec, ProjectileResult, PendulumResult, TubesResult, ChallengeResult } from './levels'
 
@@ -186,26 +186,60 @@ export async function runPendulum(spec: PendulumSpec): Promise<PendulumResult> {
   return result
 }
 
-/** tubes: per-cluster offsets move REAL tube origins; the volume comes from
- * the same voxel counter the hero demo uses */
+/** count tubes whose whole segment exits the unit cube — the defensive gate:
+ * the measurement region is [0,1]³, so any tube outside it must fail the
+ * attempt, never lower the score (#21) */
+function countCubeViolations(tubes: Tube3[]): number {
+  let violations = 0
+  const eps = 1e-9
+  for (const t of tubes) {
+    const { a, b } = segmentOf(t)
+    for (const q of [a, b]) {
+      if (q.x < -eps || q.x > 1 + eps || q.y < -eps || q.y > 1 + eps || q.z < -eps || q.z > 1 + eps) violations++
+    }
+  }
+  return violations
+}
+
+/** tubes: per-cluster offsets pull that cluster's tubes toward the cube
+ * centre — the sticky Kakeya configuration, per cluster (the hero demo's
+ * packing parameter, split into four independent clusters). The midpoint
+ * interpolates between two points of the tube's admissible box, and the box
+ * is convex, so every segment stays inside [0,1]³ BY CONSTRUCTION; the
+ * volume comes from the same voxel counter the hero demo uses, and any
+ * residual violation fails the attempt instead of rewarding it. */
 export function runTubesSync(spec: TubesSpec): TubesResult {
   const delta = 2 ** -spec.deltaExp
   const dirs = fibonacciDirections(spec.nTubes)
   const base = makeTubes(dirs, delta, 0, 20250224)
   const per = Math.ceil(base.length / spec.offsets.length)
+  const nClusters = Math.min(spec.offsets.length, Math.ceil(base.length / per))
+  const packing = spec.offsets.slice(0, nClusters).map((o) => clamp(o, 0, 1))
   const moved: Tube3[] = base.map((tube, i) => {
-    const cluster = Math.min(spec.offsets.length - 1, Math.floor(i / per))
-    const o = spec.offsets[cluster] * 0.5
-    return { ...tube, center: { x: tube.center.x + o, y: tube.center.y + o, z: tube.center.z + o } }
+    const cluster = Math.min(nClusters - 1, Math.floor(i / per))
+    const p = packing[cluster]
+    return {
+      ...tube,
+      center: {
+        x: tube.center.x + p * (0.5 - tube.center.x),
+        y: tube.center.y + p * (0.5 - tube.center.y),
+        z: tube.center.z + p * (0.5 - tube.center.z),
+      },
+    }
   })
+  const violations = countCubeViolations(moved)
   const measured = computeVoxelCoverage(moved, spec.res, 0)
-  const withinBudget = measured.occupiedVolume <= spec.budget
+  const withinBudget = violations === 0 && measured.occupiedVolume <= spec.budget
   const result: TubesResult = {
     kind: 'tubes',
     occupiedVolume: measured.occupiedVolume,
     budget: spec.budget,
     withinBudget,
-    score: Math.round(SCORE_MAX * clamp(1 - measured.occupiedVolume / spec.budget, 0, 1)) + (withinBudget ? 500 : 0),
+    score: violations > 0
+      ? 0
+      : Math.round(SCORE_MAX * clamp(1 - measured.occupiedVolume / spec.budget, 0, 1)) + (withinBudget ? 500 : 0),
+    packing,
+    violations,
   }
   assertFiniteNumbers({ v: result.occupiedVolume, score: result.score })
   return result

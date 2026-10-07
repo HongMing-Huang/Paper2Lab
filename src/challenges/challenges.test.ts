@@ -17,7 +17,7 @@ const localExec: ChallengeExecutor = async (spec) => ({ result: await runChallen
 const plan = { planId: 'plan-challenges' }
 const PROJ: ProjectileSpec = { kind: 'projectile', angleDeg: 30, speed: 10, gravity: 9.81, targetX: 22.9, tolerance: 0.5 }
 const PEND: PendulumSpec = { kind: 'pendulum', length: 0.6, angleDeg: 25, gravity: 9.81, targetPeriod: 2.0, tolerance: 0.05 }
-const TUBES: TubesSpec = { kind: 'tubes', offsets: [0, 0, 0, 0], nTubes: 32, deltaExp: 4, res: 24, budget: 0.19 }
+const TUBES: TubesSpec = { kind: 'tubes', offsets: [0, 0, 0, 0], nTubes: 32, deltaExp: 4, res: 24, budget: 0.28 }
 
 beforeAll(async () => {
   // boot wasm once for the MJCF levels
@@ -77,20 +77,35 @@ describe('pendulum — measured period matches / mismatches', () => {
   })
 })
 
-describe('tubes — per-cluster compression beats / misses budget', () => {
-  it('clustering all offsets to 1 shrinks the union below the scattered one', async () => {
-    const scattered = (await runChallenge({ ...TUBES, offsets: [0, 0.1, 0.2, 0.3] })) as TubesResult
+describe('tubes — honest compression inside the measurement cube (#21)', () => {
+  it('REPRO: all-1 offsets can no longer drop the volume by leaving the cube', async () => {
+    // before the fix this returned 0.031467 (tubes shifted OUT of [0,1]³,
+    // which the voxel counter cannot see) and "won" the 0.19 budget
     const packed = (await runChallenge({ ...TUBES, offsets: [1, 1, 1, 1] })) as TubesResult
-    expect(packed.occupiedVolume).toBeLessThan(scattered.occupiedVolume)
-    expect(packed.withinBudget || packed.occupiedVolume <= TUBES.budget + 0.02).toBe(true)
+    expect(packed.violations).toBe(0)
+    expect(packed.occupiedVolume).toBeGreaterThan(0.25) // was 0.031467 via the hole
+    expect(packed.occupiedVolume).toBeCloseTo(0.290509, 4)
   })
-  it('per-cluster offsets differ from one global packing scalar', async () => {
-    // mixed offsets give a DIFFERENT volume than any single value
+  it('baseline all-0 preserves the exact original scattered positions', async () => {
+    const base = (await runChallenge({ ...TUBES, offsets: [0, 0, 0, 0] })) as TubesResult
+    expect(base.occupiedVolume).toBeCloseTo(0.308449, 4)
+    expect(base.withinBudget).toBe(false)
+    expect(base.violations).toBe(0)
+  })
+  it('honest half-packing beats the retuned budget (a real, non-trivial optimum)', async () => {
+    const half = (await runChallenge({ ...TUBES, offsets: [0.5, 0.5, 0.5, 0.5] })) as TubesResult
+    expect(half.occupiedVolume).toBeCloseTo(0.270399, 4)
+    expect(half.withinBudget).toBe(true)
+    // full sticky is WORSE than half — the landscape is genuinely non-monotone
+    expect(half.occupiedVolume).toBeLessThan(0.290509)
+  })
+  it('per-cluster packing differs from one global scalar', async () => {
     const mixed = (await runChallenge({ ...TUBES, offsets: [0, 1, 0, 1] })) as TubesResult
     const all0 = (await runChallenge({ ...TUBES, offsets: [0, 0, 0, 0] })) as TubesResult
     const all1 = (await runChallenge({ ...TUBES, offsets: [1, 1, 1, 1] })) as TubesResult
     expect(mixed.occupiedVolume).not.toBe(all0.occupiedVolume)
     expect(mixed.occupiedVolume).not.toBe(all1.occupiedVolume)
+    expect(mixed.packing).toEqual([0, 1, 0, 1])
   })
 })
 

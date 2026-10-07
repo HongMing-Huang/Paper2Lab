@@ -33,14 +33,17 @@ export interface PendulumSpec {
 
 export interface TubesSpec {
   kind: 'tubes'
-  /** per-cluster offsets in [0,1]: each cluster of tubes translates its
-   * origins — the player manipulates each cluster individually */
+  /** per-cluster packing in [0,1]: 0 = the frozen scattered baseline (exact
+   * original positions), 1 = that cluster pulled to the cube centre (sticky
+   * configuration). Convex interpolation per tube → always inside [0,1]³ */
   offsets: number[]
   /** fixed by the level (constraints): direction count, δ, grid */
   nTubes: number
   deltaExp: number
   res: number
-  /** occupied-volume budget to beat (fraction of the unit cube) */
+  /** occupied-volume budget to beat (fraction of the unit cube) — frozen
+   * from the measured honest landscape: baseline 0.308449, best ~0.2704 at
+   * half-packing, full-sticky 0.290509 (#21 probe, scripts/tubes_probe.ts) */
   budget: number
 }
 
@@ -77,6 +80,12 @@ export interface TubesResult {
   budget: number
   withinBudget: boolean
   score: number
+  /** per-cluster APPLIED packing (cluster → cube-centre interpolation) — the
+   * convex interpolation keeps every segment inside [0,1]³ by construction */
+  packing: number[]
+  /** segments found outside the unit cube — must be 0; >0 fails the attempt
+   * (leaving the measurement region can never lower the score, #21) */
+  violations: number
 }
 
 export type ChallengeResult = ProjectileResult | PendulumResult | TubesResult
@@ -85,5 +94,5 @@ export type ChallengeResult = ProjectileResult | PendulumResult | TubesResult
 export const DEFAULT_LEVELS: Record<string, SceneSpec> = {
   projectile: { kind: 'projectile', angleDeg: 30, speed: 10, gravity: 9.81, targetX: 22.9, tolerance: 0.5 },
   pendulum: { kind: 'pendulum', length: 0.6, angleDeg: 25, gravity: 9.81, targetPeriod: 2.0, tolerance: 0.05 },
-  tubes: { kind: 'tubes', offsets: [0, 0, 0, 0], nTubes: 32, deltaExp: 4, res: 24, budget: 0.19 },
+  tubes: { kind: 'tubes', offsets: [0, 0, 0, 0], nTubes: 32, deltaExp: 4, res: 24, budget: 0.28 },
 }
