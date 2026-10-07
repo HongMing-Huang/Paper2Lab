@@ -518,18 +518,56 @@ _SYSTEM_PROMPT = (
 )
 
 
-def _build_agent() -> Any:
-    from agentscope.agent import Agent
+# ---- registry-driven tool surface (#30) -------------------------------------
+# The model's tool declaration is GENERATED from the live Skill Registry via
+# the engine bridge — one capability source for Qwen and SOP. The old
+# hardcoded formula/kakeya-only schema silently hid ode/geometry/mujoco/
+# challenge from the model.
+
+_DESK_PREFIXES = ("formula", "kakeya", "ode", "geometry", "mujoco", "challenge")
+_surface_cache: dict[str, Any] = {"at": 0.0, "surface": None}
+
+
+async def _tool_surface() -> dict[str, Any]:
+    """desk enum + skill list from the REAL registry (cached 60s). Falls back
+    to the conservative built-in list when the engine is unreachable — the
+    fallback is smaller, never invented."""
+    import time as _time
+
+    now = _time.time()
+    if _surface_cache["surface"] is not None and now - _surface_cache["at"] < 60:
+        return _surface_cache["surface"]
+    fallback = {
+        "desks": ["formula", "kakeya"],
+        "skills": ["formula.plot", "kakeya.measure"],
+        "source": "fallback",
+    }
+    try:
+        from server.engine_bridge import bridge
+
+        resp = await bridge.call("skills")
+        # the engine lists exactly the REGISTERED, executable skills (no
+        # implemented flag in the payload — presence = runnable)
+        names = [str(s.get("name", "")) for s in resp.get("skills", []) if s.get("name")]
+        desks = sorted({n.split(".")[0] for n in names if n.split(".")[0] in _DESK_PREFIXES})
+        surface = {
+            "desks": desks or fallback["desks"],
+            "skills": sorted(names),
+            "source": "registry",
+        }
+    except Exception:  # noqa: BLE001 — engine unreachable: smaller honest surface
+        surface = fallback
+    _surface_cache.update(at=now, surface=surface)
+    return surface
+
+
+def _external_tool_cls() -> Any:
+    """agentscope ToolBase subclass: external tool — the browser/engine is the
+    executor; the agent parks (Lane B: never concurrent, mutates lineage)."""
     from agentscope.permission import PermissionBehavior, PermissionDecision
-    from agentscope.tool import Toolkit
     from agentscope.tool._base import ToolBase
 
     class _ExternalTool(ToolBase):
-        """external tool — the browser is the executor; the agent parks."""
-
-        # Lane B: scientific execution MUTATES desk/engine lineage — never run
-        # two of our tool calls concurrently in one LLM batch (AgentScope
-        # splits batches on this flag; default True was wrong for us)
         is_concurrency_safe = False
 
         def __init__(self, name: str, description: str, input_schema: dict) -> None:
@@ -545,26 +583,78 @@ def _build_agent() -> Any:
                 message="browser-side scientific execution is always allowed",
             )
 
-    skill_tool = _ExternalTool(
+    return _ExternalTool
+
+
+def _scientific_execute_tool(surface: dict[str, Any]) -> Any:
+    desks = surface["desks"]
+    skills = ", ".join(surface["skills"])
+    return _external_tool_cls()(
         "scientific_execute",
         (
-            "Run registered Paper2Lab scientific skills in the user's browser "
-            "(the ONLY source of CALCULATED numbers). Input: "
-            "{deskKind:'formula'|'kakeya', steps:[{op,...}]}. Valid ops: "
-            "experiment.fork, formula.set/scale, formula.plot, "
-            "kakeya.halve-n, kakeya.set, kakeya.measure, kakeya.sweep, "
-            "experiment.compare. Returns real ExperimentRuns."
+            "Run registered Paper2Lab scientific skills (the ONLY source of "
+            f"CALCULATED numbers). Registered skills: {skills}. Input: "
+            "{deskKind, steps:[{op,...}]}. deskKind is one of "
+            f"{desks}; steps are validated server-side against the same "
+            "registry — unknown ops fail explicitly. Typical ops per desk: "
+            "experiment.fork / <desk>.set / <desk>.scale / <desk> terminal "
+            "(e.g. formula.plot, kakeya.measure, ode.solve, geometry.plot, "
+            "mujoco.simulate, challenge.attempt) / experiment.compare."
         ),
         {
             "type": "object",
             "required": ["deskKind", "steps"],
             "properties": {
-                "deskKind": {"type": "string", "enum": ["formula", "kakeya"]},
+                "deskKind": {"type": "string", "enum": desks},
                 "steps": {"type": "array", "items": {"type": "object"}},
             },
         },
     )
-    canvas_tool = _ExternalTool(
+
+
+# ---- section-budgeted agent context (#30) ------------------------------------
+# the OLD prompt hard-truncated the whole context JSON at 1200 chars; now
+# each section (paper / formulas / current experiment / history) gets its own
+# budget so anchors, units and history runs survive instead of being chopped
+_CONTEXT_BUDGETS = {"paper": 400, "formulas": 500, "current": 300, "history": 500}
+
+
+def _build_context_message(intent: str, context: dict) -> str:
+    sections: list[str] = [f"User question: {intent}"]
+    paper = context.get("paper")
+    if isinstance(paper, dict):
+        title = str(paper.get("title", ""))[:120]
+        question = str(paper.get("question", ""))[:200]
+        sections.append(f"Paper: {title} — research question: {question}"[: _CONTEXT_BUDGETS["paper"]])
+    formulas = context.get("formulas")
+    if isinstance(formulas, list) and formulas:
+        lines = [
+            f"- {str(f.get('latex', ''))[:80]} (anchor {str(f.get('anchorId', '?'))[:24]})"
+            for f in formulas[:6]
+        ]
+        sections.append(("Paper formulas (LaTeX, anchored):\n" + "\n".join(lines))[: _CONTEXT_BUDGETS["formulas"]])
+    current = context.get("current")
+    if isinstance(current, dict):
+        sections.append(f"Current experiment config: {json.dumps(current, ensure_ascii=False)}"[: _CONTEXT_BUDGETS["current"]])
+    history = context.get("history")
+    if isinstance(history, list) and history:
+        recent = list(history)[-6:][::-1]  # newest first, bounded
+        rows = [
+            f"- run …{str(h.get('runId', ''))[-12:]} params={json.dumps(h.get('params', {}), ensure_ascii=False)} metrics={json.dumps(h.get('metrics', {}), ensure_ascii=False)}"
+            for h in recent
+        ]
+        sections.append(("Recent experiment runs (real, citable):\n" + "\n".join(rows))[: _CONTEXT_BUDGETS["history"]])
+    return "\n\n".join(sections)
+
+
+async def _build_agent() -> Any:
+    from agentscope.agent import Agent
+    from agentscope.tool import Toolkit
+
+    # #30: the model's scientific tool is GENERATED from the live registry
+    surface = await _tool_surface()
+    skill_tool = _scientific_execute_tool(surface)
+    canvas_tool = _external_tool_cls()(
         "canvas_apply",
         (
             "Apply canvas operations so results appear on the research desk. "
@@ -603,7 +693,7 @@ def _evt_type(chunk: Any) -> str:
 async def agentscope_stream(session_id: str, inputs: Any) -> AsyncGenerator[dict, None]:
     agent = _agentscope_sessions.get(session_id)
     if agent is None:
-        agent = _build_agent()
+        agent = await _build_agent()
         _agentscope_sessions[session_id] = agent
 
     saw_external = False
@@ -773,7 +863,7 @@ def _agentscope_input(body: "TurnBody") -> Any:
 
     return UserMsg(
         name="desk",
-        content=f"{body.intent}\n\n[desk context] {json.dumps(body.context, ensure_ascii=False)[:1200]}",
+        content=_build_context_message(body.intent, body.context),
     )
 
 

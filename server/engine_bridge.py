@@ -31,12 +31,21 @@ class EngineBridge:
         self._proc: subprocess.Popen[bytes] | None = None
         self._lock: asyncio.Lock | None = None
         self._lock_loop: asyncio.AbstractEventLoop | None = None
+        self._boot_loop: asyncio.AbstractEventLoop | None = None
         self._next_id = 0
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._reader: asyncio.Task[None] | None = None
         self._drain: asyncio.Task[None] | None = None
         self._last_error: str | None = None
         self._started_at: float | None = None
+
+    def _loop_changed(self) -> bool:
+        """the child + reader/drain tasks are bound to the loop they booted
+        on (futures resolve there). pytest-asyncio gives every test a NEW
+        loop: reusing the old child cross-loop leaves pings unanswered
+        (reproduced: 180s boot timeouts after the first test). Such a child
+        must be torn down and rebooted on the CURRENT loop."""
+        return self._proc is not None and self._boot_loop is not asyncio.get_running_loop()
 
     def _guard(self) -> asyncio.Lock:
         """a module-level Lock binds to its FIRST event loop forever — under
@@ -69,6 +78,7 @@ class EngineBridge:
             shell=False,
         )
         print(f"[engine-boot] spawned pid={self._proc.pid}", flush=True)
+        self._boot_loop = asyncio.get_running_loop()
         self._started_at = time.time()
         # Popen pipes are BLOCKING file objects — reads must run in worker
         # threads or they would stall the event loop for every engine call.
@@ -192,6 +202,10 @@ class EngineBridge:
         bundle boots in <1s, well inside the platform's 120s gateway window).
         """
         async with self._guard():
+            if self._loop_changed():
+                # child belongs to a dead loop — its futures can never resolve
+                # here; replace it instead of timing out on the zombie probe
+                await self.stop()
             if self._proc is not None and self._proc.poll() is None:
                 try:
                     probe = await self._roundtrip({"op": "ping"}, timeout=3.0)

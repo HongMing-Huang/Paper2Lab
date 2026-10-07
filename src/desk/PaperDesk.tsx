@@ -22,6 +22,7 @@ import { analyzeFormula } from '../formula/analyze'
 import { buildExplorerSpec } from '../formula/spec'
 import { explorerStore } from './explorerStore'
 import { odePhaseStore } from './odePhaseStore'
+import { listExperimentRuns } from '../experiments/protocol'
 import { planFormulaActions } from '../skills/formulaPlan'
 import { llmConfigFromEnv } from '../skills/llmPlanner'
 import { runAgentTurn, newAgentSessionId, type DeskAgentContext } from './agentBridge'
@@ -476,6 +477,28 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       paramValues: { ...src.params },
       anchorId: src.spec.anchor.anchorId ?? null,
       selectedRunId: src.run?.runId ?? null,
+      // #30 sectioned context: paper digest, anchored formulas, current
+      // config and real recent runs — the server budgets each section
+      paper: {
+        title: payload.doc.title,
+        question: payload.decision.status === 'ok' ? payload.decision.binding.question : undefined,
+      },
+      formulas:
+        payload.decision.status === 'ok'
+          ? payload.decision.binding.equations.map((e) => ({ latex: e.latex, anchorId: e.anchorId }))
+          : [],
+      current: { deskKind: 'formula', params: { ...src.params }, anchorId: src.spec.anchor.anchorId ?? null },
+      history: listExperimentRuns({ limit: 6 })
+        .filter((r) => r.spec.kind === 'formula.curve' || r.spec.kind === 'formula.preview')
+        .slice(0, 6)
+        .map((r) => ({
+          runId: r.runId,
+          params: r.spec.params as Record<string, number>,
+          metrics: {
+            peak: (r.result as { peak?: number } | undefined)?.peak ?? 0,
+            integral: (r.result as { integral?: number } | undefined)?.integral ?? 0,
+          },
+        })),
     }
     agentState.set({ phase: { kind: 'plan', goal: q, skill: 'formula.plot' }, explorerId: firstId, observation: null, plan: null })
     try {
