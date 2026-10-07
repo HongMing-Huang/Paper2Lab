@@ -41,12 +41,19 @@ export function DeskParamChip({
       const raw = state.current.startValue + dx * param.step
       const snapped = Math.round(raw / param.step) * param.step
       const v = Math.min(param.max, Math.max(param.min, snapped))
-      if (v !== read()) explorerStore.setParams(explorerId, { [param.name]: v })
+      // pointer MOVE = preview (same kernel, coarse grid, no executor round
+      // trip); the exact run is committed on pointer UP (#23)
+      if (v !== read()) explorerStore.setParams(explorerId, { [param.name]: v }, { preview: true })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dragging, explorerId],
   )
-  const onPointerUp = useCallback(() => setDragging(false), [])
+  const onPointerUp = useCallback(() => {
+    setDragging(false)
+    // drag END = commit: exact formula.plot at full sampling for CURRENT params
+    explorerStore.setParams(explorerId, {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [explorerId])
 
   return (
     <span

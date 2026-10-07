@@ -89,7 +89,7 @@ export const voxelPreviewCell = kakeya.derive<ExperimentRun<VoxelMetrics>>(
 export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelResult>>(
   'kakeya.voxel',
   [tubesRunCell, pVoxelRes, pDeltaExp, pPacking, pNTubes],
-  async ([tubesRun, res, deltaExp, packing, nTubes]) =>
+  async ([tubesRun, res, deltaExp, packing, nTubes], token) =>
     executeSpec(
       {
         kind: 'kakeya.voxel',
@@ -98,12 +98,16 @@ export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelResult>>(
         res: res as number,
       },
       ENGINES.kakeyaWorker,
-      () =>
-        (isWorkerAvailable() ? measureVoxelCover : computeVoxelsSyncFallback)(
+      () => {
+        // superseded before dispatch (drag continued past the debounce
+        // window): skip the worker round-trip entirely (#23)
+        if (token.aborted) throw new Error('voxel superseded before dispatch')
+        return (isWorkerAvailable() ? measureVoxelCover : computeVoxelsSyncFallback)(
           (tubesRun as ExperimentRun<Tube3[]>).result as Tube3[],
           res as number,
           VIS_RES,
-        ),
+        )
+      },
     ),
   {
     debounceMs: 140,
@@ -137,21 +141,32 @@ export const perronCell = kakeya.derive<ExperimentRun<PerronResult>>(
   }),
 )
 
-// ---- |⋃T| sweep vs N at current δ/packing (live, coarse grid) --------------
+// ---- |⋃T| sweep vs N at current δ/packing — ON DEMAND (#23) ----------------
+// The sweep costs SIX worker computes per param change and used to fire on
+// every drag, competing with the exact voxel cell for the same worker. It is
+// now gated by an explicit switch (the chart's 扫描 toggle); while off the
+// cell resolves to [] with zero worker traffic.
 import type { CurvePoint } from '../kakeya/metrics'
 
 export const SWEEP_NS = [16, 32, 64, 96, 128, 192]
 
+export const pSweepOn = kakeya.param<boolean>('kakeya.sweepOn', false)
+
 export const sweepCell = kakeya.asyncDerive<CurvePoint[]>(
   'kakeya.sweep',
-  [deltaCell, pPacking],
-  async ([delta, packing]) => {
+  [deltaCell, pPacking, pSweepOn],
+  async ([delta, packing, on], token) => {
+    if (!on) return []
     const run = await executeSpec(
       { kind: 'kakeya.sweep', params: { deltaExp: -Math.log2(delta as number), packing: packing as number }, seed: 20250224, res: SWEEP_RES },
       ENGINES.kakeyaWorker,
       async () => {
         const points: CurvePoint[] = []
         for (const n of SWEEP_NS) {
+          // latest-task-wins (#23): a newer invalidation (params moved again /
+          // sweep switched off) abandons the remaining grid points instead of
+          // burning the worker to the last point just to be discarded
+          if (token.aborted) throw new Error('sweep superseded')
           const r = await measureFamily(delta as number, n, packing as number, SWEEP_RES)
           points.push({ x: n, y: r.occupiedVolume, series: 'live（本页计算）', runId: '' })
         }

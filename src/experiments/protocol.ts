@@ -11,6 +11,7 @@ export type ExperimentKind =
   | 'kakeya.pyodide-mc' // NumPy Monte-Carlo cross-check
   | 'perron.tree' // 2D Perron tree measurement
   | 'formula.curve' // generic formula explorer (Cortex→JS sampling)
+  | 'formula.preview' // drag-time coarse-grid preview (same kernel, presentation-only)
   | 'formula.value' // single-point formula evaluation (Cortex→JS)
   | 'mujoco.sim' // MuJoCo WASM headless simulation (vendored demo scenes)
   | 'challenge.attempt' // playable-challenge attempt (code-built model, real compute)

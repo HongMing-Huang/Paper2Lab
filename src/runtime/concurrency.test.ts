@@ -31,6 +31,7 @@ describe('stale async task cannot overwrite newer params', () => {
         return Promise.resolve(input * 10)
       }, { debounceMs: 100 })
       void cell
+      rt.subscribe('c', () => {}) // lazy async cells (#23): interest first
 
       // first computation launches after debounce
       await vi.advanceTimersByTimeAsync(120)
@@ -64,6 +65,7 @@ describe('stale async task cannot overwrite newer params', () => {
       const input = inputs[0] as number
       return new Promise<number>((res) => resolvers.push(() => res(input * 100)))
     }, { debounceMs: 10 })
+    rt.subscribe('c', () => {}) // lazy async cells (#23): interest first
     await tick(30)
     rt.setParam('p', 5)
     await tick(30)
@@ -101,6 +103,7 @@ describe('invalid numerics never produce success-status NaN', () => {
       validate: (v) => assertFiniteNumbers(v, 'c'),
     })
     void c
+    rt.subscribe('c', () => {}) // lazy async cells (#23): interest first
     await tick(30)
     const s = rt.get('c')
     expect(s.status).toBe('error')

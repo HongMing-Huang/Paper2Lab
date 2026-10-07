@@ -39,6 +39,8 @@ export interface ChartAnchor {
   /** point dragged (trusted events drive JXG's own drag → pt.on('drag'));
    *  x is included because JXG drags the point freely in 2D */
   onDrag: (x: number, y: number) => void
+  /** drag finished — the caller commits the exact run (#23 preview/commit) */
+  onDragEnd?: () => void
 }
 
 export function FormulaChart({
@@ -94,7 +96,9 @@ export function FormulaChart({
     anch.onDrag(anch.x, d.yUser0 - (e.clientY - d.clientY0) * unitPerPx)
   }
   const onPointerUp = () => {
+    const wasDragging = dragRef.current !== null
     dragRef.current = null
+    if (wasDragging) latest.current.anchor?.onDragEnd?.()
   }
 
   useEffect(() => {
