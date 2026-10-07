@@ -34,7 +34,8 @@ COPY src/ src/
 COPY scripts/engine_server.ts /tmp/bundle-src/engine_server.ts
 RUN corepack enable && corepack prepare pnpm@10.30.2 --activate \
   && pnpm install --frozen-lockfile \
-  && node_modules/.bin/esbuild /tmp/bundle-src/engine_server.ts \
+  && ./node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/bin/esbuild \
+       /tmp/bundle-src/engine_server.ts \
        --bundle --packages=external --platform=node --format=esm \
        --outfile=/tmp/engine_server.bundle.mjs --log-level=warning \
   && mkdir -p scripts && cp /tmp/engine_server.bundle.mjs scripts/engine_server.bundle.mjs \
