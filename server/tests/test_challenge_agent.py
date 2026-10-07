@@ -75,10 +75,12 @@ async def test_agent_tubes_attempt_scores_real_volume() -> None:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as c:
             events = await _turn(c, "ch-tubes", "试一次", {
                 "deskKind": "challenge", "execution": "server",
-                "base": {"challenge": "tubes", "changes": {"offsets": [1, 1, 1, 1]}},
+                # honest winning configuration (#21): half-packing beats the
+                # 0.28 budget (0.2704); all-1 full-sticky (0.2905) now scores 0
+                "base": {"challenge": "tubes", "changes": {"offsets": [0.5, 0.5, 0.5, 0.5]}},
             })
             run = next(e for e in events if e["type"] == "experiment_completed")
-            assert 0 < run["metrics"]["occupiedVolume"] < 1
+            assert 0 < run["metrics"]["occupiedVolume"] < 0.28
             assert run["metrics"]["score"] > 0
 
 

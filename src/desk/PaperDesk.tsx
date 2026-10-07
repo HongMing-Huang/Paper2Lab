@@ -21,6 +21,7 @@ import { usePdfPageSize } from './PdfCanvas'
 import { analyzeFormula } from '../formula/analyze'
 import { buildExplorerSpec } from '../formula/spec'
 import { explorerStore } from './explorerStore'
+import { odePhaseStore } from './odePhaseStore'
 import { planFormulaActions } from '../skills/formulaPlan'
 import { llmConfigFromEnv } from '../skills/llmPlanner'
 import { runAgentTurn, newAgentSessionId, type DeskAgentContext } from './agentBridge'
@@ -58,6 +59,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     chart: createShapeId('chart'),
     source: null as TLShapeId | null,
     run3d: createShapeId('run3d'),
+    runOde: createShapeId('run-ode'),
   })
   const deskRootRef = useRef<HTMLDivElement | null>(null)
   const experimentIds = useRef<TLShapeId[]>([])
@@ -645,11 +647,58 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
             </div>
           )}
           {payload.decision.status === 'ok' && payload.decision.adapter === 'ode' && (
-            <div className="desk-note" data-testid="ode-pending">
-              该论文已绑定为 ODE 相平面实验（初值{' '}
-              {Object.entries((payload.decision.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> } | undefined)?.values ?? {}).map(([k, v]) => `${k}(0)=${v}`).join('、') || '待定'}）
-              —— 相平面执行面在 #24 交付；此处不套用公式 Demo。
-            </div>
+            <>
+              <button
+                type="button"
+                className="desk-btn desk-btn-play"
+                data-testid="grow-ode"
+                onClick={() => {
+                  const editor = editorRef.current
+                  const d = payload.decision
+                  if (!editor || d.status !== 'ok' || d.adapter !== 'ode') return
+                  if (editor.getShape(ids.current.runOde)) {
+                    message('ODE 相平面实验纸已在桌面上')
+                    return
+                  }
+                  const sys = d.binding.system!
+                  const initial = d.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> } | undefined
+                  const rhs = sys.equations.map((e) => e.latex.slice(e.latex.indexOf('=') + 1).trim()) as [string, string]
+                  const odeId = odePhaseStore.nextId()
+                  try {
+                    odePhaseStore.create(odeId, {
+                      states: sys.states,
+                      rhs,
+                      initial: [Number(initial?.values[sys.states[0]]), Number(initial?.values[sys.states[1]])],
+                    })
+                  } catch (err) {
+                    message(`ODE 实验创建失败：${err instanceof Error ? err.message : err}`)
+                    return
+                  }
+                  editor.createShape({
+                    id: ids.current.runOde,
+                    type: 'p2l-ode',
+                    x: PAPER_X + PAPER_W + 60,
+                    y: PAPER_Y + 40,
+                    parentId: ids.current.lab,
+                    props: {
+                      odeId,
+                      title: `${sys.states.join('–')} 相平面（论文方程 · 拖初值释放）`,
+                      w: 560,
+                      h: 430,
+                    },
+                  })
+                  applyLabLayout(editor, ids.current.lab)
+                  message('ODE 实验纸已长出 — 论文右端编译执行，拖初始点释放即精确 RK4')
+                }}
+              >
+                ◈ 长出 ODE 相平面实验纸
+              </button>
+              <div className="desk-note" data-testid="ode-pending">
+                该论文已绑定为 ODE 相平面实验（状态{' '}
+                {payload.decision.binding.system?.states.join('/')}，初值{' '}
+                {Object.entries((payload.decision.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> } | undefined)?.values ?? {}).map(([k, v]) => `${k}(0)=${v}`).join('、') || '待定'}）。
+              </div>
+            </>
           )}
           <AgentPhaseStrip />
         </Tldraw>

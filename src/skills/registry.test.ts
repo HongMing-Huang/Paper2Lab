@@ -16,6 +16,7 @@ describe('Scientific Skill Registry', () => {
         'kakeya.generate',
         'kakeya.measure',
         'kakeya.sweep',
+        'ode.phase',
         'ode.solve',
         'paper.trace-source',
       ].sort(),

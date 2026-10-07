@@ -39,6 +39,26 @@ describe('planner (Scientific Skills Agent)', () => {
     expect(plan('这个定理的证明在哪').actions.map((a) => a.skill)).toEqual(['open_proof'])
   })
 
+  it('history-aware planning (#24): a repeated configuration CITES its prior run', () => {
+    const p = planExperiment('如果方向数减少一半呢？', { nTubes: 96, deltaExp: 4, packing: 0 }, [
+      { runId: 'kakeya-voxel-hist48', params: { deltaExp: 4, packing: 0, nTubes: 48 }, metrics: { occupiedVolume: 0.2239 } },
+      { runId: 'kakeya-voxel-other', params: { deltaExp: 5, packing: 0, nTubes: 32 } },
+    ])!
+    expect(p.title).toContain('run …hist48')
+    expect(p.title).toContain('0.2239')
+    // the action list itself is unchanged — the whitelist stays intact
+    expect(p.actions.map((a) => a.skill)).toEqual([
+      'fork_experiment',
+      'change_parameter',
+      'run_scale_sweep',
+      'compare_experiments',
+      'explain_result',
+    ])
+    // no history / no matching run → plain title
+    const plain = planExperiment('如果方向数减少一半呢？', { nTubes: 96, deltaExp: 4, packing: 0 })!
+    expect(plain.title).not.toContain('run …')
+  })
+
   it('unknown questions still get an experiment (never text-only)', () => {
     const p = plan('随便说点什么')
     expect(p.actions.length).toBeGreaterThan(1)

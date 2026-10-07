@@ -50,6 +50,7 @@ export function FormulaChart({
   height,
   anchor,
   onRunSelect,
+  dataPoints,
 }: {
   series: ChartSeries[]
   range: [number, number]
@@ -57,6 +58,9 @@ export function FormulaChart({
   height: number
   anchor?: ChartAnchor
   onRunSelect?: (runId: string) => void
+  /** fit experiments (#24): the paper's measured (x,y) pairs rendered as a
+   *  scatter — the model curve is compared against these, not invented */
+  dataPoints?: ReadonlyArray<readonly [number, number]>
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const boardRef = useRef<JXG.Board | null>(null)
@@ -164,9 +168,26 @@ export function FormulaChart({
         anchorPointRef.current = pt
       } else anchorPointRef.current.moveTo([a.x, at(series[0], a.x)])
     }
+    // fit data overlay: the paper's own measured points, fixed on the board
+    if (dataPoints && dataPoints.length > 0) {
+      for (const [dx, dy] of dataPoints) {
+        curvesRef.current.push(
+          b.create('point', [dx, dy], {
+            name: '',
+            face: 'o',
+            size: 2,
+            strokeColor: '#b3542e',
+            fillColor: 'rgba(179,84,46,0.55)',
+            fixed: true,
+            highlight: false,
+            showInfobox: false,
+          }) as unknown as JXG.GeometryElement,
+        )
+      }
+    }
     b.update()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [series, range])
+  }, [series, range, dataPoints])
 
   return (
     <div>

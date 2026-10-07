@@ -98,9 +98,19 @@ export function PaperModeNode() {
       packing: (kakeya.get('kakeya.packing').value as number) ?? 0,
     }
     // LLM (Qwen) when configured via env, deterministic planner otherwise —
-    // both emit the same validated ExperimentPlan shape, never numbers
+    // both emit the same validated ExperimentPlan shape, never numbers.
+    // History (#24): recent kakeya runs are summarized for the planner so a
+    // repeated configuration cites its prior run instead of a blind re-fork.
     const { planQuestion } = await import('../skills/llmPlanner')
-    const plan = await planQuestion(q || '对比 separated vs sticky', current)
+    const { listExperimentRuns } = await import('../experiments/protocol')
+    const history = listExperimentRuns({ limit: 8 })
+      .filter((r) => r.spec.kind === 'kakeya.voxel')
+      .map((r) => ({
+        runId: r.runId,
+        params: r.spec.params as Record<string, number>,
+        metrics: { occupiedVolume: (r.result as { occupiedVolume?: number } | undefined)?.occupiedVolume ?? 0 },
+      }))
+    const plan = await planQuestion(q || '对比 separated vs sticky', current, history)
     deskBus.emit({ type: 'run-plan', plan })
   }
 

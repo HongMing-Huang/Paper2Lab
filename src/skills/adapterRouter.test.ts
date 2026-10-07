@@ -80,7 +80,7 @@ describe('routeAdapter (deterministic, #22 three-state machine)', () => {
     const initial = d.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> }
     expect(initial.values).toEqual({ x: 2, y: 0.5 })
     expect(d.binding.objects[0].type).toBe('initial-state')
-    expect(d.binding.engine).toEqual({ skill: 'ode.solve', view: 'phase-plane-jsxgraph' })
+    expect(d.binding.engine).toEqual({ skill: 'ode.phase', view: 'phase-plane-jsxgraph' })
     expect(d.binding.equations.map((e) => e.anchorId)).toEqual(['b', 'c'])
   })
   it('an ODE paper WITHOUT initial conditions → needs-info with concrete questions, not an invented demo', () => {
@@ -91,6 +91,7 @@ describe('routeAdapter (deterministic, #22 three-state machine)', () => {
       items: [
         { id: 'a', kind: 'text', page: 1, bbox: { x: 0.1, y: 0.1, w: 0.8, h: 0.05 }, text: 'we study stability of the equilibrium' },
         { id: 'b', kind: 'formula', page: 1, bbox: { x: 0.3, y: 0.4, w: 0.4, h: 0.05 }, latex: '\\frac{dx}{dt} = x(1-y)' },
+        { id: 'c', kind: 'formula', page: 1, bbox: { x: 0.3, y: 0.5, w: 0.4, h: 0.05 }, latex: '\\frac{dy}{dt} = y(x-1)' },
       ],
     })
     const d = routeAdapter(odeNoIc)

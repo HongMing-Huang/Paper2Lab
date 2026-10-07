@@ -13,7 +13,7 @@ import { docText, formulasOf, type IngestedDoc, type IngestedItem } from '../ing
 import { llmConfigFromEnv, type LlmPlannerConfig } from './llmPlanner'
 import {
   buildFitBinding, buildFormulaBinding, buildKakeyaBinding, buildOdeBinding,
-  detectData, detectOde, type PaperBinding,
+  detectData, detectOde, odeSystemOf, type PaperBinding,
 } from './paperBinding'
 
 export interface AdapterDecisionOk {
@@ -86,25 +86,40 @@ export function routeAdapter(doc: IngestedDoc): AdapterDecision {
   const hasDerivative = ode.matched.includes('latex-derivative')
   const data = detectData(doc)
   if (ode.isOde && (hasDerivative || !data)) {
-    if (ode.hasInitial) {
+    const system = odeSystemOf(doc)
+    if (!system) {
+      return {
+        status: 'needs-info',
+        adapter: 'ode',
+        reason: '检出动力学内容，但未能从论文公式中识别出两条状态方程（形如 \\dot{x}=…、\\frac{dy}{dt}=…）',
+        keyFormula: null,
+        questions: [
+          '请指出论文中的两条状态方程（每条形如 ẋ=f(x,y)、ẏ=g(x,y)）——系统需要按论文原文编译右端，不能用通用模型顶替。',
+        ],
+        binding: buildOdeBinding(doc, ode, null),
+      }
+    }
+    const initialsOf = (s: string) => ode.initials[s]
+    if (system.states.every((s) => Number.isFinite(initialsOf(s)))) {
       return {
         status: 'ok',
         adapter: 'ode',
-        reason: `检出动力学方程与初值（${Object.entries(ode.initials).map(([k, v]) => `${k}(0)=${v}`).join(', ')}）→ 相平面初值实验`,
+        reason: `识别状态方程（${system.states.join(', ')}）与初值（${system.states.map((s) => `${s}(0)=${initialsOf(s)}`).join(', ')}）→ 相平面初值实验`,
         keyFormula: null,
-        binding: buildOdeBinding(doc, ode),
+        binding: buildOdeBinding(doc, ode, system),
       }
     }
+    const missing = system.states.filter((s) => !Number.isFinite(initialsOf(s)))
     return {
       status: 'needs-info',
       adapter: 'ode',
-      reason: '检出动力学内容，但论文文本未给出状态初值——实验无法诚实启动',
+      reason: '识别出状态方程，但论文文本未给出全部状态的初值——实验无法诚实启动',
       keyFormula: null,
       questions: [
-        '论文未写明状态初值（形如 x(0)=…、y_0=…）。请补充各状态的 t=0 取值。',
-        '若论文确实不含初值（纯理论结果），请指出该结果属于哪一类（平衡点/稳定性/周期解），以便绑定对应的观测量。',
+        `论文未写明状态 ${missing.join('/')} 的初值（形如 ${missing[0]}(0)=…）。请补充 t=0 时的取值。`,
+        '若论文确实不含初值（纯定性结果），请说明应观察的量（平衡点/稳定性/周期解）。',
       ],
-      binding: buildOdeBinding(doc, { ...ode, hasInitial: false, initials: {} }),
+      binding: buildOdeBinding(doc, ode, system),
     }
   }
   const ranked = rankFormulas(doc)

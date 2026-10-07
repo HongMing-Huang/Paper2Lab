@@ -93,6 +93,11 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
     return 'error' in out ? { ok: false, error: out.error } : { ok: true, skill: out.skill, input: out.input }
   }
   if (op === 'runs') {
+    // once-runner executions (engine_api's inline path) complete in a
+    // DIFFERENT short-lived process; their persisted runs must be visible
+    // here too — re-sync from the run log before listing (runId-deduped,
+    // idempotent, small file)
+    restoreRuns()
     const runs = listExperimentRuns({
       kind: typeof req.kind === 'string' ? (req.kind as never) : undefined,
       limit: typeof req.limit === 'number' ? req.limit : 50,

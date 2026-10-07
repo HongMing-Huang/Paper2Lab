@@ -9,6 +9,7 @@
 import { executeSkill } from '../src/skills/executor.ts'
 import '../src/physics/registerMujocoRunner.ts'
 import '../src/challenges/registerChallengeRunner.ts'
+import { persistRun } from './engine_persist.ts'
 
 const skill = process.argv[2]
 if (!skill) {
@@ -27,5 +28,11 @@ const opts = {
   ...(process.argv[5] ? { parentRunId: process.argv[5] } : {}),
 }
 const outcome = await executeSkill(skill, input, opts)
+// append to the shared run log so the long-lived engine's /runs (which
+// re-syncs from the same file) lists once-runner executions too — without
+// this, a run completed inline would be invisible to run-history queries
+if (outcome.status === 'ok' && outcome.run?.status === 'resolved') {
+  persistRun(outcome.run)
+}
 process.stdout.write(JSON.stringify({ outcome }))
 process.exit(0)

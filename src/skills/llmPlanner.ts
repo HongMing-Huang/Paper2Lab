@@ -87,15 +87,18 @@ export async function planWithLlm(
   }
 }
 
-/** entry: LLM when configured, deterministic fallback otherwise */
+/** entry: LLM when configured, deterministic fallback otherwise. Both see
+ *  the recent-run history (#24) — an LLM plan may CITE a prior run but the
+ *  validatePlan gate still whitelists every action/param. */
 export async function planQuestion(
   question: string,
   current: { nTubes: number; deltaExp: number; packing: number },
+  history: import('./planner').RunSummary[] = [],
 ): Promise<ExperimentPlan> {
   const cfg = llmConfigFromEnv()
   if (cfg) {
     const llm = await planWithLlm(question, current, cfg)
     if (llm) return llm
   }
-  return planExperiment(question, current)!
+  return planExperiment(question, current, history)!
 }

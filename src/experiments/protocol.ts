@@ -8,6 +8,7 @@ export type ExperimentKind =
   | 'kakeya.sweep' // |⋃T|–N sweep
   | 'kakeya.preview' // drag-time low-res preview (presentation-only, not evidence)
   | 'lv.ode' // second-paper ODE (Pyodide/scipy)
+  | 'ode.phase2' // generic 2-state paper ODE, phase-plane + time series from ONE run (#24)
   | 'kakeya.pyodide-mc' // NumPy Monte-Carlo cross-check
   | 'perron.tree' // 2D Perron tree measurement
   | 'formula.curve' // generic formula explorer (Cortex→JS sampling)

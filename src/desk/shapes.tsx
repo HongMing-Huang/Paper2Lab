@@ -22,6 +22,8 @@ import { deskBus } from './deskBus'
 import { PdfCanvas } from './PdfCanvas'
 import { FormulaWithChips } from './FormulaWithChips'
 import { FormulaChart, SERIES_COLORS } from './FormulaChart'
+import { PhasePlaneChart } from './PhasePlaneChart'
+import { odePhaseStore } from './odePhaseStore'
 import { analyzeFormula } from '../formula/analyze'
 import { explorerStore } from './explorerStore'
 import { agentState } from './agentState'
@@ -71,6 +73,13 @@ declare module '@tldraw/tldraw' {
       w: number
       h: number
     }
+    'p2l-ode': {
+      /** odePhaseStore experiment id (states/rhs/initial live in the store) */
+      odeId: string
+      title: string
+      w: number
+      h: number
+    }
   }
   export interface TLGlobalBindingPropsMap {
     'p2l-trace': Record<string, never>
@@ -82,6 +91,7 @@ type FormulaShape = TLShape<'p2l-formula'>
 type ExperimentShape = TLShape<'p2l-experiment'>
 type ChartShape = TLShape<'p2l-chart'>
 type SourceShape = TLShape<'p2l-source'>
+type OdeShape = TLShape<'p2l-ode'>
 
 /** interactive zone helper — stop events before they reach the tldraw canvas
  *  (tldraw 5 removed the element-based stopEventPropagation; stopping React
@@ -287,6 +297,35 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
     [activeRun, isPreview],
   )
 
+  // fit (#24): the paper's measured pairs + the model's RMSE against them.
+  // RMSE interpolates the RUN's sampled curve at each data x — a read of the
+  // run, never a second computation channel.
+  const fitData = explorer?.plan.binding?.kind === 'fit' ? explorer.plan.binding.dataPoints ?? [] : undefined
+  const fitRmse = useMemo(() => {
+    if (!fitData || fitData.length === 0 || !activeRun?.result) return null
+    const pts = activeRun.result.points
+    const at = (x: number): number => {
+      for (let i = 1; i < pts.length; i++) {
+        if (x <= pts[i][0]) {
+          const [xa, ya] = pts[i - 1]
+          const [xb, yb] = pts[i]
+          return ya + ((yb - ya) * (x - xa)) / (xb - xa || 1e-12)
+        }
+      }
+      return pts[pts.length - 1][1]
+    }
+    let sum = 0
+    let n = 0
+    for (const [x, y] of fitData) {
+      if (x < pts[0][0] || x > pts[pts.length - 1][0]) continue // outside the sampled window
+      const d = at(x) - y
+      sum += d * d
+      n++
+    }
+    return n > 0 ? Math.sqrt(sum / n) : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitData, activeRun])
+
   // Direct Geometry (AGENTS.md v6 §9.2): drag point A on the curve → bisection
   // inverts the measured (x, y) back into the FIRST parameter (graph→param).
   // Drag motion feeds the PREVIEW path; pointer-up commits the exact run (#23).
@@ -352,9 +391,17 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
             width={p.w - 48}
             height={200}
             anchor={anchor}
+            dataPoints={fitData}
             onRunSelect={() => deskBus.emit({ kind: 'source', anchorId: p.anchorId })}
           />
         </Interactive>
+        {fitData && fitData.length > 0 && (
+          <div className="card-caption" data-testid="fit-rmse">
+            论文数据点 {fitData.length} 个（朱砂圆点）· 当前参数下 RMSE ={' '}
+            {fitRmse === null ? '—' : fitRmse.toFixed(4)}
+            {isPreview ? '（preview 口径，松手后以正式 Run 复核）' : '（对正式 Run 采样曲线）'}
+          </div>
+        )}
         <div className="desk-run-badge" style={{ opacity: explorer?.status !== 'resolved' ? 0.45 : 1 }} data-run-id={run?.runId}>
           {phase && (
             <span className={`desk-agent-phase st-${phase.kind}`}>
@@ -590,6 +637,67 @@ class Run3DShapeUtil extends ShapeUtil<Run3DShape> {
   }
 }
 
+// ---- OdeShape (phase-plane lab for uploaded ODE papers, #24) ---------------
+
+function OdeComponent({ shape }: { shape: OdeShape }) {
+  const editor = useEditor()
+  useSyncExternalStore(odePhaseStore.subscribe, odePhaseStore.getSnapshot, odePhaseStore.getSnapshot)
+  const ex = odePhaseStore.get(shape.props.odeId)
+  const selected = useValue(
+    'selected',
+    () => editor.getOnlySelectedShape()?.id === shape.id,
+    [editor, shape.id],
+  )
+  if (!ex) {
+    return (
+      <HTMLContainer style={{ pointerEvents: 'all' }}>
+        <div className="desk-sheet desk-sheet-experiment">
+          <div className="desk-sheet-head"><span className="desk-sheet-tag">ODE LAB</span></div>
+          <div className="desk-note">实验不存在（store 会话丢失）——刷新页面后重新长出。</div>
+        </div>
+      </HTMLContainer>
+    )
+  }
+  return (
+    <HTMLContainer style={{ pointerEvents: 'all' }}>
+      <div className={`desk-sheet desk-sheet-experiment${selected ? ' selected' : ''}`}>
+        <div className="desk-sheet-head">
+          <span className="desk-sheet-tag">INTERACTIVE FIGURE · ODE</span>
+          <span className="desk-sheet-meta">{shape.props.title}</span>
+        </div>
+        <Interactive>
+          <PhasePlaneChart experiment={ex} width={shape.props.w - 48} height={Math.max(200, shape.props.h - 150)} />
+        </Interactive>
+        <div className="card-caption">
+          拖初始点释放 = 精确 RK4（ode.phase，论文右端 Cortex 编译）；拖动中显示 preview。向量场是论文模型的呈现层；轨迹/时间曲线/周期全部来自同一个 Run。
+        </div>
+      </div>
+    </HTMLContainer>
+  )
+}
+
+class OdeShapeUtil extends ShapeUtil<OdeShape> {
+  static override type = 'p2l-ode' as const
+  static override props = { odeId: T.string, title: T.string, w: T.number, h: T.number }
+  getDefaultProps(): OdeShape['props'] {
+    return { odeId: '', title: '', w: 560, h: 430 }
+  }
+  override canBind(): boolean {
+    return true
+  }
+  getGeometry(shape: OdeShape) {
+    return new Rectangle2d({ width: shape.props.w, height: shape.props.h, isFilled: true })
+  }
+  component(shape: OdeShape) {
+    return <OdeComponent shape={shape} />
+  }
+  getIndicatorPath(shape: OdeShape) {
+    const path = new Path2D()
+    path.rect(0, 0, shape.props.w, shape.props.h)
+    return path
+  }
+}
+
 export const deskShapeUtils: TLAnyShapeUtilConstructor[] = [
   LabFrameShapeUtil,
   PaperShapeUtil,
@@ -598,6 +706,7 @@ export const deskShapeUtils: TLAnyShapeUtilConstructor[] = [
   ChartShapeUtil,
   SourceShapeUtil,
   Run3DShapeUtil,
+  OdeShapeUtil,
 ]
 
 /** source-trace binding (AGENTS.md v6 §8): experiment paper → source formula.

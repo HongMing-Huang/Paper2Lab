@@ -61,6 +61,10 @@ export interface PaperBinding {
   objects: BoundObject[]
   observables: BoundObservable[]
   engine: { skill: string; view: string }
+  /** fit only: numeric (x,y) pairs parsed from the paper's tables */
+  dataPoints?: Array<[number, number]>
+  /** ode only: the extracted 2-state system (paper latex, anchored) */
+  system?: OdeSystem
 }
 
 // ---------------------------------------------------------------- detection
@@ -119,6 +123,64 @@ export function detectData(doc: IngestedDoc): boolean {
   return DATA_TEXT.some((k) => text.includes(k))
 }
 
+/** numeric (x, y) pairs parsed from the paper's TABLE items — the fit
+ * experiment's reference data. Nothing is invented: no table, no pairs. */
+export function parseDataPairs(doc: IngestedDoc): Array<[number, number]> {
+  const pairs: Array<[number, number]> = []
+  for (const item of doc.items) {
+    if (item.kind !== 'table' || !item.text) continue
+    for (const line of item.text.split(/\n+/)) {
+      const nums = line.match(/-?\d+(?:\.\d+)?/g)
+      if (nums && nums.length >= 2) {
+        const x = Number(nums[0])
+        const y = Number(nums[1])
+        if (Number.isFinite(x) && Number.isFinite(y)) pairs.push([x, y])
+      }
+    }
+  }
+  return pairs
+}
+
+// ---------------------------------------------------------------- ODE system
+
+export interface OdeEquationItem {
+  state: string
+  /** the paper's ORIGINAL latex for this state equation (with LHS) */
+  latex: string
+  anchorId: string
+}
+export interface OdeSystem {
+  states: [string, string]
+  equations: [OdeEquationItem, OdeEquationItem]
+}
+
+const ODE_LHS = [
+  /\\dot\s*\{\s*([a-zA-Z])\s*\}\s*=/,
+  /\\frac\s*\{\s*d\s*([a-zA-Z])\s*\}\s*\{\s*d[a-zA-Z]+\s*\}\s*=/,
+  /([a-zA-Z])'\s*=/,
+]
+
+/** extract a 2-state autonomous system from the paper's own formulas:
+ *  \dot{x}=…, \frac{dy}{dt}=…, x'=… — one equation per state, anchored.
+ *  Fewer than two distinct states → null (the router asks instead of
+ *  inventing the missing equation). */
+export function odeSystemOf(doc: IngestedDoc): OdeSystem | null {
+  const byState = new Map<string, OdeEquationItem>()
+  for (const item of doc.items) {
+    if (item.kind !== 'formula' || !item.latex) continue
+    for (const p of ODE_LHS) {
+      const m = item.latex.match(p)
+      if (m) {
+        if (!byState.has(m[1])) byState.set(m[1], { state: m[1], latex: item.latex, anchorId: item.id })
+        break
+      }
+    }
+  }
+  if (byState.size < 2) return null
+  const eqs = [...byState.values()].slice(0, 2) as [OdeEquationItem, OdeEquationItem]
+  return { states: [eqs[0].state, eqs[1].state], equations: eqs }
+}
+
 // ---------------------------------------------------------------- builders
 
 function variablesOf(item: IngestedItem, extraRole: 'state' | 'output' = 'output'): BoundVariable[] {
@@ -153,6 +215,7 @@ export function buildFormulaBinding(doc: IngestedDoc, keyFormula: IngestedItem):
 /** fitting binding: the paper measures data — residuals are the observable */
 export function buildFitBinding(doc: IngestedDoc, keyFormula: IngestedItem): PaperBinding {
   const base = buildFormulaBinding(doc, keyFormula)
+  const dataPoints = parseDataPairs(doc)
   return {
     ...base,
     kind: 'fit',
@@ -163,20 +226,28 @@ export function buildFitBinding(doc: IngestedDoc, keyFormula: IngestedItem): Pap
     ],
     observables: [...base.observables, { name: '对论文数据的残差' }, { name: 'RMSE' }],
     engine: { skill: 'formula.plot', view: 'jsxgraph-fit' },
+    dataPoints,
   }
 }
 
 /** ODE binding: drag the initial state in the phase plane — the paper's own
- * equations and initial values; missing initials are NOT invented here */
-export function buildOdeBinding(doc: IngestedDoc, det: OdeDetection): PaperBinding {
-  const equations = doc.items
-    .filter((i) => i.kind === 'formula' && i.latex)
-    .slice(0, 4)
-    .map((i) => ({ latex: i.latex!, anchorId: i.id, variables: variablesOf(i, 'state') }))
-  const states = Object.keys(det.initials)
+ * equations and initial values; neither is ever invented here */
+export function buildOdeBinding(doc: IngestedDoc, det: OdeDetection, system?: OdeSystem | null): PaperBinding {
+  const eqSources: Array<{ latex: string; anchorId: string }> = system
+    ? system.equations.map((e) => ({ latex: e.latex, anchorId: e.anchorId }))
+    : doc.items
+        .filter((i) => i.kind === 'formula' && i.latex)
+        .slice(0, 2)
+        .map((i) => ({ latex: i.latex!, anchorId: i.id }))
+  const equations: BoundEquation[] = eqSources.map((e) => ({
+    latex: e.latex,
+    anchorId: e.anchorId,
+    variables: variablesOf({ kind: 'formula', id: e.anchorId, page: 1, bbox: { x: 0, y: 0, w: 0, h: 0 }, latex: e.latex } as IngestedItem, 'state'),
+  }))
+  const states = system ? system.states : (Object.keys(det.initials).length >= 2 ? [Object.keys(det.initials)[0], Object.keys(det.initials)[1]] as [string, string] : ['x', 'y'])
   return {
     kind: 'ode',
-    question: `${doc.title} 的系统从给定初值出发如何演化？初值或扰动如何改变轨迹？`,
+    question: `${doc.title} 的系统从论文给定的初值出发如何演化？拖动相平面初值或施加扰动会怎样？`,
     anchors: equations.map((e) => e.anchorId),
     equations,
     conditions: [
@@ -185,13 +256,14 @@ export function buildOdeBinding(doc: IngestedDoc, det: OdeDetection): PaperBindi
         description: '论文给出的状态初值',
         values: det.initials,
       },
-      { kind: 'constraint', description: '方程右端与参数按论文原文，不替换为通用摆/种群演示' },
+      { kind: 'constraint', description: '方程右端按论文原文编译执行（Cortex LaTeX→JS），不替换为通用摆/种群演示' },
     ],
     objects: [
-      { name: '相平面初始点（拖动释放）', type: 'initial-state', manipulates: states.length ? states : ['x', 'y'] },
+      { name: '相平面初始点（拖动释放）', type: 'initial-state', manipulates: [...states] },
     ],
     observables: [{ name: '状态轨迹' }, { name: '平衡点' }, { name: '时间曲线' }, { name: '周期' }],
-    engine: { skill: 'ode.solve', view: 'phase-plane-jsxgraph' },
+    engine: { skill: 'ode.phase', view: 'phase-plane-jsxgraph' },
+    system: system ?? undefined,
   }
 }
 

@@ -47,3 +47,12 @@
 - `src/desk/shapes.tsx`：Direct-Geometry 反演 `ITER=40` 二分步数与 `±16px` 命中半径（交互参数）。
 - `server/agent.py`：SOP 回退的正则意图模式与默认 Qwen 模型名 `qwen-plus`（`PAPER2LAB_AGENT_MODEL` 可覆盖；凭据仅 env）。
 - 允许理由：均为搜索/交互/回退配置，不产生或伪装任何用户可见测量值；所有可见数值仍 100% 来自 ExperimentRun。
+
+## F. 可玩闭环轮（#21–#24）登记常量（配置/呈现类，非证据）
+
+- `src/challenges/levels.ts`：管束关卡 `budget = 0.28`——由实测诚实地形冻结（基线 0.308449 / 半收拢最优 ≈0.2704 / 全粘 0.290509，探针 `scripts/tubes_probe.ts` 可复核）。
+- `src/desk/explorerStore.ts`：`PREVIEW_SAMPLES = 61`（拖动预览采样密度；正式仍 361 经 formula.plot）。
+- `src/skills/executor.ts`：`ODE_PHASE_STEPS = 2400`（ode.phase RK4 定步长积分步数）、`ODE_PHASE_T_SPAN = [0, 20]`（默认积分窗）。
+- `src/desk/odePhaseStore.ts`：`ODE_PREVIEW_STEPS = 400`（相平面拖动预览的粗积分步数）。
+- `src/desk/PhasePlaneChart.tsx`：`BOUND = 3.2`（相平面视窗半径）、`VF_GRID = 11`（向量场箭头密度——呈现层，用同一编译内核求值）。
+- 允许理由：均为采样密度/视窗/关卡设计常量，不冒充测量结果；轨迹、周期、RMSE、体积等用户可见数值仍 100% 来自 ExperimentRun。

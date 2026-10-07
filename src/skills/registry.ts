@@ -132,6 +132,40 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     implemented: true,
   },
   {
+    name: 'ode.phase',
+    description:
+      "Integrate a generic 2-state autonomous ODE (system.kind='generic2') whose right-hand sides are the PAPER'S OWN LaTeX, compiled by Cortex to JS and integrated with fixed-step RK4. Phase plane, time series and period all come from the ONE run. States may take any sign (damped oscillators are physics, not populations).",
+    inputSchema: {
+      type: 'object',
+      required: ['system', 'initialState', 'tSpan'],
+      properties: {
+        system: {
+          type: 'object',
+          required: ['kind', 'states', 'rhs'],
+          properties: {
+            kind: { type: 'string' },
+            states: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 2 },
+            rhs: { type: 'object', description: 'state name → LaTeX right-hand side' },
+            params: { type: 'object', description: 'constant symbol → value bindings' },
+          },
+        },
+        initialState: { type: 'object', description: 'state name → value at t0' },
+        tSpan: range,
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      properties: { t: { type: 'array' }, s0: { type: 'array' }, s1: { type: 'array' }, period0: { type: 'number' }, maxAbs0: { type: 'number' }, maxAbs1: { type: 'number' } },
+    },
+    runtime: 'cortex-js',
+    renderer: 'jsxgraph',
+    deterministic: true,
+    version: 'ode-rk4@0.2',
+    evidence: 'CALCULATED',
+    runKind: 'ode.phase2',
+    implemented: true,
+  },
+  {
     name: 'kakeya.generate',
     aliases: ['simulate_geometry'],
     description: 'Generate the δ-tube family geometry (directions, packing, radius) as a kakeya.geometry run.',
