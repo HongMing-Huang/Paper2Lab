@@ -24,7 +24,7 @@ const KIND_LABEL: Record<ChallengeKind, string> = {
 const CHALLENGE_META: Record<ChallengeKind, { goal: string; params: string[] }> = {
   projectile: { goal: '命中 22.9 m 处的目标（±0.5 m）', params: ['angleDeg', 'speed'] },
   pendulum: { goal: '把周期调到 2.0 s（±0.05 s）—— 周期由真实摆动测量', params: ['length', 'angleDeg'] },
-  tubes: { goal: '把占据体积压到预算 0.19 以下', params: ['offsets'] },
+  tubes: { goal: '把占据体积压到预算 0.28 以下（把簇向立方体中心收拢——越粘越好？未必）', params: ['offsets'] },
 }
 
 export function ChallengesLab({ onExit }: { onExit: () => void }) {
@@ -159,7 +159,7 @@ export function ChallengesLab({ onExit }: { onExit: () => void }) {
               {(state.level as { offsets: number[] }).offsets.map((_o0, i) => {
                 const offsets = (Array.isArray(draft.offsets) ? draft.offsets : (state.level as { offsets: number[] }).offsets) as number[]
                 return (
-                  <ParamRow key={i} label={`簇 ${i + 1}`} testId={`param-offset-${i}`} min={0} max={1} step={0.05}
+                  <ParamRow key={i} label={`簇 ${i + 1} 收拢`} testId={`param-offset-${i}`} min={0} max={1} step={0.05}
                     value={offsets[i]}
                     onChange={(v) => setDraft((d) => {
                       const base = Array.isArray(d.offsets) ? (d.offsets as number[]) : (state.level as { offsets: number[] }).offsets
