@@ -71,6 +71,8 @@ describe('Runtime', () => {
         }),
       { debounceMs: 10 },
     )
+    // lazy async cells (#23): express interest so the cell actually computes
+    rt.subscribe('slow', () => {})
     // initial kick
     await new Promise((r) => setTimeout(r, 30))
     expect(runs).toEqual([1])
@@ -97,11 +99,78 @@ describe('Runtime', () => {
     const a = rt.param('a', 1)
     rt.asyncDerive<number>('slow', [a], ([v]) => Promise.resolve((v as number) * 2), { debounceMs: 5 })
     rt.derive('shown', [rt.ref('slow') as never], ([v]) => `value=${v as number}`)
+    rt.subscribe('shown', () => {}) // lazy: interest at the consumer end (#23)
     await new Promise((r) => setTimeout(r, 25))
     expect(rt.get('shown').value).toBe('value=2')
     rt.setParam('a', 10)
     await new Promise((r) => setTimeout(r, 25))
     expect(rt.get('shown').value).toBe('value=20')
+  })
+
+  it('lazy async cells (#23): unobserved cells park instead of computing', async () => {
+    const rt = new Runtime()
+    const a = rt.param('a', 1)
+    let launches = 0
+    rt.asyncDerive<number>(
+      'lazy',
+      [a],
+      ([v]) => {
+        launches++
+        return Promise.resolve((v as number) * 10)
+      },
+      { debounceMs: 1 },
+    )
+    await new Promise((r) => setTimeout(r, 20))
+    expect(launches).toBe(0) // nobody subscribed — parked, zero compute
+    // a subscriber wakes it
+    const unsub = rt.subscribe('lazy', () => {})
+    await new Promise((r) => setTimeout(r, 20))
+    expect(launches).toBe(1)
+    expect(rt.get('lazy').value).toBe(10)
+    // param change recomputes while observed…
+    rt.setParam('a', 2)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(launches).toBe(2)
+    // …but parks again once the last subscriber leaves (invisible = no recompute)
+    unsub()
+    rt.setParam('a', 3)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(launches).toBe(2)
+    // an imperative read is interest too — it wakes and computes
+    rt.get('lazy')
+    await new Promise((r) => setTimeout(r, 20))
+    expect(launches).toBe(3)
+    expect(rt.get('lazy').value).toBe(30)
+  })
+
+  it('AbortToken (#23): superseded tasks observe aborted and yield', async () => {
+    const rt = new Runtime()
+    const a = rt.param('a', 1)
+    const observed: boolean[] = []
+    rt.asyncDerive<number>(
+      'tokened',
+      [a],
+      async (inputs, token) => {
+        // simulate a long multi-step compute that checks the token between steps
+        for (let step = 0; step < 5; step++) {
+          await new Promise((r) => setTimeout(r, 10))
+          if (token.aborted) {
+            observed.push(true)
+            throw new Error('superseded')
+          }
+        }
+        observed.push(false)
+        return (inputs[0] as number) * 2
+      },
+      { debounceMs: 1 },
+    )
+    const unsub = rt.subscribe('tokened', () => {})
+    await new Promise((r) => setTimeout(r, 8))
+    rt.setParam('a', 2) // supersede mid-flight
+    await new Promise((r) => setTimeout(r, 80))
+    expect(observed).toContain(true) // the old task yielded via the token
+    expect(rt.get('tokened').value).toBe(4) // the newer task committed
+    unsub()
   })
 
   it('notifies subscribers on commits and stale transitions', () => {

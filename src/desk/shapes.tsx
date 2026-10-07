@@ -270,13 +270,26 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
   const agent = useSyncExternalStore(agentState.subscribe, agentState.getSnapshot, agentState.getSnapshot)
   const phase =
     agent.explorerId === p.explorerId && agent.phase.kind !== 'idle' ? agent.phase : null
+  // #23 preview/commit: while a chip or the direct-geometry point is being
+  // dragged the chart shows the preview run (same kernel, coarse grid); the
+  // exact run replaces it the moment the drag commits
+  const activeRun = explorer?.dragging && explorer.previewRun ? explorer.previewRun : run
+  const isPreview = explorer?.dragging && !!explorer.previewRun
   // memo key by param VALUES: the store mutates params in place, so identity
   // alone would never refresh the chart (or worse, recreate curves on every
-  // render — jsxgraph's fade-in then leaves them at opacity 0)
-  const series = useMemo(() => run?.result ? [{ label: 'y(x)', color: SERIES_COLORS[0], points: run.result.points, runId: run.runId }] : [], [run])
+  // render — jsxgraph's fade-in then leaves curves at opacity 0)
+  const series = useMemo(
+    () =>
+      activeRun?.result
+        ? [{ label: isPreview ? 'y(x) · preview' : 'y(x)', color: SERIES_COLORS[0], points: activeRun.result.points, runId: activeRun.runId, dashed: isPreview }]
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeRun, isPreview],
+  )
 
   // Direct Geometry (AGENTS.md v6 §9.2): drag point A on the curve → bisection
   // inverts the measured (x, y) back into the FIRST parameter (graph→param).
+  // Drag motion feeds the PREVIEW path; pointer-up commits the exact run (#23).
   const anchor = useMemo(() => {
     const ex = explorer
     if (!ex?.compiled || ex.spec.parameters.length === 0) return undefined
@@ -302,10 +315,13 @@ function ExperimentComponent({ shape }: { shape: ExperimentShape }) {
           else hi = mid
         }
         const snapped = Math.round(((lo + hi) / 2) / p.step) * p.step
-        explorerStore.setParams(ex.id, {
-          [p.name]: Math.min(p.max, Math.max(p.min, snapped)),
-        })
+        explorerStore.setParams(
+          ex.id,
+          { [p.name]: Math.min(p.max, Math.max(p.min, snapped)) },
+          { preview: true },
+        )
       },
+      onDragEnd: () => explorerStore.setParams(ex.id, {}),
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [explorer?.id, explorer?.compiled, explorer?.spec.independent.name, explorer?.spec.parameters])

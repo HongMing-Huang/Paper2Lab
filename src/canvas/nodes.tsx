@@ -9,6 +9,7 @@ import {
   tubesRunCell,  voxelCell,
   perronCell,
   sweepCell,
+  pSweepOn,
   pDeltaExp,
   pPacking,
   pPaperAnchor,
@@ -360,6 +361,7 @@ export function ChartMultiplicityNode() {
 
 export function ChartUnionNode() {
   const sweep = useCell(sweepCell)
+  const sweepOn = useCell<boolean>(pSweepOn)
   const nTubes = useCell<number>(pNTubes)
   const exact = useCell(voxelCell)
   const preview = useCell(voxelPreviewCell)
@@ -432,17 +434,28 @@ export function ChartUnionNode() {
   return (
     <Sheet label="CHART · |⋃T| 随 N 增长（点数据点⇒定位实验）" badge="CALCULATED" stale={sweep.stale} width={400}>
       <UnionCurveChart points={points} xLabel="N（管数）" height={210} onPointClick={onPointClick} />
-      <button
-        type="button"
-        className="cpp-load-btn"
-        onClick={loadCpp}
-        disabled={cppState === 'loading'}
-        title="从后端引擎载入 C++ 高规模预计算（res 至 1024³≈10.9 亿体素、δ=2⁻¹⁰），导入为可追溯的 ExperimentRun"
-      >
-        {cppState === 'loading' ? 'LOCAL COMPUTE · 导入中…' : cppState === 'done' ? 'CALCULATED · C++ 高规模已载入 ✓' : '载入 C++ 高规模预计算'}
-      </button>
+      <div className="challenges-actions" style={{ display: 'flex', gap: 8 }}>
+        <button
+          type="button"
+          className="cpp-load-btn"
+          data-testid="sweep-toggle"
+          onClick={() => kakeya.setParam(pSweepOn.id, !sweepOn.value)}
+          title="六档扫描占 6 次 Worker 计算——默认关闭，按需打开（#23 性能：不可见/未请求不扫描）"
+        >
+          {sweepOn.value ? '⏸ 暂停实时扫描（6 档 Worker）' : '▶ 运行实时扫描（6 档 Worker）'}
+        </button>
+        <button
+          type="button"
+          className="cpp-load-btn"
+          onClick={loadCpp}
+          disabled={cppState === 'loading'}
+          title="从后端引擎载入 C++ 高规模预计算（res 至 1024³≈10.9 亿体素、δ=2⁻¹⁰），导入为可追溯的 ExperimentRun"
+        >
+          {cppState === 'loading' ? 'LOCAL COMPUTE · 导入中…' : cppState === 'done' ? 'CALCULATED · C++ 高规模已载入 ✓' : '载入 C++ 高规模预计算'}
+        </button>
+      </div>
       <div className="card-caption">
-        {points.length} 数据点 · 实线=本页 Worker 实时扫描；朱砂点=C++ 高规模预计算（res≤1024³≈10.9 亿体素，δ≥2⁻¹⁰，真 runId）；其余=fork 分支。点击任意数据点 → 定位产生它的实验（Data→Experiment）。
+        {points.length} 数据点 · 实线=本页 Worker 实时扫描（{sweepOn.value ? '运行中' : '已暂停——点左侧按钮按需运行'}）；朱砂点=C++ 高规模预计算（res≤1024³≈10.9 亿体素，δ≥2⁻¹⁰，真 runId）；其余=fork 分支。点击任意数据点 → 定位产生它的实验（Data→Experiment）。
       </div>
     </Sheet>
   )

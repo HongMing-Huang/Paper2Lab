@@ -32,7 +32,17 @@ export interface CellRef<T = unknown> {
 }
 
 type SyncFn<T> = (inputs: unknown[]) => T
-type AsyncFn<T> = (inputs: unknown[]) => Promise<T>
+/**
+ * Async compute functions receive an AbortToken as the second argument.
+ * `aborted` flips true the moment a newer invalidation supersedes this task
+ * (generation bumped) — long loops (multi-point sweeps) check it between
+ * steps so an in-flight task can yield instead of burning the worker to the
+ * end only to be discarded at commit (#23 队列只保留最新任务).
+ */
+export interface AbortToken {
+  readonly aborted: boolean
+}
+type AsyncFn<T> = (inputs: unknown[], token: AbortToken) => Promise<T>
 /** optional commit-time output check: return an error message to reject the value */
 export type OutputValidator = (value: unknown) => string | null
 
@@ -72,6 +82,9 @@ interface CellDef {
   debounceMs: number
   debounceTimer?: ReturnType<typeof setTimeout>
   launched: boolean
+  /** lazy async cells (#23): work is waiting but nobody observes this cell —
+   * run as soon as a subscriber/reader expresses interest */
+  pending: boolean
   /** commit-time output check (async cells): message ⇒ error status, value rejected */
   validate?: OutputValidator
   subscribers: Set<() => void>
@@ -120,11 +133,13 @@ export class Runtime {
     return this.ref<T>(id)
   }
 
-  /** Register an asynchronous derivation (Worker compute). Debounced trailing. */
+  /** Register an asynchronous derivation (Worker compute). Debounced trailing;
+   * the fn receives an AbortToken that flips when a newer invalidation
+   * supersedes this task (#23). */
   asyncDerive<T>(
     id: CellId,
     deps: CellRef[],
-    fn: (inputs: unknown[]) => Promise<T>,
+    fn: (inputs: unknown[], token: AbortToken) => Promise<T>,
     opts: { debounceMs?: number; validate?: OutputValidator } = {},
   ): CellRef<T> {
     this.register(id, 'async', deps.map((d) => d.id), fn as AsyncFn<unknown>, opts.debounceMs ?? 120)
@@ -158,13 +173,23 @@ export class Runtime {
     const key = typeof id === 'string' ? id : id.id
     const def = this.cells.get(key)
     if (!def) throw new Error(`unknown cell '${key}'`)
+    // an imperative read is interest too: wake a lazily-pending async cell —
+    // directly, or transitively through parked async ancestors of this cell
+    if (def.pending) this.wake(def)
+    else if (def.stale) this.wakeParkedDeps(def.id)
     return def.snapshot as CellSnapshot<T>
   }
 
   subscribe(id: CellId, cb: () => void): () => void {
     const def = this.cells.get(id)
     if (!def) throw new Error(`unknown cell '${id}'`)
+    const had = def.subscribers.size > 0
     def.subscribers.add(cb)
+    if (!had) {
+      // a NEW observer may make parked async ancestors relevant again (#23)
+      if (def.pending) this.wake(def)
+      this.wakeParkedDeps(def.id)
+    }
     return () => def.subscribers.delete(cb)
   }
 
@@ -182,6 +207,7 @@ export class Runtime {
       id,
       get(): T {
         const def = rt.cells.get(id)!
+        if (def.pending) rt.wake(def)
         if (!def.hasValue) throw new Error(`cell '${id}' has no committed value yet`)
         return def.value as T
       },
@@ -194,7 +220,7 @@ export class Runtime {
     this.cells.set(id, {
       id, kind, deps, fn, debounceMs,
       value: undefined, hasValue: false, stale: false, version: 0, error: undefined,
-      generation: 0, launched: false, subscribers: new Set(), snapshot: EMPTY, order: this.nextOrder++,
+      generation: 0, launched: false, pending: false, subscribers: new Set(), snapshot: EMPTY, order: this.nextOrder++,
     })
     for (const dep of deps) {
       let set = this.dependents.get(dep)
@@ -240,7 +266,7 @@ export class Runtime {
     }
   }
 
-  private run(def: CellDef) {
+  private run(def: CellDef, force = false) {
     if (def.kind === 'derive') {
       try {
         const inputs = def.deps.map((d) => this.cells.get(d)!.value)
@@ -259,6 +285,16 @@ export class Runtime {
       this.publish(def)
       return
     }
+    // lazy async (#23 不可见实验停止重算): nobody observes this cell (nor any
+    // transitive dependent) — park the work as pending instead of computing.
+    // A subscriber or imperative read wakes it (force). Sync derives stay
+    // eager (cheap).
+    if (!force && !this.isObserved(def.id)) {
+      def.pending = true
+      def.launched = false
+      return
+    }
+    def.pending = false
     // async: trailing debounce, generation-guarded commit.
     // The generation is bumped at SCHEDULE time (not launch): a task whose
     // schedule was superseded by a newer invalidation is discarded even when
@@ -266,12 +302,14 @@ export class Runtime {
     // task committed stale-input values over newer params (reproduced).
     if (def.debounceTimer !== undefined) clearTimeout(def.debounceTimer)
     const generation = ++def.generation
+    // the token lets long loops yield as soon as they are superseded (#23)
+    const token: AbortToken = { get aborted() { return def.generation !== generation } }
     const launch = () => {
       def.debounceTimer = undefined
       def.launched = true
       this.publish(def) // status → computing
       const inputs = def.deps.map((d) => this.cells.get(d)!.value)
-      void Promise.resolve((def.fn as AsyncFn<unknown>)(inputs))
+      void Promise.resolve((def.fn as AsyncFn<unknown>)(inputs, token))
         .then((value) => {
           if (def.generation !== generation) return // superseded — discard
           const invalid = def.validate ? def.validate(value) : null
@@ -319,5 +357,42 @@ export class Runtime {
       error: def.error,
     }
     for (const cb of def.subscribers) cb()
+  }
+
+  /** a cell is observed when it — or any transitive dependent — has live
+   * subscribers (walking the dependents graph; small graphs, no memo needed) */
+  private isObserved(rootId: CellId): boolean {
+    const seen = new Set<CellId>()
+    const stack: CellId[] = [rootId]
+    while (stack.length > 0) {
+      const cur = stack.pop()!
+      if (seen.has(cur)) continue
+      seen.add(cur)
+      if ((this.cells.get(cur)?.subscribers.size ?? 0) > 0) return true
+      for (const d of this.dependents.get(cur) ?? []) stack.push(d)
+    }
+    return false
+  }
+
+  /** wake a parked async cell — compute now that someone cares. Forced: the
+   * waker itself is the observation (subscriber or imperative read) and must
+   * not be re-parked by the observation gate (#23) */
+  private wake(def: CellDef) {
+    def.pending = false
+    this.run(def, true)
+  }
+
+  /** wake parked async cells in this cell's transitive DEPENDENCY chain —
+   * interest expressed at a descendant must un-park its ancestors */
+  private wakeParkedDeps(id: CellId, seen: Set<CellId> = new Set()) {
+    const def = this.cells.get(id)
+    if (!def) return
+    for (const dep of def.deps) {
+      if (seen.has(dep)) continue
+      seen.add(dep)
+      const d = this.cells.get(dep)
+      if (d?.pending) this.wake(d)
+      this.wakeParkedDeps(dep, seen)
+    }
   }
 }
