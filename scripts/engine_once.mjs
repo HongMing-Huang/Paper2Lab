@@ -70,6 +70,20 @@ function makeTubes(dirs, delta, packing, seed = 20250224) {
   }
   return tubes;
 }
+function segmentOf(t) {
+  return {
+    a: {
+      x: t.center.x - t.dir.x / 2,
+      y: t.center.y - t.dir.y / 2,
+      z: t.center.z - t.dir.z / 2
+    },
+    b: {
+      x: t.center.x + t.dir.x / 2,
+      y: t.center.y + t.dir.y / 2,
+      z: t.center.z + t.dir.z / 2
+    }
+  };
+}
 var clamp;
 var init_tubes = __esm({
   "src/kakeya/tubes.ts"() {
@@ -383,7 +397,7 @@ var init_mujocoKernel = __esm({
 });
 
 // src/skills/executor.ts
-import { compile } from "@cortex-js/compute-engine";
+import { compile as compile2 } from "@cortex-js/compute-engine";
 
 // src/experiments/protocol.ts
 var ENGINES = {
@@ -435,7 +449,7 @@ var ExperimentExecutionError = class extends Error {
   }
   run;
 };
-async function executeSpec(spec, engine, compute, lineage = {}) {
+async function executeSpec(spec, engine2, compute, lineage = {}) {
   const t0 = performance.now();
   const startedAt = Date.now();
   const input2 = structuredClone(spec);
@@ -452,8 +466,8 @@ async function executeSpec(spec, engine, compute, lineage = {}) {
     spec: input2,
     status: failure === void 0 ? "resolved" : "error",
     result,
-    engine: engine.engine,
-    engineVersion: engine.version,
+    engine: engine2.engine,
+    engineVersion: engine2.version,
     durationMs: Math.max(0, Math.round(performance.now() - t0)),
     evidence: "CALCULATED",
     createdAt: startedAt,
@@ -586,6 +600,39 @@ var SKILL_REGISTRY = [
     version: "ts-rk4@0.1",
     evidence: "CALCULATED",
     runKind: "lv.ode",
+    implemented: true
+  },
+  {
+    name: "ode.phase",
+    description: "Integrate a generic 2-state autonomous ODE (system.kind='generic2') whose right-hand sides are the PAPER'S OWN LaTeX, compiled by Cortex to JS and integrated with fixed-step RK4. Phase plane, time series and period all come from the ONE run. States may take any sign (damped oscillators are physics, not populations).",
+    inputSchema: {
+      type: "object",
+      required: ["system", "initialState", "tSpan"],
+      properties: {
+        system: {
+          type: "object",
+          required: ["kind", "states", "rhs"],
+          properties: {
+            kind: { type: "string" },
+            states: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2 },
+            rhs: { type: "object", description: "state name \u2192 LaTeX right-hand side" },
+            params: { type: "object", description: "constant symbol \u2192 value bindings" }
+          }
+        },
+        initialState: { type: "object", description: "state name \u2192 value at t0" },
+        tSpan: range
+      }
+    },
+    outputSchema: {
+      type: "object",
+      properties: { t: { type: "array" }, s0: { type: "array" }, s1: { type: "array" }, period0: { type: "number" }, maxAbs0: { type: "number" }, maxAbs1: { type: "number" } }
+    },
+    runtime: "cortex-js",
+    renderer: "jsxgraph",
+    deterministic: true,
+    version: "ode-rk4@0.2",
+    evidence: "CALCULATED",
+    runKind: "ode.phase2",
     implemented: true
   },
   {
@@ -880,11 +927,115 @@ async function measureVoxelCover(tubes, res, visRes) {
   return getRemote().measureVoxelCover(tubes, res, visRes);
 }
 
+// src/formula/engine.ts
+import { ComputeEngine } from "@cortex-js/compute-engine";
+var engine = null;
+function getEngine() {
+  if (!engine) engine = new ComputeEngine();
+  return engine;
+}
+var CORTEX_VERSION = "0.142.0";
+
+// src/formula/analyze.ts
+var INDEPENDENT_PREFERENCE = ["x", "t", "\u03B8", "theta", "u", "s"];
+var TRIG_DOMAIN = [-7, 7];
+var PLAIN_DOMAIN = [-5, 5];
+function containsTrig(e) {
+  if (Array.isArray(e)) {
+    const head = e[0];
+    if (typeof head === "string" && /^(Sin|Cos|Tan|Sec|Csc|Cot)$/.test(head)) return true;
+    return e.slice(1).some((x) => containsTrig(x));
+  }
+  if (e && typeof e === "object" && "fn" in e) {
+    return containsTrig(e.fn);
+  }
+  return false;
+}
+var PARAM_DEFAULTS = { default: 1, min: -5, max: 5, step: 0.05 };
+function analyzeFormula(latex) {
+  const ce = getEngine();
+  const trimmed = latex.trim().replace(/[.;,]+$/, "").trim();
+  const base = {
+    ok: false,
+    latex: trimmed,
+    mathjson: trimmed,
+    rhs: trimmed,
+    rhsLatex: trimmed,
+    output: null,
+    independent: null,
+    params: [],
+    domain: PLAIN_DOMAIN
+  };
+  if (!trimmed) return { ...base, error: "empty formula" };
+  let expr;
+  try {
+    expr = ce.parse(trimmed);
+  } catch (err) {
+    return { ...base, error: `parse failed: ${String(err)}` };
+  }
+  if (expr.errors.length > 0 || !expr.isValid) {
+    return { ...base, error: `invalid LaTeX: ${expr.errors.map(String).join("; ") || "parse error"}` };
+  }
+  const mathjson = expr.json;
+  let lhs = null;
+  let rhs = mathjson;
+  if (Array.isArray(mathjson) && mathjson[0] === "Equal" && mathjson.length === 3) {
+    lhs = mathjson[1];
+    rhs = mathjson[2];
+  }
+  if (Array.isArray(rhs) && rhs.length === 0) return { ...base, error: "empty right-hand side" };
+  const rhsExpr = ce.box(rhs);
+  const free = [...rhsExpr.freeVariables];
+  const independent = INDEPENDENT_PREFERENCE.find((name) => free.includes(name)) ?? (free.length === 1 ? free[0] : null);
+  if (!independent) {
+    return { ...base, error: "no independent variable found" };
+  }
+  const paramNames = free.filter((v) => v !== independent).sort((a, b) => a.localeCompare(b));
+  let output = null;
+  if (typeof lhs === "string") output = lhs;
+  else if (Array.isArray(lhs) && lhs.length === 2 && typeof lhs[0] === "string") output = lhs[0];
+  return {
+    ok: true,
+    latex: trimmed,
+    mathjson,
+    rhs,
+    rhsLatex: rhsExpr.latex,
+    output,
+    independent,
+    params: paramNames.map((name) => ({ name, ...PARAM_DEFAULTS })),
+    domain: containsTrig(rhs) ? TRIG_DOMAIN : PLAIN_DOMAIN
+  };
+}
+
+// src/formula/compile.ts
+import { compile } from "@cortex-js/compute-engine";
+function compileFormula(rhs) {
+  let result;
+  try {
+    result = compile(rhs, { to: "javascript" });
+  } catch {
+    return null;
+  }
+  if (!result || typeof result.run !== "function") return null;
+  const rawRun = result.run;
+  const run = (vars) => {
+    const v = rawRun(vars);
+    return typeof v === "number" ? v : Number(v);
+  };
+  return {
+    run,
+    code: result.code ?? "",
+    success: result.success,
+    engine: result.success ? `cortex-ce@${CORTEX_VERSION}\xB7js` : `cortex-ce@${CORTEX_VERSION}\xB7interp`,
+    freeSymbols: result.freeSymbols ?? []
+  };
+}
+
 // src/skills/executor.ts
 var KAKEYA_SEED = 20250224;
 var VIS_RES = 16;
 function compileExpr(expression) {
-  const compiled = compile(expression, { to: "javascript" });
+  const compiled = compile2(expression, { to: "javascript" });
   if (!compiled || typeof compiled.run !== "function") {
     throw new Error("Cortex could not compile the expression to JavaScript");
   }
@@ -1171,6 +1322,98 @@ async function runOdeSolve(input2, opts2) {
     { parentRunId: opts2.parentRunId }
   );
 }
+var ODE_PHASE_STEPS = 2400;
+function compileOdeRhs(latex, states) {
+  const a = analyzeFormula(latex);
+  if (!a.ok) return null;
+  const compiled = compileFormula(a.rhs);
+  if (!compiled) return null;
+  const [s0, s1] = states;
+  return (x, y) => {
+    const raw = compiled.run({ [s0]: x, [s1]: y });
+    return typeof raw === "number" ? raw : Number(raw);
+  };
+}
+async function runOdePhase(input2, opts2) {
+  const system = input2.system;
+  if (system?.kind !== "generic2" || !Array.isArray(system.states) || system.states.length !== 2) {
+    throw new Error(`ode.phase: only system.kind='generic2' with exactly 2 states is supported, got ${JSON.stringify(system?.kind ?? null)}`);
+  }
+  const [s0name, s1name] = system.states;
+  const rhs0 = compileOdeRhs(String(system.rhs?.[s0name] ?? ""), [s0name, s1name]);
+  const rhs1 = compileOdeRhs(String(system.rhs?.[s1name] ?? ""), [s0name, s1name]);
+  if (!rhs0 || !rhs1) throw new Error(`ode.phase: could not compile the paper's right-hand sides for states ${s0name}, ${s1name}`);
+  const initial = input2.initialState ?? {};
+  const x0 = Number(initial[s0name]);
+  const y0 = Number(initial[s1name]);
+  if (!Number.isFinite(x0) || !Number.isFinite(y0)) throw new Error(`ode.phase: initialState must provide finite ${s0name} and ${s1name}`);
+  const tSpan = input2.tSpan;
+  const [t0, t1] = tSpan;
+  if (!(t1 > t0) || !Number.isFinite(t0) || !Number.isFinite(t1)) throw new Error("ode.phase: tSpan must be [t0,t1] with t1>t0");
+  return executeSpec(
+    {
+      kind: "ode.phase2",
+      params: { [s0name]: x0, [s1name]: y0, t0, t1 },
+      seed: 0,
+      model: { system: { kind: "generic2", states: system.states, rhs: system.rhs, params: system.params ?? {} }, initialState: initial, tSpan, steps: ODE_PHASE_STEPS },
+      source: opts2.source
+    },
+    { engine: "ts-rk4", version: "ode-rk4@0.2" },
+    () => {
+      const h = (t1 - t0) / ODE_PHASE_STEPS;
+      const f = (_t, x2, y2) => [rhs0(x2, y2), rhs1(x2, y2)];
+      let x = x0;
+      let y = y0;
+      const points = [{ t: t0, s0: x, s1: y }];
+      const emitEvery = Math.max(1, Math.round(ODE_PHASE_STEPS / 240));
+      let maxAbs0 = Math.abs(x);
+      let maxAbs1 = Math.abs(y);
+      for (let i = 1; i <= ODE_PHASE_STEPS; i++) {
+        const t = t0 + (i - 1) * h;
+        const [k1x, k1y] = f(t, x, y);
+        const [k2x, k2y] = f(t + h / 2, x + h / 2 * k1x, y + h / 2 * k1y);
+        const [k3x, k3y] = f(t + h / 2, x + h / 2 * k2x, y + h / 2 * k2y);
+        const [k4x, k4y] = f(t + h, x + h * k3x, y + h * k3y);
+        x += h / 6 * (k1x + 2 * k2x + 2 * k3x + k4x);
+        y += h / 6 * (k1y + 2 * k2y + 2 * k3y + k4y);
+        maxAbs0 = Math.max(maxAbs0, Math.abs(x));
+        maxAbs1 = Math.max(maxAbs1, Math.abs(y));
+        if (!Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > 1e8 || Math.abs(y) > 1e8) {
+          throw new Error(`ode.phase: trajectory diverged at t=${(t + h).toFixed(3)} \u2014 check the paper's equations/initial state`);
+        }
+        if (i % emitEvery === 0 || i === ODE_PHASE_STEPS) points.push({ t: t0 + i * h, s0: x, s1: y });
+      }
+      let minS0 = Infinity;
+      let maxS0 = -Infinity;
+      for (const v of points) {
+        if (v.s0 < minS0) minS0 = v.s0;
+        if (v.s0 > maxS0) maxS0 = v.s0;
+      }
+      const mid = (minS0 + maxS0) / 2;
+      const crossings = [];
+      for (let i = 1; i < points.length; i++) {
+        if (points[i - 1].s0 < mid && points[i].s0 >= mid) {
+          const f0 = (mid - points[i - 1].s0) / (points[i].s0 - points[i - 1].s0 || 1e-12);
+          crossings.push(points[i - 1].t + f0 * (points[i].t - points[i - 1].t));
+        }
+      }
+      let period0 = null;
+      if (crossings.length >= 2) {
+        const gaps = crossings.slice(1).map((c, i) => c - crossings[i]);
+        period0 = gaps.slice().sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+      }
+      return {
+        t: points.map((p) => p.t),
+        s0: points.map((p) => p.s0),
+        s1: points.map((p) => p.s1),
+        period0,
+        maxAbs0,
+        maxAbs1
+      };
+    },
+    { parentRunId: opts2.parentRunId }
+  );
+}
 var COMPUTE_BY_KIND = {
   "formula.curve": "formula.plot",
   "formula.value": "formula.evaluate",
@@ -1179,6 +1422,7 @@ var COMPUTE_BY_KIND = {
   "kakeya.sweep": "kakeya.sweep",
   "perron.tree": "geometry.2d",
   "lv.ode": "ode.solve",
+  "ode.phase2": "ode.phase",
   "mujoco.sim": "mujoco.simulate",
   "challenge.attempt": "challenge.attempt"
 };
@@ -1335,6 +1579,7 @@ async function executeSkill(name, input2, opts2 = {}) {
     if (name === "kakeya.sweep") return { status: "ok", run: await runKakeyaSweep(input2, opts2) };
     if (name === "geometry.2d") return { status: "ok", run: await runGeometry2D(input2, opts2) };
     if (name === "ode.solve") return { status: "ok", run: await runOdeSolve(input2, opts2) };
+    if (name === "ode.phase") return { status: "ok", run: await runOdePhase(input2, opts2) };
     if (name === "experiment.fork") {
       const { sourceRunId, parameterChanges = {} } = input2;
       const source = getExperimentRun(sourceRunId);
@@ -1428,7 +1673,7 @@ init_tubes();
 var DEFAULT_LEVELS = {
   projectile: { kind: "projectile", angleDeg: 30, speed: 10, gravity: 9.81, targetX: 22.9, tolerance: 0.5 },
   pendulum: { kind: "pendulum", length: 0.6, angleDeg: 25, gravity: 9.81, targetPeriod: 2, tolerance: 0.05 },
-  tubes: { kind: "tubes", offsets: [0, 0, 0, 0], nTubes: 32, deltaExp: 4, res: 24, budget: 0.19 }
+  tubes: { kind: "tubes", offsets: [0, 0, 0, 0], nTubes: 32, deltaExp: 4, res: 24, budget: 0.28 }
 };
 
 // src/challenges/kernel.ts
@@ -1574,24 +1819,47 @@ async function runPendulum(spec) {
   if (result.measuredPeriod !== null) assertFiniteNumbers({ p: result.measuredPeriod, score: result.score });
   return result;
 }
+function countCubeViolations(tubes) {
+  let violations = 0;
+  const eps = 1e-9;
+  for (const t of tubes) {
+    const { a, b } = segmentOf(t);
+    for (const q of [a, b]) {
+      if (q.x < -eps || q.x > 1 + eps || q.y < -eps || q.y > 1 + eps || q.z < -eps || q.z > 1 + eps) violations++;
+    }
+  }
+  return violations;
+}
 function runTubesSync(spec) {
   const delta = 2 ** -spec.deltaExp;
   const dirs = fibonacciDirections(spec.nTubes);
   const base = makeTubes(dirs, delta, 0, 20250224);
   const per = Math.ceil(base.length / spec.offsets.length);
+  const nClusters = Math.min(spec.offsets.length, Math.ceil(base.length / per));
+  const packing = spec.offsets.slice(0, nClusters).map((o) => clamp2(o, 0, 1));
   const moved = base.map((tube, i) => {
-    const cluster = Math.min(spec.offsets.length - 1, Math.floor(i / per));
-    const o = spec.offsets[cluster] * 0.5;
-    return { ...tube, center: { x: tube.center.x + o, y: tube.center.y + o, z: tube.center.z + o } };
+    const cluster = Math.min(nClusters - 1, Math.floor(i / per));
+    const p = packing[cluster];
+    return {
+      ...tube,
+      center: {
+        x: tube.center.x + p * (0.5 - tube.center.x),
+        y: tube.center.y + p * (0.5 - tube.center.y),
+        z: tube.center.z + p * (0.5 - tube.center.z)
+      }
+    };
   });
+  const violations = countCubeViolations(moved);
   const measured = computeVoxelCoverage(moved, spec.res, 0);
-  const withinBudget = measured.occupiedVolume <= spec.budget;
+  const withinBudget = violations === 0 && measured.occupiedVolume <= spec.budget;
   const result = {
     kind: "tubes",
     occupiedVolume: measured.occupiedVolume,
     budget: spec.budget,
     withinBudget,
-    score: Math.round(SCORE_MAX * clamp2(1 - measured.occupiedVolume / spec.budget, 0, 1)) + (withinBudget ? 500 : 0)
+    score: violations > 0 ? 0 : Math.round(SCORE_MAX * clamp2(1 - measured.occupiedVolume / spec.budget, 0, 1)) + (withinBudget ? 500 : 0),
+    packing,
+    violations
   };
   assertFiniteNumbers({ v: result.occupiedVolume, score: result.score });
   return result;
@@ -1634,6 +1902,26 @@ registerSkillRunner("challenge.attempt", async (input2, opts2) => {
   );
 });
 
+// scripts/engine_persist.ts
+import { appendFileSync, existsSync, mkdirSync, readFileSync as readFileSync2 } from "node:fs";
+import { dirname as dirname2, join as join2 } from "node:path";
+var RUNLOG = "engine-runs.jsonl";
+function runlogPath() {
+  const dir = process.env.PAPER2LAB_DATA_DIR || join2(process.cwd(), "server", "data");
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch {
+  }
+  return join2(dir, RUNLOG);
+}
+function persistRun(run) {
+  try {
+    if (run.status !== "resolved") return;
+    appendFileSync(runlogPath(), JSON.stringify(run) + "\n");
+  } catch {
+  }
+}
+
 // scripts/engine_once.ts
 var skill = process.argv[2];
 if (!skill) {
@@ -1644,7 +1932,7 @@ var input = {};
 try {
   input = JSON.parse(process.argv[3] ?? "{}");
 } catch (e) {
-  console.error(`invalid input JSON: ${e.message}`);
+  console.error(`invalid input JSON: ${e instanceof Error ? e.message : String(e)}`);
   process.exit(2);
 }
 var opts = {
@@ -1652,5 +1940,8 @@ var opts = {
   ...process.argv[5] ? { parentRunId: process.argv[5] } : {}
 };
 var outcome = await executeSkill(skill, input, opts);
+if (outcome.status === "ok" && outcome.run?.status === "resolved") {
+  persistRun(outcome.run);
+}
 process.stdout.write(JSON.stringify({ outcome }));
 process.exit(0);

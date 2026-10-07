@@ -200,6 +200,16 @@ v0.6 补充（2026-10-07，魔搭部署实跑与云侧限制确诊）：
 - [x] **线上已验证**：SPA 200 · /api/ready ready:true（storage=/mnt/workspace）· CI 三段 Actions 全绿（PR #20 合并）
 - [ ] **开放（平台限制确诊）**：免费 FC runtime 对 spawn 的 node 子进程调度不保证——`[engine-boot] spawned pid=N` 后无 engine-ready，网关 120s 取消，多轮复现；本地同镜像同 env（2cpu/1.5g+冻结模拟）全部通过。需付费硬件（paid/ecs.*）或平台工单确认后台子进程调度策略后方可关闭。once-runner 内联路径即为绕开此限制设计，但 spawn 本身仍受调度影响。
 
+v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
+
+- [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
+- [x] **#22 PaperBinding 绑定链 + 路由三态**：`src/skills/paperBinding.ts`（锚点→问题→方程与变量单位→条件→可操作对象→观测量→引擎视图；`odeSystemOf` 从论文 latex 提取二状态系统、`parseDataPairs` 从表格提取 (x,y) 对——缺什么问什么，不发明）；adapterRouter 返回 ok / needs-info（缺初值/缺第二条方程→具体问题）/ out-of-scope（无方程无数据→明确拒绝不套 Demo）；PaperDesk 固定 Kakeya 3D 按钮仅 ok+kakeya 可见；LLM 路由收紧 index-only
+- [x] **#23 性能**：runtime `AbortToken`（新一代失效在途可见，sweep 逐档让位/voxel 派发前让位）+ **惰性 async cell**（无观察者停车 pending，订阅/get 唤醒，退订后参数变化不再计算）；`kakeya.sweep` 按需开关（默认关=零 Worker 流量）；formula 拖动契约 MOVE=预览（同内核 61 采样 `formula.preview` 非证据）/UP=正式（361 统一执行器），Direct Geometry 反拖同契约；无头 P95 见 `scripts/perf_probe.ts`（parse 1.07 / preview 0.05 / exact 0.67 / kakeya res48 10.8ms——证实长等待源于排队竞争而非内核）
+- [x] **#24 三类论文驱动交互**：**ODE**——新技能 `ode.phase`（generic2：论文 latex 右端 Cortex 编译 + RK4 2400 步；状态可负——阻尼振子是物理不是种群；周期=信号中位线上升过零中位数，LV 绕平衡点非零点）+ `odePhaseStore`（拖预览/释放精确/历史逐次记录/latest-wins）+ `PhasePlaneChart`（向量场+可拖初值+轨迹+时间曲线**同一 Run**）+ tldraw `p2l-ode` 形状 + PaperDesk ok/ode 长出；**拟合**——fit 绑定携带论文数据点，实验纸图表叠朱砂散点+RMSE（读 Run 采样曲线插值，非第二计算通道）；**约束几何**=#21 修复即该类交付。每类两篇条件不同的论文 fixture 验证（捕食-猎物/阻尼振子；衰减/正弦+各自数据表）
+- [x] **Agent 读历史**：planner 增 `history: RunSummary[]`——重复配置的 plan 标题引用历史同参数 Run（含其 |⋃T|），动作白名单不变；PaperModeNode 从 listExperimentRuns 供给
+- [x] **引擎可见性回归修复**（cd41452 遗留）：once-runner 执行的 Run 现追加进共享 run log，长驻引擎 `runs` op 列表前从 log 重同步（runId 去重幂等）——内联执行不再对 run-history 不可见；server pytest 更新为诚实通关配置
+- 验证：vitest **277/277**（+21）· pytest 49/49（清态）· tsc · build；浏览器交互验收按当前迭代约束记为待验证
+
 ## 11. 下一阶段（比赛迭代方向）
 
 ### 2026-10-01 源码审查后的开发门槛

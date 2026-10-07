@@ -13,6 +13,8 @@ import { makeTubes, type Tube3 } from '../kakeya/tubes'
 import { computeVoxelCoverage, type VoxelResult } from '../kakeya/voxels3d'
 import { perronTree } from '../kakeya/perron'
 import { isWorkerAvailable, measureVoxelCover } from '../workers/voxelClient'
+import { analyzeFormula } from '../formula/analyze'
+import { compileFormula } from '../formula/compile'
 
 /** the Kakeya family seed pinned across UI cells and C++ precompute */
 export const KAKEYA_SEED = 20250224
@@ -369,6 +371,114 @@ async function runOdeSolve(input: Input, opts: ExecuteOptions): Promise<Experime
   )
 }
 
+// ---- ode.phase runtime (generic 2-state RK4, paper LaTeX RHS) ---------------
+
+const ODE_PHASE_STEPS = 2400
+/** registered config (#24): integration window default for paper ODEs */
+export const ODE_PHASE_T_SPAN: [number, number] = [0, 20]
+
+interface OdePhasePoint { t: number; s0: number; s1: number }
+
+/** compile ONE paper-latex right-hand side into a JS function of the states */
+function compileOdeRhs(latex: string, states: [string, string]): ((x: number, y: number) => number) | null {
+  const a = analyzeFormula(latex)
+  if (!a.ok) return null
+  const compiled = compileFormula(a.rhs)
+  if (!compiled) return null
+  const [s0, s1] = states
+  return (x: number, y: number) => {
+    const raw = compiled.run({ [s0]: x, [s1]: y })
+    return typeof raw === 'number' ? raw : Number(raw)
+  }
+}
+
+async function runOdePhase(input: Input, opts: ExecuteOptions): Promise<ExperimentRun> {
+  const system = (input as { system: { kind?: string; states?: [string, string]; rhs?: Record<string, string>; params?: Record<string, number> } }).system
+  if (system?.kind !== 'generic2' || !Array.isArray(system.states) || system.states.length !== 2) {
+    throw new Error(`ode.phase: only system.kind='generic2' with exactly 2 states is supported, got ${JSON.stringify(system?.kind ?? null)}`)
+  }
+  const [s0name, s1name] = system.states
+  const rhs0 = compileOdeRhs(String(system.rhs?.[s0name] ?? ''), [s0name, s1name])
+  const rhs1 = compileOdeRhs(String(system.rhs?.[s1name] ?? ''), [s0name, s1name])
+  if (!rhs0 || !rhs1) throw new Error(`ode.phase: could not compile the paper's right-hand sides for states ${s0name}, ${s1name}`)
+  const initial = (input as { initialState: Record<string, number> }).initialState ?? {}
+  const x0 = Number(initial[s0name])
+  const y0 = Number(initial[s1name])
+  if (!Number.isFinite(x0) || !Number.isFinite(y0)) throw new Error(`ode.phase: initialState must provide finite ${s0name} and ${s1name}`)
+  const tSpan = (input as { tSpan: [number, number] }).tSpan
+  const [t0, t1] = tSpan
+  if (!(t1 > t0) || !Number.isFinite(t0) || !Number.isFinite(t1)) throw new Error('ode.phase: tSpan must be [t0,t1] with t1>t0')
+
+  return executeSpec(
+    {
+      kind: 'ode.phase2',
+      params: { [s0name]: x0, [s1name]: y0, t0, t1 },
+      seed: 0,
+      model: { system: { kind: 'generic2', states: system.states, rhs: system.rhs, params: system.params ?? {} }, initialState: initial, tSpan, steps: ODE_PHASE_STEPS },
+      source: opts.source,
+    },
+    { engine: 'ts-rk4', version: 'ode-rk4@0.2' },
+    () => {
+      const h = (t1 - t0) / ODE_PHASE_STEPS
+      const f = (_t: number, x: number, y: number): [number, number] => [rhs0(x, y), rhs1(x, y)]
+      let x = x0
+      let y = y0
+      const points: OdePhasePoint[] = [{ t: t0, s0: x, s1: y }]
+      const emitEvery = Math.max(1, Math.round(ODE_PHASE_STEPS / 240))
+      let maxAbs0 = Math.abs(x)
+      let maxAbs1 = Math.abs(y)
+      for (let i = 1; i <= ODE_PHASE_STEPS; i++) {
+        const t = t0 + (i - 1) * h
+        const [k1x, k1y] = f(t, x, y)
+        const [k2x, k2y] = f(t + h / 2, x + (h / 2) * k1x, y + (h / 2) * k1y)
+        const [k3x, k3y] = f(t + h / 2, x + (h / 2) * k2x, y + (h / 2) * k2y)
+        const [k4x, k4y] = f(t + h, x + h * k3x, y + h * k3y)
+        x += (h / 6) * (k1x + 2 * k2x + 2 * k3x + k4x)
+        y += (h / 6) * (k1y + 2 * k2y + 2 * k3y + k4y)
+        maxAbs0 = Math.max(maxAbs0, Math.abs(x))
+        maxAbs1 = Math.max(maxAbs1, Math.abs(y))
+        if (!Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > 1e8 || Math.abs(y) > 1e8) {
+          throw new Error(`ode.phase: trajectory diverged at t=${(t + h).toFixed(3)} — check the paper's equations/initial state`)
+        }
+        if (i % emitEvery === 0 || i === ODE_PHASE_STEPS) points.push({ t: t0 + i * h, s0: x, s1: y })
+      }
+      // period from rising crossings of the signal's MIDLINE (min+max)/2 —
+      // orbits typically oscillate around their equilibrium, not around 0
+      // (LV: x* = 1), so plain zero-crossings would miss the cycle entirely.
+      // Nullable: decaying/too-short signals may not complete two crossings,
+      // and that fact is itself the observation.
+      let minS0 = Infinity
+      let maxS0 = -Infinity
+      for (const v of points) {
+        if (v.s0 < minS0) minS0 = v.s0
+        if (v.s0 > maxS0) maxS0 = v.s0
+      }
+      const mid = (minS0 + maxS0) / 2
+      const crossings: number[] = []
+      for (let i = 1; i < points.length; i++) {
+        if (points[i - 1].s0 < mid && points[i].s0 >= mid) {
+          const f0 = (mid - points[i - 1].s0) / (points[i].s0 - points[i - 1].s0 || 1e-12)
+          crossings.push(points[i - 1].t + f0 * (points[i].t - points[i - 1].t))
+        }
+      }
+      let period0: number | null = null
+      if (crossings.length >= 2) {
+        const gaps = crossings.slice(1).map((c, i) => c - crossings[i])
+        period0 = gaps.slice().sort((a, b) => a - b)[Math.floor(gaps.length / 2)]
+      }
+      return {
+        t: points.map((p) => p.t),
+        s0: points.map((p) => p.s0),
+        s1: points.map((p) => p.s1),
+        period0,
+        maxAbs0,
+        maxAbs1,
+      }
+    },
+    { parentRunId: opts.parentRunId },
+  )
+}
+
 // ---- orchestration skills ---------------------------------------------------
 
 const COMPUTE_BY_KIND: Record<string, string> = {
@@ -379,6 +489,7 @@ const COMPUTE_BY_KIND: Record<string, string> = {
   'kakeya.sweep': 'kakeya.sweep',
   'perron.tree': 'geometry.2d',
   'lv.ode': 'ode.solve',
+  'ode.phase2': 'ode.phase',
   'mujoco.sim': 'mujoco.simulate',
   'challenge.attempt': 'challenge.attempt',
 }
@@ -592,6 +703,7 @@ export async function executeSkill<T = unknown>(
     if (name === 'kakeya.sweep') return { status: 'ok', run: (await runKakeyaSweep(input as Input, opts)) as ExperimentRun<T> }
     if (name === 'geometry.2d') return { status: 'ok', run: (await runGeometry2D(input as Input, opts)) as ExperimentRun<T> }
     if (name === 'ode.solve') return { status: 'ok', run: (await runOdeSolve(input as Input, opts)) as ExperimentRun<T> }
+    if (name === 'ode.phase') return { status: 'ok', run: (await runOdePhase(input as Input, opts)) as ExperimentRun<T> }
     if (name === 'experiment.fork') {
       const { sourceRunId, parameterChanges = {} } = input as { sourceRunId: string; parameterChanges?: Record<string, number> }
       const source = getExperimentRun(sourceRunId)

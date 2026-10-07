@@ -13,40 +13,69 @@ export interface ExperimentPlan {
   actions: AgentAction[]
 }
 
+/** recent-run digest the planner may cite (#24: Agent reads current
+ *  experiment AND history before proposing actions) */
+export interface RunSummary {
+  runId: string
+  params: Record<string, number>
+  metrics?: Record<string, number>
+}
+
+/** a prior run whose params already match the proposed target */
+function priorRunWith(history: RunSummary[], match: (params: Record<string, number>) => boolean): RunSummary | null {
+  for (const r of history) {
+    if (match(r.params)) return r
+  }
+  return null
+}
+
+/** the plan title cites it (visible in the PLAN strip) instead of presenting
+ *  the configuration as new; no synthetic action is emitted (whitelist
+ *  intact) */
+function citePrior(prior: RunSummary | null, baseTitle: string, actions: AgentAction[]): ExperimentPlan {
+  if (!prior) return { title: baseTitle, actions }
+  const vol = prior.metrics?.occupiedVolume
+  const volNote = vol !== undefined ? `，其 |⋃T|=${vol.toFixed(4)}` : ''
+  return {
+    title: `${baseTitle}（历史已有同参数实验 run …${prior.runId.slice(-6)}${volNote}——对比时应引用它）`,
+    actions,
+  }
+}
+
 const has = (q: string, ...keys: string[]) => keys.some((k) => q.includes(k))
 
-export function planExperiment(question: string, current: {
-  nTubes: number
-  deltaExp: number
-  packing: number
-}): ExperimentPlan | null {
+export function planExperiment(
+  question: string,
+  current: {
+    nTubes: number
+    deltaExp: number
+    packing: number
+  },
+  history: RunSummary[] = [],
+): ExperimentPlan | null {
   const q = question.toLowerCase()
 
   if (has(q, '方向', 'direction') && has(q, '一半', '减半', '半', 'half', 'halve') || has(q, 'halve direction')) {
     const target = Math.max(8, Math.round(current.nTubes / 2))
-    return {
-      title: `方向数减半：${current.nTubes} → ${target}`,
-      actions: [
-        { skill: 'fork_experiment', args: { label: `Experiment B · N=${target}` }, label: `fork 当前实验` },
-        { skill: 'change_parameter', args: { param: 'kakeya.nTubes', value: target }, label: `方向数 ${current.nTubes} → ${target}` },
-        { skill: 'run_scale_sweep', args: {}, label: '重算 |⋃T|–N 曲线' },
-        { skill: 'compare_experiments', args: {}, label: '与父实验对比指标' },
-        { skill: 'explain_result', args: {}, label: '生成观察（AI INFERENCE）' },
-      ],
-    }
+    const prior = priorRunWith(history, (p) => p.nTubes === target)
+    return citePrior(prior, `方向数减半：${current.nTubes} → ${target}`, [
+      { skill: 'fork_experiment', args: { label: `Experiment B · N=${target}` }, label: `fork 当前实验` },
+      { skill: 'change_parameter', args: { param: 'kakeya.nTubes', value: target }, label: `方向数 ${current.nTubes} → ${target}` },
+      { skill: 'run_scale_sweep', args: {}, label: '重算 |⋃T|–N 曲线' },
+      { skill: 'compare_experiments', args: {}, label: '与父实验对比指标' },
+      { skill: 'explain_result', args: {}, label: '生成观察（AI INFERENCE）' },
+    ])
   }
 
   if (has(q, '方向', 'direction', 'n') && has(q, '加倍', '双倍', '翻倍', 'double')) {
     const target = Math.min(256, current.nTubes * 2)
-    return {
-      title: `方向数加倍：${current.nTubes} → ${target}`,
-      actions: [
-        { skill: 'fork_experiment', args: { label: `Experiment B · N=${target}` }, label: 'fork 当前实验' },
-        { skill: 'change_parameter', args: { param: 'kakeya.nTubes', value: target }, label: `方向数 ${current.nTubes} → ${target}` },
-        { skill: 'compare_experiments', args: {}, label: '与父实验对比指标' },
-        { skill: 'explain_result', args: {}, label: '生成观察' },
-      ],
-    }
+    const prior = priorRunWith(history, (p) => p.nTubes === target)
+    return citePrior(prior, `方向数加倍：${current.nTubes} → ${target}`, [
+      { skill: 'fork_experiment', args: { label: `Experiment B · N=${target}` }, label: 'fork 当前实验' },
+      { skill: 'change_parameter', args: { param: 'kakeya.nTubes', value: target }, label: `方向数 ${current.nTubes} → ${target}` },
+      { skill: 'compare_experiments', args: {}, label: '与父实验对比指标' },
+      { skill: 'explain_result', args: {}, label: '生成观察' },
+    ])
   }
 
   if (has(q, 'δ', 'delta', '半径', '管径') && has(q, '一半', '减半', '小', 'half', 'halve')) {
