@@ -51,24 +51,24 @@ class EngineBridge:
 
     # ------------------------------------------------------------ lifecycle
     async def _boot(self) -> None:
-        # argv are module-level string LITERALS (cwd=REPO_ROOT); no shell, no
-        # environment assembly, nothing user-derived enters the command
-        if (REPO_ROOT / "scripts" / "engine_server.bundle.mjs").exists():
-            self._proc = subprocess.Popen(
-                ["node", "scripts/engine_server.bundle.mjs"],
-                cwd=REPO_ROOT,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        else:
-            self._proc = subprocess.Popen(
-                ["node", "--import", "tsx", "scripts/engine_server.ts"],
-                cwd=REPO_ROOT,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
+        # 云端诊断：spawn 前后各打一行到 stdout（平台收进 run 日志）；
+        # stderr 由 drain 任务捕获，boot 失败时随异常带出。
+        use_bundle = (REPO_ROOT / "scripts" / "engine_server.bundle.mjs").exists()
+        cmd = ["node", "scripts/engine_server.bundle.mjs"] if use_bundle else [
+            "node", "--import", "tsx", "scripts/engine_server.ts"]
+        print(f"[engine-boot] spawning {' '.join(cmd)} (cwd={REPO_ROOT})", flush=True)
+        env = dict(os.environ)
+        env.setdefault("NODE_NO_WARNINGS", "1")
+        self._proc = subprocess.Popen(
+            cmd,
+            cwd=REPO_ROOT,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            shell=False,
+        )
+        print(f"[engine-boot] spawned pid={self._proc.pid}", flush=True)
         self._started_at = time.time()
         # Popen pipes are BLOCKING file objects — reads must run in worker
         # threads or they would stall the event loop for every engine call.
