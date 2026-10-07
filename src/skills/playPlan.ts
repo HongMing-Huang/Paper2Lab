@@ -6,7 +6,7 @@
 // before any run.
 import type { SourceAnchor } from '../formula/spec'
 import type { FormulaAnalysis } from '../formula/analyze'
-import type { ScientificSkill } from './registry'
+import { getSkill, type ScientificSkill } from './registry'
 import type { PaperBinding } from './paperBinding'
 
 export interface PlayPlanVariable {
@@ -41,6 +41,92 @@ export interface PlayPlan {
   createdAt: number
 }
 
+// ---- plan registry (#32): the executor gate accepts REGISTERED plans only
+// — a bare planId string proves nothing. Builders register on creation;
+// the engine exposes a `plan` op / inline plan field for remote callers.
+const PLAN_REGISTRY = new Map<string, PlayPlan>()
+
+/** orchestration/companion skills any experiment plan governs implicitly */
+export const PLAN_COMPANION_SKILLS = new Set([
+  'experiment.fork',
+  'experiment.compare',
+  'paper.trace-source',
+  'kakeya.sweep', // companion measurement of a kakeya plan's terminal run
+  'kakeya.generate', // geometry prerequisite of a kakeya measurement plan
+])
+
+export function registerPlan(plan: PlayPlan): PlayPlan {
+  if (!plan || typeof plan.planId !== 'string' || typeof plan.skill !== 'string' || typeof plan.goal !== 'string') {
+    throw new Error('registerPlan: plan must carry planId/skill/goal')
+  }
+  // first registration wins — a replayed/duplicate planId cannot silently
+  // REPLACE an existing contract (idempotent re-register of equal content)
+  if (!PLAN_REGISTRY.has(plan.planId)) PLAN_REGISTRY.set(plan.planId, plan)
+  return plan
+}
+
+export function getPlan(planId: string): PlayPlan | undefined {
+  return PLAN_REGISTRY.get(planId)
+}
+
+export function planCoversSkill(plan: PlayPlan, skill: string): boolean {
+  if (plan.skill === skill) return true
+  if (PLAN_COMPANION_SKILLS.has(skill)) return true
+  // canonical aliases (AGENTS §4) are the same contract
+  const target = getSkill(skill)
+  const planned = getSkill(plan.skill)
+  if (target && planned) {
+    return (target.aliases?.includes(plan.skill) ?? false) || (planned.aliases?.includes(skill) ?? false)
+  }
+  return false
+}
+
+/** remote/engine callers register a plan from parsed JSON (shape-checked) */
+export function registerPlanFromJson(raw: unknown): PlayPlan {
+  const p = raw as Partial<PlayPlan>
+  if (!p || typeof p.planId !== 'string' || typeof p.skill !== 'string' || typeof p.goal !== 'string') {
+    throw new Error('plan JSON must carry planId, skill and goal')
+  }
+  return registerPlan({
+    planId: p.planId,
+    goal: p.goal,
+    source: p.source ?? { docId: 'engine', title: 'engine-submitted plan' },
+    variables: Array.isArray(p.variables) ? p.variables : [],
+    assumptions: Array.isArray(p.assumptions) ? p.assumptions : [],
+    skill: p.skill,
+    skillVersion: p.skillVersion ?? '?',
+    renderer: p.renderer ?? 'none',
+    metrics: Array.isArray(p.metrics) ? p.metrics : [],
+    inputs: (p.inputs ?? {}) as Record<string, unknown>,
+    evidenceBasis: p.evidenceBasis ?? 'engine-submitted PlayPlan',
+    successCriteria: p.successCriteria ?? '',
+    nonClaims: Array.isArray(p.nonClaims) ? p.nonClaims : [],
+    binding: p.binding,
+    createdAt: typeof p.createdAt === 'number' ? p.createdAt : Date.now(),
+  })
+}
+
+/** build (and register) a real plan for tests, probes and app surfaces that
+ *  need an explicit contract without a paper binding */
+export function buildPlan(input: { skill: string; goal: string; metrics?: string[]; inputs?: Record<string, unknown>; renderer?: string; nonClaims?: string[] }): PlayPlan {
+  return registerPlan({
+    planId: `plan-${Date.now().toString(36)}-${(planSeq++).toString(36)}`,
+    goal: input.goal,
+    source: { docId: 'app', title: 'app plan' },
+    variables: [],
+    assumptions: [],
+    skill: input.skill,
+    skillVersion: getSkill(input.skill)?.version ?? '?',
+    renderer: input.renderer ?? getSkill(input.skill)?.renderer ?? 'none',
+    metrics: input.metrics ?? [],
+    inputs: input.inputs ?? {},
+    evidenceBasis: '本地确定性内核 CALCULATED',
+    successCriteria: '结果来自真实内核执行并携带 runId',
+    nonClaims: input.nonClaims ?? FINITE_SCALE_NON_CLAIMS,
+    createdAt: Date.now(),
+  })
+}
+
 let planSeq = 0
 function nextPlanId(): string {
   return `plan-${Date.now().toString(36)}-${(planSeq++).toString(36)}`
@@ -59,7 +145,7 @@ export function buildFormulaPlayPlan(
   skill: ScientificSkill,
   binding?: PaperBinding,
 ): PlayPlan {
-  return {
+  return registerPlan({
     planId: nextPlanId(),
     goal: `操作论文公式 ${analysis.latex} 的参数，观察 ${analysis.output ?? '输出'} 如何随之变化`,
     source: { docId: anchor.docId, anchorId: `${anchor.docId}:p${anchor.page}`, title: paperTitle },
@@ -117,7 +203,7 @@ export function buildFormulaPlayPlan(
         engine: { skill: 'formula.plot', view: 'jsxgraph' },
       }) satisfies PaperBinding,
     createdAt: Date.now(),
-  }
+  })
 }
 
 /** plan for the Kakeya hero demo (skill kakeya.measure) */
@@ -126,7 +212,7 @@ export function buildKakeyaPlayPlan(
   paperTitle: string,
   skill: ScientificSkill,
 ): PlayPlan {
-  return {
+  return registerPlan({
     planId: nextPlanId(),
     goal: '探索 δ / 方向数 / packing 如何影响有限尺度 tube 并集体积与重叠度',
     source: { docId: 'wang-zahl-kakeya3d', title: paperTitle },
@@ -145,5 +231,5 @@ export function buildKakeyaPlayPlan(
     successCriteria: 'Worker 重算 |⋃T| 与 multiplicity，3D 与图表随动',
     nonClaims: FINITE_SCALE_NON_CLAIMS,
     createdAt: Date.now(),
-  }
+  })
 }

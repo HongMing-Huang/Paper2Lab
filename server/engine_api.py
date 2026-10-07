@@ -43,6 +43,9 @@ class ExecuteRequest(BaseModel):
     duplicates (failures included) get the cached outcome — a timeout retry
     can never silently re-run a scientific operation that already finished."""
     requestId: str | None = Field(default=None, max_length=120)
+    """#32: full PlayPlan JSON (planId/skill/goal + contract) — registered in
+    the engine before execution; a bare planId string proves nothing."""
+    plan: dict[str, Any] | None = None
 
 
 _EXEC_CACHE_LIMIT = 128
@@ -87,9 +90,13 @@ async def _execute_raw(req: ExecuteRequest) -> dict[str, Any]:
     # node process runs the skill entirely inside this HTTP call — immune to
     # FC instance freezing that starves the long-lived stdio engine
     if _ONCE_BUNDLE.exists():
+        plan_json = json.dumps(req.plan, ensure_ascii=False) if req.plan else ""
         proc = await asyncio.create_subprocess_exec(
             "node", str(_ONCE_BUNDLE), req.skill, payload, req.planId or "",
-            *(["", req.parentRunId] if req.parentRunId else []),
+            # argv[5] is ALWAYS the parentRunId slot ("" when absent) so an
+            # inline plan lands in argv[6] where the once-runner reads it
+            *(["", req.parentRunId] if req.parentRunId else [""]),
+            *( [plan_json] if plan_json else [] ),
             cwd=str(REPO_ROOT),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -116,6 +123,7 @@ async def _execute_raw(req: ExecuteRequest) -> dict[str, Any]:
             input=req.input,
             planId=req.planId,
             parentRunId=req.parentRunId,
+            **({"plan": req.plan} if req.plan else {}),
         )
     except TimeoutError:
         raise HTTPException(status_code=504, detail="engine execution timed out") from None

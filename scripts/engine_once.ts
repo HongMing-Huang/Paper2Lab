@@ -10,6 +10,7 @@ import { executeSkill } from '../src/skills/executor.ts'
 import '../src/physics/registerMujocoRunner.ts'
 import '../src/challenges/registerChallengeRunner.ts'
 import { persistRun } from './engine_persist.ts'
+import { registerPlanFromJson } from '../src/skills/playPlan.ts'
 
 const skill = process.argv[2]
 if (!skill) {
@@ -26,6 +27,10 @@ try {
 const opts = {
   planId: process.argv[4] ?? `plan-once-${Date.now()}`,
   ...(process.argv[5] ? { parentRunId: process.argv[5] } : {}),
+}
+// #32: optional inline plan JSON (argv[6]) registers before the strict gate
+if (process.argv[6]) {
+  registerPlanFromJson(JSON.parse(process.argv[6]))
 }
 const outcome = await executeSkill(skill, input, opts)
 // append to the shared run log so the long-lived engine's /runs (which

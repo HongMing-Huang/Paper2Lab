@@ -10,11 +10,12 @@ import {
   type ProjectileResult, type PendulumResult, type TubesResult, type ProjectileSpec, type PendulumSpec, type TubesSpec,
 } from './kernel'
 import { attempt, createLevel, deriveSpec, loadLevel, saveLevel, type ChallengeExecutor } from './store'
+import { buildPlan } from '../skills/playPlan'
 
 /** local-kernel executor (headless tests run the REAL kernels in-process) */
 const localExec: ChallengeExecutor = async (spec) => ({ result: await runChallenge(spec), runId: null })
 
-const plan = { planId: 'plan-challenges' }
+const plan = buildPlan({ skill: 'challenge.attempt', goal: 'challenges.test.ts 计划' })
 const PROJ: ProjectileSpec = { kind: 'projectile', angleDeg: 30, speed: 10, gravity: 9.81, targetX: 22.9, tolerance: 0.5 }
 const PEND: PendulumSpec = { kind: 'pendulum', length: 0.6, angleDeg: 25, gravity: 9.81, targetPeriod: 2.0, tolerance: 0.05 }
 const TUBES: TubesSpec = { kind: 'tubes', offsets: [0, 0, 0, 0], nTubes: 32, deltaExp: 4, res: 24, budget: 0.28 }

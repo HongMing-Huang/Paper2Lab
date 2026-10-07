@@ -6,8 +6,9 @@ import { executeSkill, replayRun } from './executor'
 import { SKILL_REGISTRY } from './registry'
 import { getExperimentRun, listExperimentRuns } from '../experiments/protocol'
 import { compareRuns, importRuns } from '../experiments/runRepository'
+import { buildPlan } from './playPlan'
 
-const plan = { planId: 'plan-test' }
+const planFor = (skill: string) => buildPlan({ skill, goal: `executor test: ${skill}` })
 const sineExpr = ['Multiply', 'a', ['Sin', ['Multiply', 'b', 'x']]] as unknown
 
 describe('unified executor — gates', () => {
@@ -19,7 +20,7 @@ describe('unified executor — gates', () => {
 
   it('invalid input fails BEFORE any run is recorded (no side effects)', async () => {
     const before = listExperimentRuns({ limit: 1000 }).length
-    const out = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 'many', packing: 0.5 }, plan)
+    const out = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 'many', packing: 0.5 }, planFor('not.a.skill'))
     expect(out.status).toBe('error')
     if (out.status === 'error') expect(out.code).toBe('invalid_input')
     const after = listExperimentRuns({ limit: 1000 }).length
@@ -27,7 +28,7 @@ describe('unified executor — gates', () => {
   })
 
   it('unknown extra fields are surfaced by schema validation (invalid enum)', async () => {
-    const out = await executeSkill('kakeya.sweep', { param: 'nTubes', values: [16], bogus: 1 }, plan)
+    const out = await executeSkill('kakeya.sweep', { param: 'nTubes', values: [16], bogus: 1 }, planFor('kakeya.sweep'))
     // schema subset validates known fields strictly; bogus key is tolerated by
     // the subset but param enum + missing conditions must still hold:
     expect(out.status === 'error' || out.status === 'ok').toBe(true)
@@ -41,7 +42,7 @@ describe('unified executor — gates', () => {
     const unknown = await executeSkill('geometry.3d', {})
     expect(unknown.status).toBe('error')
     if (unknown.status === 'error') expect(unknown.code).toBe('unknown_skill')
-    const unwired = await executeSkill('ode.solve', { system: { kind: 'lorenz' }, initialValues: {}, tSpan: [0, 1] }, plan)
+    const unwired = await executeSkill('ode.solve', { system: { kind: 'lorenz' }, initialValues: {}, tSpan: [0, 1] }, planFor('ode.solve'))
     expect(unwired.status).toBe('error')
     expect(SKILL_REGISTRY.every((s) => s.implemented)).toBe(true)
   })
@@ -89,14 +90,14 @@ describe('unified executor — real formula computation', () => {
       independent: 'x',
       range: [-7, 7],
       values: { a: 2, b: 3 },
-    }, plan)
+    }, planFor('formula.plot'))
     expect(out.status).toBe('ok')
     if (out.status !== 'ok' || !out.run) return
     const r = out.run.result as { points: unknown[]; peak: number; integral: number }
     // 361-point grid on [-7,7] does not sample the exact sin peak: |a|−4 decimals is the honest bound
     expect(r.peak).toBeCloseTo(2, 4)
     // single-point check against the math itself
-    const evalOut = await executeSkill('formula.evaluate', { expression: sineExpr, bindings: { a: 2, b: 3, x: 1.5 } }, plan)
+    const evalOut = await executeSkill('formula.evaluate', { expression: sineExpr, bindings: { a: 2, b: 3, x: 1.5 } }, planFor('formula.evaluate'))
     if (evalOut.status === 'ok' && evalOut.run) {
       expect((evalOut.run.result as { value: number }).value).toBeCloseTo(2 * Math.sin(4.5), 10)
     }
@@ -111,8 +112,8 @@ describe('unified executor — real formula computation', () => {
       values: { a: 1.5, b: 2 },
       samples: 61,
     }
-    const first = await executeSkill('formula.plot', input, plan)
-    const second = await executeSkill('formula.plot', input, plan)
+    const first = await executeSkill('formula.plot', input, planFor('formula.plot'))
+    const second = await executeSkill('formula.plot', input, planFor('formula.plot'))
     expect(first.status).toBe('ok')
     expect(second.status).toBe('ok')
     if (first.status === 'ok' && second.status === 'ok' && first.run && second.run) {
@@ -130,7 +131,7 @@ describe('unified executor — real formula computation', () => {
       range: [-1, 1],
       values: {},
       samples: 3, // x=0 hits the pole at the midpoint of [-1,1] with 3 samples
-    }, plan)
+    }, planFor('formula.plot'))
     expect(out.status).toBe('error')
     if (out.status === 'error') expect(out.message).toMatch(/non-finite/i)
   })
@@ -138,7 +139,7 @@ describe('unified executor — real formula computation', () => {
 
 describe('unified executor — real kakeya computation (node kernel fallback)', () => {
   it('kakeya.measure invariants: 0 < |⋃T| ≤ min(1, Σ|T|), 1 ≤ maxM ≤ N', async () => {
-    const out = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 24, packing: 0, res: 20 }, plan)
+    const out = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 24, packing: 0, res: 20 }, planFor('kakeya.measure'))
     expect(out.status).toBe('ok')
     if (out.status !== 'ok' || !out.run) return
     const m = out.run.result as { occupiedVolume: number; sumTubeVolume: number; maxMultiplicity: number; avgMultiplicity: number }
@@ -153,7 +154,7 @@ describe('unified executor — real kakeya computation (node kernel fallback)', 
   })
 
   it('packing=1 (sticky) forces maxM === N at res·δ adequate sampling', async () => {
-    const out = await executeSkill('kakeya.measure', { deltaExp: 3, nTubes: 16, packing: 1, res: 24 }, plan)
+    const out = await executeSkill('kakeya.measure', { deltaExp: 3, nTubes: 16, packing: 1, res: 24 }, planFor('kakeya.measure'))
     expect(out.status).toBe('ok')
     if (out.status === 'ok' && out.run) {
       const m = out.run.result as { maxMultiplicity: number }
@@ -168,7 +169,7 @@ describe('unified executor — real kakeya computation (node kernel fallback)', 
       deltaExp: 4,
       packing: 0,
       res: 16,
-    }, plan)
+    }, planFor('kakeya.sweep'))
     expect(out.status).toBe('ok')
     if (out.status !== 'ok' || !out.run) return
     const { points } = out.run.result as { points: Array<{ x: number; y: number; runId: string }> }
@@ -189,14 +190,14 @@ describe('fork / compare / replay — Stage B', () => {
       range: [0, 3],
       values: { a: 1, b: 1 },
       samples: 41,
-    }, plan)
+    }, planFor('formula.plot'))
     if (base.status !== 'ok' || !base.run) throw new Error('base run failed')
     const basePeak = (base.run.result as { peak: number }).peak
 
     const fork = await executeSkill('experiment.fork', {
       sourceRunId: base.run.runId,
       parameterChanges: { a: 3 },
-    }, plan)
+    }, planFor('experiment.fork'))
     expect(fork.status).toBe('ok')
     if (fork.status !== 'ok' || !fork.run) return
     expect(fork.run.parentRunId).toBe(base.run.runId)
@@ -207,8 +208,8 @@ describe('fork / compare / replay — Stage B', () => {
   })
 
   it('compareRuns diffs EXACTLY the two given runs', async () => {
-    const a = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 16, packing: 0, res: 16 }, plan)
-    const b = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 16, packing: 1, res: 16 }, plan)
+    const a = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 16, packing: 0, res: 16 }, planFor('kakeya.measure'))
+    const b = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 16, packing: 1, res: 16 }, planFor('kakeya.measure'))
     if (a.status !== 'ok' || b.status !== 'ok' || !a.run || !b.run) throw new Error('measure failed')
     const cmp = compareRuns(a.run.runId, b.run.runId)
     expect(cmp.runA).toBe(a.run.runId)
@@ -221,7 +222,7 @@ describe('fork / compare / replay — Stage B', () => {
   })
 
   it('export → import round-trip preserves results immutably', async () => {
-    const run = await executeSkill('formula.evaluate', { expression: sineExpr, bindings: { a: 2, b: 1, x: 0.5 } }, plan)
+    const run = await executeSkill('formula.evaluate', { expression: sineExpr, bindings: { a: 2, b: 1, x: 0.5 } }, planFor('formula.evaluate'))
     if (run.status !== 'ok' || !run.run) throw new Error('eval failed')
     const { exportExperimentRuns } = await import('../experiments/protocol')
     const bundle = exportExperimentRuns([run.run!.runId])
@@ -232,7 +233,7 @@ describe('fork / compare / replay — Stage B', () => {
   })
 
   it('replayRun re-executes a historical run and reproduces its numbers', async () => {
-    const first = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 12, packing: 0, res: 14 }, plan)
+    const first = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 12, packing: 0, res: 14 }, planFor('kakeya.measure'))
     if (first.status !== 'ok' || !first.run) throw new Error('measure failed')
     const original = first.run.result as { occupiedVolume: number }
     const replay = await replayRun(first.run.runId)
@@ -246,7 +247,7 @@ describe('fork / compare / replay — Stage B', () => {
   })
 
   it('paper.trace-source returns the anchor recorded on a run', async () => {
-    const out = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 8, packing: 0, res: 12 }, plan)
+    const out = await executeSkill('kakeya.measure', { deltaExp: 4, nTubes: 8, packing: 0, res: 12 }, planFor('kakeya.measure'))
     if (out.status !== 'ok' || !out.run) throw new Error('measure failed')
     // run has no source anchor → needs_input
     const miss = await executeSkill('paper.trace-source', { anchorId: 'anchor-x' })

@@ -29,6 +29,7 @@ import '../src/challenges/registerChallengeRunner.ts'
 // Lane E: run persistence — every resolved run appends to DATA_DIR; boot
 // restores them so a container restart resumes with the original history
 import { persistRun, restoreRuns } from './engine_persist.ts'
+import { registerPlanFromJson, getPlan } from '../src/skills/playPlan.ts'
 
 const restoredRuns = restoreRuns()
 
@@ -60,7 +61,24 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
       })),
     }
   }
+  if (op === 'plan') {
+    // #32: remote callers register a full PlayPlan (shape-checked); execute
+    // then accepts its planId. First registration wins (idempotent).
+    try {
+      const plan = registerPlanFromJson(req.plan)
+      return { ok: true, planId: plan.planId, known: getPlan(plan.planId) === plan }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  }
   if (op === 'execute') {
+    if (req.plan !== undefined) {
+      try {
+        registerPlanFromJson(req.plan)
+      } catch (err) {
+        return { ok: false, error: `invalid plan: ${err instanceof Error ? err.message : String(err)}` }
+      }
+    }
     const outcome = await executeSkill(String(req.skill), req.input ?? {}, {
       planId: typeof req.planId === 'string' ? req.planId : undefined,
       parentRunId: typeof req.parentRunId === 'string' ? req.parentRunId : undefined,
@@ -70,6 +88,13 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
   if (op === 'agent_steps') {
     // full agent turn server-side: base skill + steps, everything through
     // the SAME registry-validated executor the browser runs
+    if (req.plan !== undefined) {
+      try {
+        registerPlanFromJson(req.plan)
+      } catch (err) {
+        return { ok: false, error: `invalid plan: ${err instanceof Error ? err.message : String(err)}` }
+      }
+    }
     const result = await runAgentSteps(
       String(req.deskKind) as DeskKind,
       Array.isArray(req.steps) ? (req.steps as never) : [],

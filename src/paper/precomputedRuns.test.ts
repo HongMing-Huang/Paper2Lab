@@ -6,8 +6,9 @@ import bundle from '../data/kakeya-precomputed-runs.json'
 import { executeSkill } from '../skills/executor'
 import { kakeya } from './kakeyaGraph'
 import { ensurePrecomputedRuns, precomputedPointsCell, pPrecomputedNonce } from './precomputedRuns'
+import { buildPlan } from '../skills/playPlan'
 
-const plan = { planId: 'plan-precomputed' }
+const plan = buildPlan({ skill: 'kakeya.measure', goal: 'precomputedRuns.test.ts 计划' })
 
 describe('C++ precomputed bundle', () => {
   it('bundle shape: 63 sealed rows with checksum + res up to 1024 (billion-voxel tier)', () => {

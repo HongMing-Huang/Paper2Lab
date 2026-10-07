@@ -74,9 +74,9 @@ jobs:
       - name: engine smoke — real kernels over the stdio bridge (formula + physics + challenge)
         run: |
           printf '%s\n' \
-            '{"id":1,"op":"execute","skill":"formula.evaluate","input":{"expression":["Sin","x"],"bindings":{"x":1}},"planId":"ci"}' \
-            '{"id":2,"op":"execute","skill":"mujoco.simulate","input":{"scene":"simple.xml","steps":50,"sampleEvery":25},"planId":"ci"}' \
-            '{"id":3,"op":"execute","skill":"challenge.attempt","input":{"challenge":"pendulum","changes":{"length":0.994}},"planId":"ci"}' \
+            '{"id":1,"op":"execute","skill":"formula.evaluate","input":{"expression":["Sin","x"],"bindings":{"x":1}},"planId":"ci","plan":{"planId":"ci","skill":"formula.evaluate","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
+            '{"id":2,"op":"execute","skill":"mujoco.simulate","input":{"scene":"simple.xml","steps":50,"sampleEvery":25},"planId":"ci","plan":{"planId":"ci","skill":"mujoco.simulate","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
+            '{"id":3,"op":"execute","skill":"challenge.attempt","input":{"challenge":"pendulum","changes":{"length":0.994}},"planId":"ci","plan":{"planId":"ci","skill":"challenge.attempt","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
             '{"id":4,"op":"shutdown"}' \
             | node --import tsx scripts/engine_server.ts > /tmp/engine-out.jsonl
           grep -q '"status":"ok"' /tmp/engine-out.jsonl

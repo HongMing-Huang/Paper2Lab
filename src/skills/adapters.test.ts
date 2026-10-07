@@ -5,15 +5,16 @@ import { describe, expect, it } from 'vitest'
 import { executeSkill, replayRun } from './executor'
 import { getSkill } from './registry'
 import { getExperimentRun } from '../experiments/protocol'
+import { buildPlan } from './playPlan'
 
-const plan = { planId: 'plan-m5' }
+const planFor = (skill: string) => buildPlan({ skill, goal: `test plan: ${skill}` })
 
 describe('geometry.2d — Perron tree (real kernel)', () => {
   it('k=3, α=0.8 matches the paper-cited union area ratio (0.3454/0.5774 ≈ 0.598)', async () => {
     const out = await executeSkill('geometry.2d', {
       construction: 'perron-tree',
       params: { k: 3, alpha: 0.8 },
-    }, plan)
+    }, planFor('geometry.2d'))
     expect(out.status).toBe('ok')
     if (out.status !== 'ok' || !out.run) return
     const r = out.run.result as { computedArea: number; triangleArea: number; ratio: number; boundArea: number; triangles: number }
@@ -29,8 +30,8 @@ describe('geometry.2d — Perron tree (real kernel)', () => {
   })
 
   it('needle-sweep: swept area → analytic π/4 as the grid refines; run records grid', async () => {
-    const coarse = await executeSkill('geometry.2d', { construction: 'needle-sweep', params: { grid: 96 } }, plan)
-    const fine = await executeSkill('geometry.2d', { construction: 'needle-sweep', params: { grid: 384 } }, plan)
+    const coarse = await executeSkill('geometry.2d', { construction: 'needle-sweep', params: { grid: 96 } }, planFor('geometry.2d'))
+    const fine = await executeSkill('geometry.2d', { construction: 'needle-sweep', params: { grid: 384 } }, planFor('geometry.2d'))
     expect(coarse.status).toBe('ok')
     expect(fine.status).toBe('ok')
     if (coarse.status !== 'ok' || fine.status !== 'ok') return
@@ -48,7 +49,7 @@ describe('geometry.2d — Perron tree (real kernel)', () => {
       { construction: 'perron-tree', params: { k: 3, alpha: 1.5 } }, // alpha out of [0,1]
       { construction: 'needle-sweep', params: { grid: 4 } }, // grid < 8
     ]) {
-      const out = await executeSkill('geometry.2d', bad, plan)
+      const out = await executeSkill('geometry.2d', bad, planFor('geometry.2d'))
       expect(out.status, JSON.stringify(bad)).toBe('error')
       if (out.status === 'error') expect(out.code).toBe('execution_failed')
     }
@@ -63,7 +64,7 @@ describe('ode.solve — Lotka–Volterra RK4 (real kernel)', () => {
   }
 
   it('trajectory stays on the closed LV orbit (conserved quantity drift < 1e-3)', async () => {
-    const out = await executeSkill('ode.solve', lvInput, plan)
+    const out = await executeSkill('ode.solve', lvInput, planFor('ode.solve'))
     expect(out.status).toBe('ok')
     if (out.status !== 'ok' || !out.run) return
     const r = out.run.result as { t: number[]; y: { prey: number[]; predator: number[] }; conservedDrift: number }
@@ -79,7 +80,7 @@ describe('ode.solve — Lotka–Volterra RK4 (real kernel)', () => {
   })
 
   it('phase relation: predator peak follows prey peak by roughly a quarter period', async () => {
-    const out = await executeSkill('ode.solve', lvInput, plan)
+    const out = await executeSkill('ode.solve', lvInput, planFor('ode.solve'))
     if (out.status !== 'ok' || !out.run) throw new Error('solve failed')
     const r = out.run.result as { t: number[]; y: { prey: number[]; predator: number[] } }
     const iPrey = r.y.prey.indexOf(Math.max(...r.y.prey))
@@ -92,8 +93,8 @@ describe('ode.solve — Lotka–Volterra RK4 (real kernel)', () => {
   })
 
   it('deterministic: same inputs → identical trajectory; replay reproduces from the recorded spec', async () => {
-    const a = await executeSkill('ode.solve', lvInput, plan)
-    const b = await executeSkill('ode.solve', lvInput, plan)
+    const a = await executeSkill('ode.solve', lvInput, planFor('ode.solve'))
+    const b = await executeSkill('ode.solve', lvInput, planFor('ode.solve'))
     if (a.status !== 'ok' || b.status !== 'ok') throw new Error('solve failed')
     const ra = a.run!.result as { y: { prey: number[] } }
     const rb = b.run!.result as { y: { prey: number[] } }
@@ -112,7 +113,7 @@ describe('ode.solve — Lotka–Volterra RK4 (real kernel)', () => {
       system: { kind: 'lorenz' },
       initialValues: { x: 1 },
       tSpan: [0, 10],
-    }, plan)
+    }, planFor('ode.solve'))
     expect(out.status).toBe('error')
     if (out.status === 'error') expect(out.message).toMatch(/lv2/)
 
@@ -120,7 +121,7 @@ describe('ode.solve — Lotka–Volterra RK4 (real kernel)', () => {
       system: { kind: 'lv2', params: { alpha: -1, beta: 0.4, gamma: 0.4, delta: 0.1 } },
       initialValues: { prey: 1, predator: 1 },
       tSpan: [0, 10],
-    }, plan)
+    }, planFor('ode.solve'))
     expect(bad.status).toBe('error')
   })
 })

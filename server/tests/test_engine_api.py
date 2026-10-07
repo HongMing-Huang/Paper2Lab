@@ -31,16 +31,29 @@ async def _execute(client: httpx.AsyncClient, payload: dict) -> dict:
 
 
 @pytest.mark.asyncio
+def _with_plan(skill: str, payload: dict) -> dict:
+    """#32: bare planIds no longer pass — attach a full (registered) plan"""
+    payload.setdefault("planId", f"plan-py-{skill.replace('.', '-')}")
+    payload["plan"] = {
+        "planId": payload["planId"],
+        "skill": skill,
+        "goal": f"pytest plan for {skill}",
+        "metrics": [],
+        "nonClaims": ["有限尺度数值实验，不构成证明"],
+    }
+    return payload
+
+
 async def test_engine_executes_real_formula_kernel() -> None:
     async with LifespanManager(app) as mgr:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
             out = await _execute(
                 client,
-                {
+                _with_plan("formula.evaluate", {
                     "skill": "formula.evaluate",
                     "input": {"expression": ["Sin", "x"], "bindings": {"x": 1}},
                     "planId": "plan-engine-test",
-                },
+                }),
             )
             assert out["status"] == "ok"
             run = out["run"]
@@ -54,7 +67,7 @@ async def test_engine_executes_ode_and_kakeya_kernels() -> None:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
             ode = await _execute(
                 client,
-                {
+                _with_plan("ode.solve", {
                     "skill": "ode.solve",
                     "input": {
                         "system": {"kind": "lv2", "params": {"alpha": 1.1, "beta": 0.4, "gamma": 0.4, "delta": 0.1}},
@@ -62,18 +75,18 @@ async def test_engine_executes_ode_and_kakeya_kernels() -> None:
                         "tSpan": [0, 5],
                     },
                     "planId": "plan-engine-ode",
-                },
+                }),
             )
             assert ode["status"] == "ok"
             assert ode["run"]["spec"]["kind"] == "lv.ode"
 
             kk = await _execute(
                 client,
-                {
+                _with_plan("kakeya.measure", {
                     "skill": "kakeya.measure",
                     "input": {"deltaExp": 4, "packing": 0, "res": 32, "nTubes": 32},
                     "planId": "plan-engine-kk",
-                },
+                }),
             )
             assert kk["status"] == "ok"
             assert 0 < kk["run"]["result"]["occupiedVolume"] < 1
@@ -87,11 +100,11 @@ async def test_engine_executes_mujoco_physics() -> None:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
             out = await _execute(
                 client,
-                {
+                _with_plan("mujoco.simulate", {
                     "skill": "mujoco.simulate",
                     "input": {"scene": "simple.xml", "steps": 100, "sampleEvery": 50, "params": {"gravityZ": -1.62}},
                     "planId": "plan-mujoco",
-                },
+                }),
             )
             assert out["status"] == "ok", out
             run = out["run"]
@@ -119,7 +132,7 @@ async def test_engine_playplan_gate_applies_headless() -> None:
 async def test_engine_rejects_unknown_skill_and_bad_input() -> None:
     async with LifespanManager(app) as mgr:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
-            resp = await client.post("/api/engine/execute", json={"skill": "formula.plot", "input": {"samples": 1}, "planId": "p"})
+            resp = await client.post("/api/engine/execute", json=_with_plan("formula.plot", {"skill": "formula.plot", "input": {"samples": 1}}))
             assert resp.status_code == 200
             assert resp.json()["outcome"]["status"] == "error"
 
@@ -143,7 +156,7 @@ async def test_engine_skills_registry_surface() -> None:
 async def test_engine_run_history_lists_recorded_runs() -> None:
     async with LifespanManager(app) as mgr:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
-            await _execute(client, {"skill": "formula.evaluate", "input": {"expression": ["Cos", "x"], "bindings": {"x": 0}}, "planId": "p"})
+            await _execute(client, _with_plan("formula.evaluate", {"skill": "formula.evaluate", "input": {"expression": ["Cos", "x"], "bindings": {"x": 0}}}))
             resp = await client.get("/api/engine/runs", params={"limit": 10})
             assert resp.status_code == 200
             runs = resp.json()["runs"]

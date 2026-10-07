@@ -8,8 +8,9 @@ import { executeSkill, replayRun } from '../skills/executor'
 import { getExperimentRun } from '../experiments/protocol'
 import { listScenes, mujocoSimulate, scenesChecksum, scenesManifest } from './mujocoKernel'
 import { initialPlayback, playbackCommand } from './playback'
+import { buildPlan } from '../skills/playPlan'
 
-const plan = { planId: 'plan-mujoco-test' }
+const plan = buildPlan({ skill: 'mujoco.simulate', goal: 'test contract plan' })
 
 beforeAll(async () => {
   await mujocoSimulate('simple.xml', { steps: 1, sampleEvery: 1 }) // boot wasm + seed VFS once
