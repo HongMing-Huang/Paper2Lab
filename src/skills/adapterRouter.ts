@@ -10,7 +10,6 @@
 // *index* (re-validated locally) and can never invent bindings or numbers.
 import { analyzeFormula } from '../formula/analyze'
 import { docText, formulasOf, type IngestedDoc, type IngestedItem } from '../ingest/doclingSchema'
-import { llmConfigFromEnv, type LlmPlannerConfig } from './llmPlanner'
 import {
   buildFitBinding, buildFormulaBinding, buildKakeyaBinding, buildOdeBinding,
   detectData, detectOde, odeSystemOf, type PaperBinding,
@@ -150,63 +149,40 @@ export function routeAdapter(doc: IngestedDoc): AdapterDecision {
   }
 }
 
-// ---- optional Qwen routing (index-only contract) --------------------------
+// ---- optional server-side LLM routing (#29) --------------------------------
+// The browser holds NO provider keys: the env-configured provider is used
+// server-side via POST /api/agent/route, which may return a formula INDEX
+// (re-validated below). Any failure keeps the deterministic decision and is
+// reported as non-enhanced — never a silent "AI answered".
 
-export async function routeAdapterWithLlm(
-  doc: IngestedDoc,
-  cfg?: LlmPlannerConfig | null,
-): Promise<AdapterDecision> {
+export async function routeAdapterWithLlm(doc: IngestedDoc): Promise<AdapterDecision> {
   const fallback = routeAdapter(doc)
   // no LLM can conjure missing paper content — only a formula-index refinement
   // is possible, and only when the deterministic pass already found formulas
   if (fallback.status !== 'ok' || fallback.adapter !== 'formula') return fallback
-  const config = cfg === undefined ? llmConfigFromEnv() : cfg
-  if (!config) return fallback
-  const formulas = formulasOf(doc)
-  const digest = {
-    title: doc.title,
-    formulas: formulas.map((f, i) => ({ i, latex: f.latex })),
-    textHead: docText(doc).slice(0, 1500),
-  }
   try {
-    const res = await fetch(`${config.endpoint.replace(/\/$/, '')}/chat/completions`, {
+    const res = await fetch('/api/agent/route', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: config.model,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You refine the formula choice for an ingested paper. ' +
-              'Return ONLY JSON: {"keyFormulaIndex":integer,"reason":string}. ' +
-              'keyFormulaIndex must index the provided formulas array. No other fields.',
-          },
-          { role: 'user', content: JSON.stringify(digest) },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0,
+        title: doc.title,
+        formulas: formulasOf(doc).map((f) => ({ i: f.id, latex: f.latex })),
+        textHead: docText(doc).slice(0, 1500),
       }),
     })
     if (!res.ok) return fallback
-    const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
-    const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? 'null') as {
-      keyFormulaIndex?: number
-      reason?: string
-    }
-    if (typeof parsed?.keyFormulaIndex === 'number') {
-      const f = formulas[parsed.keyFormulaIndex]
-      if (f && formulaScore(f) >= 0) {
-        return {
-          ...fallback,
-          reason: parsed.reason ?? 'Qwen 选择的关键公式',
-          keyFormula: f,
-          binding: detectData(doc) ? buildFitBinding(doc, f) : buildFormulaBinding(doc, f),
-        }
+    const data = (await res.json()) as { enhanced?: boolean; keyFormulaIndex?: number | null }
+    if (data.enhanced !== true || typeof data.keyFormulaIndex !== 'number') return fallback
+    const f = formulasOf(doc)[data.keyFormulaIndex]
+    if (f && formulaScore(f) >= 0) {
+      return {
+        ...fallback,
+        keyFormula: f,
+        binding: detectData(doc) ? buildFitBinding(doc, f) : buildFormulaBinding(doc, f),
       }
     }
   } catch {
-    /* fall through to deterministic */
+    /* server unreachable → deterministic routing (offline product keeps working) */
   }
   return fallback
 }

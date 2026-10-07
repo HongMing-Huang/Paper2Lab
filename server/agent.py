@@ -32,6 +32,13 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from server.agent_provider import (
+    ai_verified,
+    build_model,
+    probe_capabilities,
+    resolve_provider,
+)
+
 router = APIRouter(prefix="/api/agent")
 
 _NUM = r"(-?\d+(?:\.\d+)?)"
@@ -42,7 +49,7 @@ def _env(name: str) -> str | None:
 
 
 def backend_name() -> str:
-    return "agentscope-qwen" if _env("DASHSCOPE_API_KEY") else "sop-deterministic"
+    return resolve_provider().backend
 
 
 def ev(type_: str, **payload: Any) -> dict:
@@ -513,8 +520,6 @@ _SYSTEM_PROMPT = (
 
 def _build_agent() -> Any:
     from agentscope.agent import Agent
-    from agentscope.credential import DashScopeCredential
-    from agentscope.model import DashScopeChatModel
     from agentscope.permission import PermissionBehavior, PermissionDecision
     from agentscope.tool import Toolkit
     from agentscope.tool._base import ToolBase
@@ -573,11 +578,9 @@ def _build_agent() -> Any:
         },
     )
 
-    model = DashScopeChatModel(
-        credential=DashScopeCredential(api_key=_env("DASHSCOPE_API_KEY")),
-        model=_env("PAPER2LAB_AGENT_MODEL") or "qwen-plus",
-        stream=True,
-    )
+    # unified provider layer (#29): OpenAI-compatible base_url or DashScope,
+    # env-only credentials, explicit sop fallback on failure
+    model = build_model(resolve_provider())
     return Agent(
         name="research-orchestrator",
         system_prompt=_SYSTEM_PROMPT,
@@ -658,69 +661,198 @@ def _sse(events: AsyncGenerator[dict, None]) -> StreamingResponse:
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
+class RouteBody(BaseModel):
+    """paper digest for server-side LLM routing assist (#29)"""
+
+    title: str = ""
+    formulas: list[dict] = []
+    textHead: str = ""
+
+
+@router.post("/route")
+async def agent_route(body: RouteBody) -> dict:
+    """LLM assist for adapter routing, SERVER-SIDE (#29): the browser sends a
+    paper digest and may get a formula INDEX back — re-validated locally.
+    The browser holds no provider keys. `enhanced` is False unless the AI
+    actually answered; failures carry their reason instead of a silent
+    deterministic pass-off."""
+    status = resolve_provider()
+    out: dict[str, Any] = {
+        "enhanced": False,
+        "provider": status.provider,
+        "backend": status.backend,
+        "keyFormulaIndex": None,
+        "reason": "",
+    }
+    if status.provider != "openai" or not status.ok:
+        out["reason"] = "; ".join(status.issues) or "no AI provider configured"
+        return out
+    import httpx
+
+    digest = {"title": body.title, "formulas": body.formulas, "textHead": body.textHead[:1500]}
+    url = (status.base_url or "").rstrip("/") + "/chat/completions"
+    payload = {
+        "model": status.model,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You refine the formula choice for an ingested paper. "
+                    "Return ONLY JSON: {\"keyFormulaIndex\": integer|null, \"reason\": string}. "
+                    "keyFormulaIndex must index the provided formulas array. No other fields."
+                ),
+            },
+            {"role": "user", "content": json.dumps(digest, ensure_ascii=False)},
+        ],
+        "temperature": 0,
+        "max_tokens": 200,
+    }
+    headers = {"Authorization": f"Bearer {_env('PAPER2LAB_AGENT_API_KEY') or ''}"}
+    try:
+        async with httpx.AsyncClient(timeout=min(status.timeout_s, 20.0)) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+        if resp.status_code != 200:
+            out["reason"] = f"HTTP {resp.status_code}: {resp.text[:160]}"
+            return out
+        content = (resp.json().get("choices") or [{}])[0].get("message", {}).get("content", "")
+        parsed = json.loads(content[content.find("{"): content.rfind("}") + 1] or "null")
+        idx = parsed.get("keyFormulaIndex") if isinstance(parsed, dict) else None
+        if isinstance(idx, int) and 0 <= idx < len(body.formulas):
+            out["enhanced"] = True
+            out["keyFormulaIndex"] = idx
+            out["reason"] = str(parsed.get("reason") or "AI 选择")[:200]
+        else:
+            out["reason"] = "AI answer carried no usable index"
+    except (httpx.HTTPError, ValueError) as exc:
+        out["reason"] = f"{type(exc).__name__}: {exc}"[:200]
+    return out
+
+
 @router.get("/health")
-def health() -> dict:
-    return {"ok": True, "backend": backend_name()}
+async def health() -> dict:
+    """Provider truth (#29): what is CONFIGURED, what a live probe showed,
+    and whether a real AI turn ever succeeded. Never a bare ok:true —
+    'configured' is reported separately from 'connected'."""
+    status = resolve_provider()
+    probe = await probe_capabilities(status)
+    return {
+        "ok": True,
+        "backend": status.backend,
+        "provider": status.describe(),
+        "probe": probe.as_dict(),
+        "aiVerified": ai_verified(),
+    }
+
+
+def _agentscope_input(body: "TurnBody") -> Any:
+    """turn body → AgentScope input (resume result or user message)."""
+    if body.resume is not None:
+        from agentscope.event import ExternalExecutionResultEvent
+        from agentscope.message import ToolResultBlock, ToolResultState
+
+        r = body.resume
+        rows = r.get("executionResults", [])
+        if not rows:
+            raise ValueError("resume without executionResults")
+        blocks = []
+        for row in rows:
+            state = ToolResultState.SUCCESS if row.get("status", "ok") == "ok" else ToolResultState.ERROR
+            blocks.append(
+                ToolResultBlock(
+                    id=row.get("toolCallId", ""),
+                    name=row.get("tool", "scientific_execute"),
+                    output=json.dumps(
+                        row.get("result", {}) if state == ToolResultState.SUCCESS else {"error": row.get("error", "external execution failed")},
+                        ensure_ascii=False,
+                    ),
+                    state=state,
+                )
+            )
+        return ExternalExecutionResultEvent(reply_id=r.get("replyId", ""), execution_results=blocks)
+    from agentscope.message import UserMsg
+
+    return UserMsg(
+        name="desk",
+        content=f"{body.intent}\n\n[desk context] {json.dumps(body.context, ensure_ascii=False)[:1200]}",
+    )
+
+
+async def orchestrator_stream(body: "TurnBody", status: Any) -> AsyncGenerator[dict, None]:
+    """AI backend with an EXPLICIT sop fallback (#29).
+
+    The first event always states the live provider/model/aiVerified. A
+    provider that fails BEFORE emitting any agent event (bad credentials,
+    unreachable endpoint, build error) falls back to SOP with the reason
+    in-band — a mid-stream failure stays a failure; partial turns are never
+    silently re-run on the fallback."""
+    yield ev("backend", **status.describe(), aiVerified=ai_verified())
+    try:
+        agent_input = _agentscope_input(body)
+    except ValueError as exc:
+        yield ev("error", message=str(exc))
+        return
+    emitted = False
+    try:
+        agen = agentscope_stream(body.sessionId, agent_input)
+        async for e in agen:
+            emitted = True
+            yield e
+        return
+    except Exception as exc:  # noqa: BLE001 — the fallback IS the error policy
+        if emitted:
+            raise
+        yield ev(
+            "sop_fallback",
+            backend="sop-deterministic",
+            provider=status.provider,
+            reason=f"{type(exc).__name__}: {exc}"[:300],
+        )
+        async for e in sop_dispatch(body):
+            yield e
 
 
 @router.post("/turn")
 async def turn(body: TurnBody) -> StreamingResponse:
-    if backend_name() == "agentscope-qwen":
-        if body.resume is not None:
-            from agentscope.event import ExternalExecutionResultEvent
-            from agentscope.message import ToolResultBlock, ToolResultState
+    status = resolve_provider()
+    if status.backend != "sop-deterministic":
+        return _sse(orchestrator_stream(body, status))
+    return _sse(sop_dispatch(body))
 
-            r = body.resume
-            rows = r.get("executionResults", [])
-            if not rows:
-                return _sse(_single_error("resume without executionResults"))
-            blocks = []
-            for row in rows:
-                state = ToolResultState.SUCCESS if row.get("status", "ok") == "ok" else ToolResultState.ERROR
-                blocks.append(
-                    ToolResultBlock(
-                        id=row.get("toolCallId", ""),
-                        name=row.get("tool", "scientific_execute"),
-                        output=json.dumps(
-                            row.get("result", {}) if state == ToolResultState.SUCCESS else {"error": row.get("error", "external execution failed")},
-                            ensure_ascii=False,
-                        ),
-                        state=state,
-                    )
-                )
-            result = ExternalExecutionResultEvent(reply_id=r.get("replyId", ""), execution_results=blocks)
-            return _sse(agentscope_stream(body.sessionId, result))
-        from agentscope.message import UserMsg
-
-        user = UserMsg(
-            name="desk",
-            content=f"{body.intent}\n\n[desk context] {json.dumps(body.context, ensure_ascii=False)[:1200]}",
-        )
-        return _sse(agentscope_stream(body.sessionId, user))
-
-    # deterministic SOP backend
+async def sop_dispatch(body: TurnBody) -> AsyncGenerator[dict, None]:
+    # deterministic SOP backend (#29: generator form — orchestrator_stream
+    # delegates here on explicit fallback)
     session = _sop_sessions.setdefault(body.sessionId, SopSession(id=body.sessionId))
     desk = str(body.context.get("deskKind", "formula"))
     server_mode = body.context.get("execution") == "server"
     if not server_mode and desk in ("ode", "geometry", "mujoco", "challenge"):
         # these desks have no browser execution surface (agentBridge executes
         # formula/kakeya only) — don't promise a turn that can never complete
-        return _sse(_single_event("done", reason="not-an-experiment"))
+        async for _e in _single_event("done", reason="not-an-experiment"):
+            yield _e
+        return
     if server_mode:
         # server mode never pauses for the browser → no resume contract
         if body.resume is not None:
-            return _sse(_single_error("server-execution turns do not accept resumes"))
-        return _sse(sop_turn_server(session, body.intent, body.context))
+            async for _e in _single_error("server-execution turns do not accept resumes"):
+                yield _e
+            return
+        async for _e in sop_turn_server(session, body.intent, body.context):
+            yield _e
+        return
     if body.resume is not None:
         rows = body.resume.get("executionResults", [])
         if not rows:
-            return _sse(_single_error("resume without executionResults"))
+            async for _e in _single_error("resume without executionResults"):
+                yield _e
+            return
         # Lane B tool-name guard: results must answer an ALLOWED tool — a
         # forged row claiming another tool never reached the executor
         for row in rows:
             tool = str(row.get("tool", "scientific_execute"))
             if tool not in ALLOWED_TOOLS:
-                return _sse(_single_error(f"resume carries a tool this orchestrator never registers: {tool}"))
+                async for _e in _single_error(f"resume carries a tool this orchestrator never registers: {tool}"):
+                    yield _e
+                return
         # issued-guard: every resumed toolCallId must be one THIS session
         # actually emitted via require_execution — unknown/never-issued ids
         # are rejected (the server used to accept results for calls it never
@@ -728,27 +860,35 @@ async def turn(body: TurnBody) -> StreamingResponse:
         for row in rows:
             call_id = str(row.get("toolCallId", ""))
             if call_id not in session.issued_calls:
-                return _sse(_single_error(f"toolCallId was never issued by this session: {call_id or '(missing)'}"))
+                async for _e in _single_error(f"toolCallId was never issued by this session: {call_id or '(missing)'}"):
+                    yield _e
+                return
         # Lane B round guard: the resume must echo the CURRENT round nonce.
         # A stale round (replaying an earlier turn's pause after the next
         # turn already started) is rejected instead of silently mis-merging.
         resume_round = body.resume.get("roundId")
         if session.current_round and resume_round != session.current_round:
-            return _sse(_single_error(
+            async for _e in _single_error(
                 f"resume round mismatch: expected {session.current_round}, got {resume_round or '(missing)'} — stale replayed rounds are rejected",
-            ))
+            ):
+                yield _e
+            return
         # Lane B batch completeness: the resume must answer EXACTLY the calls
         # issued in the current round — no partial batches, no extras
         answered_ids = {str(row.get("toolCallId", "")) for row in rows}
         pending = session.round_calls - session.answered_calls
         if pending and answered_ids != pending:
-            return _sse(_single_error(
+            async for _e in _single_error(
                 f"batch incomplete: round issued {sorted(pending)}, resume answers {sorted(answered_ids)} — partial or extra rows are rejected",
-            ))
+            ):
+                yield _e
+            return
         # duplicate-resume guard: a toolCallId may be answered exactly once
         fresh = [row for row in rows if row.get("toolCallId") not in session.answered_calls]
         if not fresh:
-            return _sse(_single_error("all toolCallIds in this resume were already answered"))
+            async for _e in _single_error("all toolCallIds in this resume were already answered"):
+                yield _e
+            return
         for row in rows:
             call_id = str(row.get("toolCallId", ""))
             if call_id:
@@ -764,7 +904,9 @@ async def turn(body: TurnBody) -> StreamingResponse:
             session.history.append({"failed": [f.get("toolCallId") for f in failed]})
             session.rounds = 0  # turn terminated (failed) — reset the budget
             _persist_session(session)
-            return _sse(_failure_resume(failed))
+            async for _e in _failure_resume(failed):
+                yield _e
+            return
         merged = {
             "runs": [run for row in fresh for run in row.get("result", {}).get("runs", [])],
             "comparison": next(
@@ -776,16 +918,21 @@ async def turn(body: TurnBody) -> StreamingResponse:
         session.history.append({"resume": merged})
         session.rounds = 0  # turn completed — reset the per-turn resume budget
         _persist_session(session)
-        return _sse(sop_resume(merged))
+        async for _e in sop_resume(merged):
+            yield _e
+        return
     # a NEW intent starts a fresh turn: the round limit bounds resume cycles
     # WITHIN one turn (runaway tool loops), never the lifetime of the desk
     # session (PaperDesk reuses one sessionId across many questions)
     session.rounds += 1
     if session.rounds > MAX_ROUNDS:
-        return _sse(_single_error(f"session exceeded {MAX_ROUNDS} execution rounds"))
+        async for _e in _single_error(f"session exceeded {MAX_ROUNDS} execution rounds"):
+            yield _e
+        return
     session.history.append({"intent": body.intent})
     _persist_session(session)
-    return _sse(sop_turn(session, body.intent, body.context))
+    async for _e in sop_turn(session, body.intent, body.context):
+        yield _e
 
 
 def _single_error(message: str) -> AsyncGenerator[dict, None]:
