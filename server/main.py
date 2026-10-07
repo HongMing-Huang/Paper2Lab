@@ -52,10 +52,33 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 INGEST_TIMEOUT_S = float(os.environ.get("PAPER2LAB_INGEST_TIMEOUT", "600"))
 
+
+def _ingest_timeout_s() -> float:
+    """live-read (#31): the module constant freezes at import — tests and
+    config changes must take effect per conversion, not per process"""
+    try:
+        return float(os.environ.get("PAPER2LAB_INGEST_TIMEOUT", str(INGEST_TIMEOUT_S)))
+    except ValueError:
+        return INGEST_TIMEOUT_S
+
 # ---------------------------------------------------------------- job store
 # Docling models are heavy and not thread-safe → conversions run one at a
 # time in a worker thread; the lock prevents unbounded duplicate heavy work.
 _ingest_lock = asyncio.Lock()
+_ingest_lock_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _ingest_guard() -> asyncio.Lock:
+    """module-level Lock binds to its FIRST event loop — pytest gives every
+    test a new loop and a contended acquire from another loop raises. Rebuild
+    per running loop (sequential owners keep mutual exclusion; same pattern
+    as engine_bridge._guard)."""
+    global _ingest_lock, _ingest_lock_loop
+    loop = asyncio.get_running_loop()
+    if _ingest_lock_loop is not loop:
+        _ingest_lock = asyncio.Lock()
+        _ingest_lock_loop = loop
+    return _ingest_lock
 
 
 def _job_path(job_id: str) -> Path:
@@ -232,6 +255,65 @@ async def _read_bounded(file: UploadFile) -> bytes:
     return b"".join(chunks)
 
 
+class _IngestTimeout(Exception):
+    """docling conversion exceeded the budget — the worker process was killed"""
+
+
+async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") -> dict[str, Any]:
+    """#31: docling runs in a KILLABLE worker process (default) — a timed-out
+    conversion terminates instead of haunting the executor thread pool. The
+    serialization slot is only held while real work happens. Thread mode
+    (PAPER2LAB_INGEST_ISOLATION=thread) keeps the old executor path with its
+    hold-until-thread-exits guarantee."""
+    import sys as _sys
+
+    mode = os.environ.get("PAPER2LAB_INGEST_ISOLATION", "process")
+    if mode == "thread":
+        loop = asyncio.get_running_loop()
+        done = asyncio.Event()
+
+        def convert() -> dict[str, Any]:
+            try:
+                return convert_pdf(pdf_path, title_hint=title_hint)
+            finally:
+                loop.call_soon_threadsafe(done.set)
+
+        fut = loop.run_in_executor(None, convert)
+        try:
+            return await asyncio.wait_for(fut, timeout=_ingest_timeout_s())
+        except asyncio.TimeoutError as exc:
+            job.status = "timeout-pending"  # thread still running: slot stays held
+            job.persist()
+            await done.wait()  # release the slot only after REAL work ends
+            raise _IngestTimeout(f"docling exceeded {_ingest_timeout_s()}s (thread finished)") from exc
+
+    proc = await asyncio.create_subprocess_exec(
+        _sys.executable, "-m", "server.ingest_worker", pdf_path, title_hint,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+    )
+    try:
+        out, err = await asyncio.wait_for(proc.communicate(), timeout=_ingest_timeout_s())
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()  # the slot frees only when the process is REALLY gone
+        raise _IngestTimeout(
+            f"docling exceeded {_ingest_timeout_s()}s — worker process killed (pid {proc.pid})"
+        ) from None
+    text = out.decode("utf-8", "replace").strip()
+    if proc.returncode != 0 or not text:
+        detail = err.decode("utf-8", "replace")[-400:] or f"exit {proc.returncode}"
+        raise RuntimeError(f"ingest worker failed: {detail}")
+    try:
+        result = json.loads(text)
+    except ValueError as exc:
+        raise RuntimeError(f"ingest worker produced unparseable output: {text[:200]}") from exc
+    if isinstance(result, dict) and "error" in result:
+        raise RuntimeError(f"docling failed: {result['error']}")
+    return result
+
+
 @app.post("/api/ingest", status_code=202)
 async def ingest(file: UploadFile = File(...)) -> dict:
     if not (file.filename or "").lower().endswith(".pdf"):
@@ -242,7 +324,7 @@ async def ingest(file: UploadFile = File(...)) -> dict:
 
     job_id = uuid.uuid4().hex[:12]
     job = IngestJob(job_id, file.filename or "upload.pdf")
-    job.status = "running"
+    job.status = "queued"  # the docling slot may still be busy (#31)
     job.persist()
     _jobs[job_id] = job
 
@@ -251,38 +333,20 @@ async def ingest(file: UploadFile = File(...)) -> dict:
 
     async def run() -> None:
         try:
-            loop = asyncio.get_running_loop()
-            # thread-level serialization: cancelling the asyncio future on
-            # timeout does NOT stop the docling thread — this lock stays held
-            # until the thread actually exits, so a timed-out conversion can
-            # never overlap the next one (DocumentConverter is not thread-safe)
-            done = asyncio.Event()
-
-            def convert() -> dict[str, Any]:
-                try:
-                    return convert_pdf(str(tmp_path), title_hint=os.path.splitext(job.filename)[0])
-                finally:
-                    loop.call_soon_threadsafe(done.set)
-
-            async def serialized() -> dict[str, Any]:
-                fut = loop.run_in_executor(None, convert)
-                try:
-                    return await fut
-                finally:
-                    # even if the await was cancelled (timeout), wait for the
-                    # thread to finish before releasing the docling slot
-                    if not fut.done():
-                        await done.wait()
-
-            async with _ingest_lock:  # one docling conversion at a time
-                result = await asyncio.wait_for(serialized(), timeout=INGEST_TIMEOUT_S)
+            title_hint = os.path.splitext(job.filename)[0]
+            async with _ingest_guard():  # one docling conversion at a time (loop-safe)
+                job.status = "running"  # queued → running only INSIDE the slot
+                job.persist()
+                result = await _convert_isolated(str(tmp_path), title_hint, job)
             job.result = result
             job.status = "done"
             job.finished_at = time.time()
-            job.persist_doc()
-        except asyncio.TimeoutError:
-            job.status = "error"
-            job.error = f"docling exceeded {INGEST_TIMEOUT_S}s"
+        except _IngestTimeout as exc:
+            # process isolation (#31): the worker was KILLED — the slot is
+            # genuinely free and the upload file is closed; a distinct status
+            # separates "timed out (terminated)" from "parser failed"
+            job.status = "timeout"
+            job.error = str(exc)
             job.finished_at = time.time()
         except Exception as exc:  # noqa: BLE001 — parser errors are job results
             job.status = "error"
@@ -290,14 +354,16 @@ async def ingest(file: UploadFile = File(...)) -> dict:
             job.finished_at = time.time()
         finally:
             job.persist()
-            # delete the upload only once no conversion can still be reading it
-            if job.status != "error" or not job.error or "exceeded" not in job.error:
+            # delete the upload only once no conversion can still be reading it.
+            # process mode (default): a timeout KILLED the worker → the file is
+            # closed and deletable now; thread mode may still have it open.
+            if job.status in ("done", "timeout") or os.environ.get("PAPER2LAB_INGEST_ISOLATION") == "process":
                 tmp_path.unlink(missing_ok=True)
-            else:
-                # timed-out conversion may still hold the file open; retry the
-                # delete a bit later (best effort — the temp dir is not public)
+            elif job.status == "timeout-pending" or (job.error and "exceeded" in job.error):
                 loop = asyncio.get_event_loop()
                 loop.call_later(60, lambda: tmp_path.unlink(missing_ok=True))
+            else:
+                tmp_path.unlink(missing_ok=True)
 
     asyncio.get_event_loop().create_task(run())
     return {"jobId": job_id, "status": "running"}

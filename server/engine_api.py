@@ -15,7 +15,9 @@ served here as immutable ExperimentRuns the page imports atomically.
 """
 from __future__ import annotations
 
+import asyncio
 import json
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +38,15 @@ class ExecuteRequest(BaseModel):
     input: dict[str, Any] = Field(default_factory=dict)
     planId: str | None = Field(default=None, max_length=200)
     parentRunId: str | None = Field(default=None, max_length=120)
+    """#31 idempotency: same requestId → same response, ONE execution.
+    In-flight duplicates join the running task (no double spawn); completed
+    duplicates (failures included) get the cached outcome — a timeout retry
+    can never silently re-run a scientific operation that already finished."""
+    requestId: str | None = Field(default=None, max_length=120)
+
+
+_EXEC_CACHE_LIMIT = 128
+_exec_tasks: "OrderedDict[str, asyncio.Task[dict[str, Any]]]" = OrderedDict()
 
 
 def _bounded_request(model: ExecuteRequest) -> None:
@@ -50,6 +61,25 @@ _ONCE_BUNDLE = REPO_ROOT / "scripts" / "engine_once.mjs"
 @router.post("/execute")
 async def execute(req: ExecuteRequest) -> dict[str, Any]:
     _bounded_request(req)
+    if req.requestId:
+        # #31 idempotency: dedupe in-flight, cache completed (failures too —
+        # a retry of the same id returns the SAME failure, never a re-run)
+        existing = _exec_tasks.get(req.requestId)
+        if existing is not None:
+            return await asyncio.shield(existing) if not existing.done() else existing.result()
+        task = asyncio.create_task(_execute_raw(req))
+        _exec_tasks[req.requestId] = task
+        while len(_exec_tasks) > _EXEC_CACHE_LIMIT:
+            _exec_tasks.popitem(last=False)
+        try:
+            return await asyncio.shield(task)
+        except Exception:
+            # the failed outcome stays cached; callers of the same id see it
+            raise
+    return await _execute_raw(req)
+
+
+async def _execute_raw(req: ExecuteRequest) -> dict[str, Any]:
     payload = json.dumps(req.input, ensure_ascii=False)
     if len(payload.encode()) > MAX_INPUT_BYTES:
         raise HTTPException(status_code=413, detail=f"engine input exceeds {MAX_INPUT_BYTES // 1024} KB limit")
@@ -57,8 +87,6 @@ async def execute(req: ExecuteRequest) -> dict[str, Any]:
     # node process runs the skill entirely inside this HTTP call — immune to
     # FC instance freezing that starves the long-lived stdio engine
     if _ONCE_BUNDLE.exists():
-        import asyncio
-
         proc = await asyncio.create_subprocess_exec(
             "node", str(_ONCE_BUNDLE), req.skill, payload, req.planId or "",
             *(["", req.parentRunId] if req.parentRunId else []),

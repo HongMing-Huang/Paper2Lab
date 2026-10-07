@@ -182,3 +182,103 @@ async def test_ready_reports_engine() -> None:
             checks = resp.json()["checks"]
             assert checks["engine"]["ok"] is True
             assert checks["engine"]["booted"] is True
+
+
+# ---- #31: requestId idempotency + boot-retry hardening -----------------------
+
+import asyncio  # noqa: E402
+
+import server.engine_api as ea  # noqa: E402
+from server.engine_bridge import EngineBridge  # noqa: E402
+
+
+class _FakeProc:
+    pid = 424242
+    stdin = None
+
+    def poll(self):
+        return None
+
+
+def _rid_req(rid):
+    return ea.ExecuteRequest(skill="formula.evaluate", input={}, requestId=rid)
+
+
+@pytest.mark.asyncio
+async def test_request_id_dedupes_inflight_and_caches_outcome(monkeypatch) -> None:
+    ea._exec_tasks.clear()
+    calls = []
+
+    async def slow_raw(req):
+        calls.append(req.requestId)
+        await asyncio.sleep(0.2)
+        return {"outcome": {"status": "ok", "marker": req.requestId}}
+
+    monkeypatch.setattr(ea, "_execute_raw", slow_raw)
+    # in-flight duplicate: both callers join ONE execution
+    first, second = await asyncio.gather(ea.execute(_rid_req("dup-1")), ea.execute(_rid_req("dup-1")))
+    assert len(calls) == 1
+    assert "dup-1" in repr(first)
+    assert "dup-1" in repr(second)
+    # completed duplicate: cache hit, no second execution
+    await ea.execute(_rid_req("dup-1"))
+    assert len(calls) == 1
+    ea._exec_tasks.clear()
+
+
+@pytest.mark.asyncio
+async def test_request_id_failure_is_cached_not_rerun(monkeypatch) -> None:
+    ea._exec_tasks.clear()
+    calls = []
+
+    async def failing_raw(req):
+        calls.append(req.requestId)
+        raise RuntimeError("simulated engine failure (idempotency test)")
+
+    monkeypatch.setattr(ea, "_execute_raw", failing_raw)
+    with pytest.raises(RuntimeError):
+        await ea.execute(_rid_req("dup-fail"))
+    with pytest.raises(RuntimeError):
+        await ea.execute(_rid_req("dup-fail"))
+    assert len(calls) == 1  # the retry did NOT re-run the scientific operation
+    ea._exec_tasks.clear()
+
+
+@pytest.mark.asyncio
+async def test_boot_retry_replaces_a_wedged_first_child(monkeypatch) -> None:
+    bridge = EngineBridge()
+    counters = {"child": 0, "ping": 0}
+
+    async def fake_child(self):
+        counters["child"] += 1
+        self._proc = _FakeProc()
+
+    async def flaky_roundtrip(self, request, timeout):
+        counters["ping"] += 1
+        if counters["ping"] == 1:
+            raise asyncio.TimeoutError()  # first child wedged (reproduced class)
+        return {"ok": True, "id": 1}
+
+    monkeypatch.setattr(EngineBridge, "_boot_child", fake_child)
+    monkeypatch.setattr(EngineBridge, "_roundtrip", flaky_roundtrip)
+    await bridge._boot()  # second attempt boots; no 180s burn
+    assert counters["child"] == 2
+    assert counters["ping"] == 2
+    bridge._teardown_proc()
+
+
+@pytest.mark.asyncio
+async def test_boot_double_wedge_fails_fast(monkeypatch) -> None:
+    bridge = EngineBridge()
+
+    async def fake_child(self):
+        self._proc = _FakeProc()
+
+    async def dead_roundtrip(self, request, timeout):
+        raise asyncio.TimeoutError()
+
+    monkeypatch.setattr(EngineBridge, "_boot_child", fake_child)
+    monkeypatch.setattr(EngineBridge, "_roundtrip", dead_roundtrip)
+    with pytest.raises(RuntimeError):
+        await bridge._boot()  # surfaces after 2×10s, not BOOT_TIMEOUT_S
+    bridge._teardown_proc()
