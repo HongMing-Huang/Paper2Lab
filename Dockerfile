@@ -31,11 +31,14 @@ WORKDIR /app
 ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 COPY package.json pnpm-lock.yaml ./
 COPY src/ src/
-COPY scripts/engine_server.ts /tmp/bundle-src/engine_server.ts
+COPY scripts/engine_server.ts scripts/engine_persist.ts /tmp/bundle-src/
+# entry lives INSIDE /app so ../src relative imports resolve during bundling
+RUN mkdir -p /app/bundle-entry \
+  && cp /tmp/bundle-src/engine_server.ts /tmp/bundle-src/engine_persist.ts /app/bundle-entry/
 RUN corepack enable && corepack prepare pnpm@10.30.2 --activate \
   && pnpm install --frozen-lockfile \
   && ./node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/bin/esbuild \
-       /tmp/bundle-src/engine_server.ts \
+       /app/bundle-entry/engine_server.ts \
        --bundle --packages=external --platform=node --format=esm \
        --outfile=/tmp/engine_server.bundle.mjs --log-level=warning \
   && mkdir -p scripts && cp /tmp/engine_server.bundle.mjs scripts/engine_server.bundle.mjs \
