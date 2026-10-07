@@ -2147,7 +2147,24 @@ function restoreRuns() {
     const lines = readFileSync2(path, "utf8").split("\n").filter((l) => l.trim());
     const known = new Set(listExperimentRuns({ limit: 1e5 }).map((r) => r.runId));
     const seen = /* @__PURE__ */ new Set();
-    const fresh = lines.map((l) => JSON.parse(l)).filter((r) => !known.has(r.runId) && !seen.has(r.runId) && seen.add(r.runId));
+    const fresh = [];
+    let corrupt = 0;
+    for (const line of lines) {
+      let run = null;
+      try {
+        run = JSON.parse(line);
+      } catch {
+        corrupt++;
+        continue;
+      }
+      if (run && typeof run.runId === "string" && !known.has(run.runId) && !seen.has(run.runId)) {
+        seen.add(run.runId);
+        fresh.push(run);
+      }
+    }
+    if (corrupt > 0) {
+      console.warn(`[engine-persist] skipped ${corrupt} corrupt line(s) in ${RUNLOG} (crashed append tail?) \u2014 intact runs restored`);
+    }
     if (fresh.length === 0) return 0;
     importRuns(JSON.stringify(fresh));
     return fresh.length;

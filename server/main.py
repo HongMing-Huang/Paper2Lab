@@ -167,14 +167,47 @@ async def ready() -> dict:
         checks["storage"] = {"ok": False, "error": str(exc)}
     if shutil.which("node"):
         status = bridge.status()
+        # #31: health-200 is not functional acceptance — ready must prove the
+        # engine actually ANSWERS (bounded ping; kill-switch for cold paths
+        # that deliberately lazy-boot). A zombie child (alive, silent) fails.
+        engine_ok = True
+        engine_error: str | None = None
+        if os.environ.get("PAPER2LAB_READY_ENGINE_PING", "1") != "0":
+            try:
+                pong = await asyncio.wait_for(bridge.call("ping"), timeout=8.0)
+                engine_ok = bool(pong.get("ok"))
+                if not engine_ok:
+                    engine_error = "engine ping rejected"
+            except Exception as exc:  # noqa: BLE001 — any ping failure = not ready
+                engine_ok = False
+                engine_error = f"engine ping failed: {type(exc).__name__}: {exc}"[:200]
         checks["engine"] = {
-            "ok": True,
+            "ok": engine_ok,
             "booted": bridge.alive(),
             "node": shutil.which("node"),
+            **({"pingError": engine_error} if engine_error else {}),
             **({"lastError": status["lastError"]} if status["lastError"] else {}),
         }
     else:
         checks["engine"] = {"ok": False, "error": "node runtime not found"}
+    # #31: offline deployments must ship the Docling model artifacts; when the
+    # flag is set (Docker sets it), ready FAILS if the artifacts path is
+    # missing/empty instead of silently downloading on the first parse.
+    if os.environ.get("PAPER2LAB_REQUIRE_MODEL_ARTIFACTS", "0") == "1":
+        try:
+            from docling.datamodel.settings import settings as docling_settings
+
+            artifacts = getattr(docling_settings, "artifacts_path", None)
+            if artifacts is None or not Path(str(artifacts)).exists():
+                checks["doclingArtifacts"] = {
+                    "ok": False,
+                    "error": f"model artifacts not pre-downloaded at {artifacts}",
+                }
+            else:
+                n = sum(1 for _ in Path(str(artifacts)).iterdir())
+                checks["doclingArtifacts"] = {"ok": n > 0, "path": str(artifacts), "entries": n}
+        except Exception as exc:  # noqa: BLE001
+            checks["doclingArtifacts"] = {"ok": False, "error": str(exc)[:200]}
     ready = all(c["ok"] for c in checks.values())
     return JSONResponse({"ready": ready, "checks": checks}, status_code=200 if ready else 503)
 
