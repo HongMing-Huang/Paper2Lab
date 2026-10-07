@@ -415,6 +415,11 @@ var history = /* @__PURE__ */ new Map();
 function getExperimentRun(runId) {
   return history.get(runId);
 }
+function registerImportedRun(run) {
+  if (history.has(run.runId)) throw new Error(`Run already recorded: ${run.runId}`);
+  if (run.status === "resolved" && run.result === void 0) throw new Error(`Imported run ${run.runId} has no result`);
+  history.set(run.runId, freezeRecord(structuredClone(run)));
+}
 function listExperimentRuns(filter) {
   let rows = [...history.values()];
   if (filter?.kind) rows = rows.filter((r) => r.spec.kind === filter.kind);
@@ -510,6 +515,24 @@ function compareRuns(runA, runB) {
     return { key: k, a: av, b: bv, delta: av !== null && bv !== null ? bv - av : null };
   });
   return { runA, runB, kindA: a.spec.kind, kindB: b.spec.kind, rows };
+}
+function importRuns(bundleJson) {
+  const parsed = JSON.parse(bundleJson);
+  if (!Array.isArray(parsed)) throw new Error("Run bundle must be a JSON array");
+  const runs = parsed;
+  for (const r of runs) {
+    if (!r?.runId || !r?.spec || !r?.status || !Array.isArray(r.errors)) {
+      throw new Error("Run bundle entry does not match the ExperimentRun protocol");
+    }
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const r of runs) {
+    if (getExperimentRun(r.runId)) throw new Error(`Run already recorded: ${r.runId}`);
+    if (seen.has(r.runId)) throw new Error(`Run already recorded: ${r.runId}`);
+    seen.add(r.runId);
+  }
+  for (const r of runs) registerImportedRun(r);
+  return { imported: runs.length };
 }
 
 // src/skills/registry.ts
@@ -2002,8 +2025,41 @@ function persistRun(run) {
   } catch {
   }
 }
+function restoreRuns() {
+  try {
+    const path = runlogPath();
+    if (!existsSync(path)) return 0;
+    const lines = readFileSync2(path, "utf8").split("\n").filter((l) => l.trim());
+    const known = new Set(listExperimentRuns({ limit: 1e5 }).map((r) => r.runId));
+    const seen = /* @__PURE__ */ new Set();
+    const fresh = [];
+    let corrupt = 0;
+    for (const line of lines) {
+      let run = null;
+      try {
+        run = JSON.parse(line);
+      } catch {
+        corrupt++;
+        continue;
+      }
+      if (run && typeof run.runId === "string" && !known.has(run.runId) && !seen.has(run.runId)) {
+        seen.add(run.runId);
+        fresh.push(run);
+      }
+    }
+    if (corrupt > 0) {
+      console.warn(`[engine-persist] skipped ${corrupt} corrupt line(s) in ${RUNLOG} (crashed append tail?) \u2014 intact runs restored`);
+    }
+    if (fresh.length === 0) return 0;
+    importRuns(JSON.stringify(fresh));
+    return fresh.length;
+  } catch {
+    return 0;
+  }
+}
 
 // scripts/engine_once.ts
+restoreRuns();
 var skill = process.argv[2];
 if (!skill) {
   console.error("usage: engine_once.mjs <skill> <inputJson> [planId] [parentRunId]");

@@ -91,12 +91,13 @@ async def _execute_raw(req: ExecuteRequest) -> dict[str, Any]:
     # FC instance freezing that starves the long-lived stdio engine
     if _ONCE_BUNDLE.exists():
         plan_json = json.dumps(req.plan, ensure_ascii=False) if req.plan else ""
+        # FIXED argv layout (matches engine_once exactly — the historical
+        # ["", parentRunId] tuple shifted the plan into argv[6] and the
+        # parentRunId into never-never land): argv[4]=planId, argv[5]=parent,
+        # argv[6]=plan. Empty strings are falsy in the runner.
         proc = await asyncio.create_subprocess_exec(
             "node", str(_ONCE_BUNDLE), req.skill, payload, req.planId or "",
-            # argv[5] is ALWAYS the parentRunId slot ("" when absent) so an
-            # inline plan lands in argv[6] where the once-runner reads it
-            *(["", req.parentRunId] if req.parentRunId else [""]),
-            *( [plan_json] if plan_json else [] ),
+            req.parentRunId or "", plan_json,
             cwd=str(REPO_ROOT),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
