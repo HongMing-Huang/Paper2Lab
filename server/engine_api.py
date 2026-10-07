@@ -44,9 +44,43 @@ def _bounded_request(model: ExecuteRequest) -> None:
         raise HTTPException(status_code=413, detail=f"engine input exceeds {MAX_INPUT_BYTES // 1024} KB limit")
 
 
+_ONCE_BUNDLE = REPO_ROOT / "scripts" / "engine_once.mjs"
+
+
 @router.post("/execute")
 async def execute(req: ExecuteRequest) -> dict[str, Any]:
     _bounded_request(req)
+    payload = json.dumps(req.input, ensure_ascii=False)
+    if len(payload.encode()) > MAX_INPUT_BYTES:
+        raise HTTPException(status_code=413, detail=f"engine input exceeds {MAX_INPUT_BYTES // 1024} KB limit")
+    # serverless path (preferred when the once-bundle ships): a SHORT-LIVED
+    # node process runs the skill entirely inside this HTTP call — immune to
+    # FC instance freezing that starves the long-lived stdio engine
+    if _ONCE_BUNDLE.exists():
+        import asyncio
+
+        proc = await asyncio.create_subprocess_exec(
+            "node", str(_ONCE_BUNDLE), req.skill, payload, req.planId or "",
+            *(["", req.parentRunId] if req.parentRunId else []),
+            cwd=str(REPO_ROOT),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=180.0)
+        except asyncio.TimeoutError:
+            proc.kill()
+            raise HTTPException(status_code=504, detail="inline engine execution timed out") from None
+        if proc.returncode != 0:
+            detail = stderr.decode("utf-8", "replace")[-400:] or f"exit {proc.returncode}"
+            raise HTTPException(status_code=502, detail=f"inline engine failed: {detail}")
+        try:
+            parsed = json.loads(stdout.decode("utf-8"))
+        except ValueError:
+            raise HTTPException(status_code=502, detail="inline engine produced unparseable output") from None
+        return parsed
+
+    # stdio bridge fallback (long-lived engine for always-on deployments)
     try:
         resp = await bridge.call(
             "execute",

@@ -31,17 +31,22 @@ WORKDIR /app
 ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 COPY package.json pnpm-lock.yaml ./
 COPY src/ src/
-COPY scripts/engine_server.ts scripts/engine_persist.ts /tmp/bundle-src/
+COPY scripts/engine_server.ts scripts/engine_persist.ts scripts/engine_once.ts /tmp/bundle-src/
 # entry lives INSIDE /app so ../src relative imports resolve during bundling
 RUN mkdir -p /app/bundle-entry \
-  && cp /tmp/bundle-src/engine_server.ts /tmp/bundle-src/engine_persist.ts /app/bundle-entry/
+  && cp /tmp/bundle-src/engine_server.ts /tmp/bundle-src/engine_persist.ts /tmp/bundle-src/engine_once.ts /app/bundle-entry/
 RUN corepack enable && corepack prepare pnpm@10.30.2 --activate \
   && pnpm install --frozen-lockfile \
   && ./node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/bin/esbuild \
        /app/bundle-entry/engine_server.ts \
        --bundle --packages=external --platform=node --format=esm \
        --outfile=/tmp/engine_server.bundle.mjs --log-level=warning \
+  && ./node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/bin/esbuild \
+       /app/bundle-entry/engine_once.ts \
+       --bundle --packages=external --platform=node --format=esm \
+       --outfile=/tmp/engine_once.mjs --log-level=warning \
   && mkdir -p scripts && cp /tmp/engine_server.bundle.mjs scripts/engine_server.bundle.mjs \
+  && cp /tmp/engine_once.mjs scripts/engine_once.mjs \
   && pnpm install --frozen-lockfile --prod \
   && pnpm store prune
 
