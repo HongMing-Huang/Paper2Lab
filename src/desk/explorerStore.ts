@@ -69,10 +69,10 @@ export class ExplorerStore {
   }
 
   /** create explorer + observable module; emits the first run synchronously-ish */
-  create(id: string, spec: FormulaExplorerSpec, compiled: CompiledFormula | null, parentRunId?: string): Explorer {
+  create(id: string, spec: FormulaExplorerSpec, compiled: CompiledFormula | null, parentRunId?: string, binding?: PlayPlan['binding']): Explorer {
     const params = Object.fromEntries(spec.parameters.map((p) => [p.name, p.default]))
     if (!compiled) throw new Error('Formula has no executable kernel')
-    const plan = buildFormulaPlayPlan(analyzeFormula(spec.anchor.latex), spec.anchor, spec.anchor.docId, getSkill('formula.plot')!)
+    const plan = buildFormulaPlayPlan(analyzeFormula(spec.anchor.latex), spec.anchor, spec.anchor.docId, getSkill('formula.plot')!, binding)
     const validation = validateSkillInput(plan.skill, plan.inputs)
     if (!validation.ok) throw new Error(validation.error)
     const ex: Explorer = { id, spec, compiled, params, run: null, parentRunId, plan, status: 'computing' }

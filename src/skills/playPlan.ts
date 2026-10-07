@@ -7,6 +7,7 @@
 import type { SourceAnchor } from '../formula/spec'
 import type { FormulaAnalysis } from '../formula/analyze'
 import type { ScientificSkill } from './registry'
+import type { PaperBinding } from './paperBinding'
 
 export interface PlayPlanVariable {
   name: string
@@ -33,6 +34,10 @@ export interface PlayPlan {
   successCriteria: string
   /** claims this experiment must never make (finite-scale ≠ proof etc.) */
   nonClaims: string[]
+  /** v2 (#22): the paper-content binding chain — 锚点→问题→方程与单位→
+   * 条件→可操作对象→观测量→引擎与视图。Present when the plan came from a
+   * routed paper; synthesised below when built standalone. */
+  binding?: PaperBinding
   createdAt: number
 }
 
@@ -52,6 +57,7 @@ export function buildFormulaPlayPlan(
   anchor: SourceAnchor,
   paperTitle: string,
   skill: ScientificSkill,
+  binding?: PaperBinding,
 ): PlayPlan {
   return {
     planId: nextPlanId(),
@@ -84,6 +90,32 @@ export function buildFormulaPlayPlan(
     evidenceBasis: `paper p.${anchor.page} 公式（Docling anchor）+ 本地 Cortex 真计算`,
     successCriteria: '拖动参数时曲线连续重算，LOCAL CALC 徽章引用真实 run',
     nonClaims: FINITE_SCALE_NON_CLAIMS,
+    binding:
+      binding ??
+      ({
+        kind: 'formula',
+        question: `${paperTitle} 中关键方程的参数如何决定输出？`,
+        anchors: [`${anchor.docId}:p${anchor.page}`],
+        equations: [
+          {
+            latex: analysis.latex,
+            anchorId: `${anchor.docId}:p${anchor.page}`,
+            variables: [
+              ...analysis.params.map((p) => ({ name: p.name, role: 'parameter' as const })),
+              { name: analysis.independent!, role: 'independent' as const },
+              { name: analysis.output ?? 'y', role: 'output' as const },
+            ],
+          },
+        ],
+        conditions: [],
+        objects: analysis.params.map((p) => ({
+          name: `系数 ${p.name}`,
+          type: 'coefficient' as const,
+          manipulates: [p.name],
+        })),
+        observables: [{ name: '曲线' }, { name: '峰值' }, { name: '∫|y|dx' }],
+        engine: { skill: 'formula.plot', view: 'jsxgraph' },
+      }) satisfies PaperBinding,
     createdAt: Date.now(),
   }
 }
