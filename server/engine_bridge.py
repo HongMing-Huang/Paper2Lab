@@ -59,7 +59,8 @@ class EngineBridge:
         return self._lock
 
     # ------------------------------------------------------------ lifecycle
-    async def _boot(self) -> None:
+    async def _boot_child(self) -> None:
+        """spawn the child + reader/drain (no ready-wait) — retried on wedge"""
         # 云端诊断：spawn 前后各打一行到 stdout（平台收进 run 日志）；
         # stderr 由 drain 任务捕获，boot 失败时随异常带出。
         use_bundle = (REPO_ROOT / "scripts" / "engine_server.bundle.mjs").exists()
@@ -95,18 +96,35 @@ class EngineBridge:
                     self._last_error = text[-2000:]
 
         self._drain = asyncio.get_running_loop().create_task(_drain_stderr())
+
+    async def _boot(self) -> None:
+        await self._boot_child()
         # wait for the engine-ready banner (or first response) before serving;
         # a boot failure must surface the child's stderr tail in the logs
+        # #31 hardening: an occasionally-frozen child (alive, silent —
+        # reproduced locally) must not burn the whole boot budget. Two short
+        # attempts with a teardown+respawn between; the wedge then surfaces
+        # fast instead of hanging 180s.
+        boot_ping_timeout = min(10.0, BOOT_TIMEOUT_S)
         deadline = time.monotonic() + BOOT_TIMEOUT_S
-        last: dict[str, Any] = {}
-        while time.monotonic() < deadline:
-            last = await self._roundtrip({"op": "ping"}, timeout=BOOT_TIMEOUT_S)
-            if last.get("ok"):
-                return
+        attempts = 2
+        last_err: str | None = None
+        for attempt in range(1, attempts + 1):
+            try:
+                last = await self._roundtrip({"op": "ping"}, timeout=boot_ping_timeout)
+                if last.get("ok"):
+                    return
+                last_err = f"ping rejected: {last}"
+            except Exception as exc:  # noqa: BLE001 — any boot-ping failure retries
+                last_err = f"{type(exc).__name__}: {exc}"
+            if time.monotonic() >= deadline or attempt == attempts:
+                break
+            self._teardown_proc()
+            await self._boot_child()  # respawn for the second attempt
         self._teardown_proc()
         raise RuntimeError(
-            f"engine did not become ready in {BOOT_TIMEOUT_S}s "
-            f"(stderr tail: {self._last_error or 'none'})"
+            f"engine did not become ready ({attempts} attempts, {boot_ping_timeout}s each; "
+            f"last: {last_err or 'no response'}; stderr tail: {self._last_error or 'none'})"
         )
 
     async def start(self) -> None:
