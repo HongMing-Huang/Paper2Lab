@@ -16,11 +16,15 @@ export interface AgentUiState {
   observation: string | null
   /** active PlayPlan (FAROS-style contract) for display/trace */
   plan: { planId: string; goal: string; skill: string; metrics: string[]; nonClaims: string[] } | null
+  /** live AI provider truth (#29) — shown in the phase strip, never a guess */
+  backend: { provider: string; model: string | null; backend: string; aiVerified: boolean } | null
+  /** EXPLICIT sop fallback of the current turn (with reason) — "" = none */
+  fallbackReason: string | null
   nonce: number
 }
 
 class AgentStateStore {
-  private state: AgentUiState = { phase: { kind: 'idle' }, explorerId: null, observation: null, plan: null, nonce: 0 }
+  private state: AgentUiState = { phase: { kind: 'idle' }, explorerId: null, observation: null, plan: null, backend: null, fallbackReason: null, nonce: 0 }
   private listeners = new Set<() => void>()
 
   subscribe = (fn: () => void) => {
@@ -34,7 +38,7 @@ class AgentStateStore {
     for (const l of this.listeners) l()
   }
   reset() {
-    this.set({ phase: { kind: 'idle' }, explorerId: null })
+    this.set({ phase: { kind: 'idle' }, explorerId: null, fallbackReason: null })
   }
 }
 

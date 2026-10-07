@@ -11,6 +11,12 @@ export interface AgentSseEvent {
   tool?: string
   toolCallId?: string
   replyId?: string
+  /** #29 provider truth — the first event of an AI-backend turn */
+  provider?: string
+  model?: string | null
+  backend?: string
+  aiVerified?: boolean
+  /** #29 explicit SOP fallback + done events — reason travels in-band */
   /** Lane B round token — echoed back on resume; stale rounds are rejected */
   roundId?: string
   args?: { deskKind?: 'formula' | 'kakeya'; steps?: Array<Record<string, unknown>>; ops?: Array<Record<string, unknown>> }

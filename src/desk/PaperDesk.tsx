@@ -37,15 +37,24 @@ const PAPER_Y = 0
 function AgentPhaseStrip() {
   const s = useSyncExternalStore(agentState.subscribe, agentState.getSnapshot, agentState.getSnapshot)
   const p = s.phase
-  if (p.kind === 'idle' && !s.observation) return null
+  if (p.kind === 'idle' && !s.observation && !s.backend && !s.fallbackReason) return null
   let text = ''
   if (p.kind === 'plan') text = `PLAN · ${p.skill} — ${p.goal.slice(0, 40)}`
   else if (p.kind === 'running') text = `RUNNING · ${p.tool}`
   else if (p.kind === 'computed') text = `LOCAL COMPUTE → CALCULATED · run …${p.runId.slice(-4)}`
   else if (p.kind === 'error') text = `ERROR · ${p.message.slice(0, 60)}`
+  const backendChip = s.backend
+    ? `${s.backend.backend === 'sop-deterministic' ? 'SOP' : `AI ${s.backend.provider}/${s.backend.model ?? '?'}`}${s.backend.aiVerified ? ' ✓已验证' : ' 未验证'}`
+    : null
   return (
     <div className={`desk-agent-strip st-${p.kind}`}>
       {text || 'AI INFERENCE'}
+      {backendChip && <span className="desk-agent-backend" data-testid="agent-backend">{backendChip}</span>}
+      {s.fallbackReason && (
+        <span className="desk-agent-fallback" data-testid="agent-fallback" title={s.fallbackReason}>
+          ⚠ SOP 回退（非 AI 应答）
+        </span>
+      )}
     </div>
   )
 }
@@ -491,6 +500,20 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           } else if (e.type === 'observation_ready') {
             agentState.set({ observation: e.text ?? null })
             message(e.text ?? '实验完成')
+          } else if (e.type === 'backend') {
+            // #29 provider truth: what actually answered (or is about to)
+            agentState.set({
+              backend: {
+                provider: String(e.provider ?? 'sop'),
+                model: typeof e.model === 'string' ? e.model : null,
+                backend: String(e.backend ?? 'sop-deterministic'),
+                aiVerified: e.aiVerified === true,
+              },
+            })
+          } else if (e.type === 'sop_fallback') {
+            // explicit fallback — never let "it ran" read as "AI answered"
+            agentState.set({ fallbackReason: String(e.reason ?? 'AI 后端失败，已回退 SOP') })
+            message(`⚠ AI 后端失败，显式回退 SOP：${String(e.reason ?? '').slice(0, 80)}`)
           }
         },
       })

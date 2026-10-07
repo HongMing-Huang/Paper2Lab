@@ -12,23 +12,13 @@ export interface LlmPlannerConfig {
   model: string
 }
 
-/** read config from env only (PAPER2LAB_LLM_* / VITE_/OPENAI_*); null when absent.
- *  In Vite the browser exposes import.meta.env (only VITE_-prefixed vars are
- *  forwarded); Node/tests keep process.env. No credential literals anywhere. */
+/** read config from env only (PAPER2LAB_LLM_* / OPENAI_*); null when absent.
+ *  #29: the BROWSER never holds provider keys — this accessor is effectively
+ *  Node-only now (the server /api/agent/* endpoints own every AI call).
+ *  import.meta.env lookups are intentionally gone. */
 function envVar(name: string): string | undefined {
-  try {
-    const meta = import.meta as unknown as { env?: Record<string, string | undefined> }
-    const fromMeta = meta.env?.[name] ?? meta.env?.[`VITE_${name}`]
-    if (fromMeta) return fromMeta
-  } catch {
-    /* import.meta.env unavailable */
-  }
-  try {
-    const g = globalThis as { process?: { env?: Record<string, string | undefined> } }
-    return g.process?.env?.[name]
-  } catch {
-    return undefined
-  }
+  const g = globalThis as { process?: { env?: Record<string, string | undefined> } }
+  return g.process?.env?.[name]
 }
 
 export function llmConfigFromEnv(): LlmPlannerConfig | null {
