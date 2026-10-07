@@ -41,6 +41,12 @@ export interface DeskAgentContext {
   paramValues?: Record<string, number>
   selectedRunId?: string | null
   anchorId?: string | null
+  /** #30 sectioned context — the server budgets each section separately
+   *  instead of flat-cutting the serialized JSON */
+  paper?: { title?: string; question?: string }
+  formulas?: Array<{ latex?: string; anchorId?: string }>
+  current?: Record<string, unknown>
+  history?: Array<{ runId?: string; params?: Record<string, number>; metrics?: Record<string, number> }>
 }
 
 export interface AgentExecutors {
