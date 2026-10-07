@@ -113,7 +113,18 @@ export function loadSceneInto(
 
   const mujocoRoot = new THREE.Group()
   mujocoRoot.name = 'MuJoCo Root'
-  if (parent.mujocoRoot) parent.scene.remove(parent.mujocoRoot)
+  if (parent.mujocoRoot) {
+    // #33: a scene switch must FREE the old GPU resources, not just detach
+    // the group — otherwise every switch leaks geometries + materials
+    parent.mujocoRoot.traverse((obj) => {
+      const mesh = obj as THREE.Mesh
+      if (mesh.geometry) mesh.geometry.dispose()
+      const mat = mesh.material as THREE.Material | THREE.Material[] | undefined
+      if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
+      else if (mat) mat.dispose()
+    })
+    parent.scene.remove(parent.mujocoRoot)
+  }
   parent.scene.add(mujocoRoot)
   parent.mujocoRoot = mujocoRoot
 

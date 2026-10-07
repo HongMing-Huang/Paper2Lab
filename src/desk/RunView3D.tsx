@@ -91,10 +91,27 @@ export function RunView3DHost({ shapeId }: { shapeId: string }) {
   )
 }
 
+/** one 3D scene per tracked paper — each View subscribes to ITS OWN cell
+ *  snapshot (#33): the old overlay read ONE global kakeya run and fed every
+ *  view with it, so multiple 3D papers were copies of a single experiment.
+ *  Views whose element left the DOM or collapsed are not rendered. */
+function KakeyaExperimentView({ el }: { el: HTMLElement }) {
+  const tubes = useKakeyaCell<ExperimentRun<Tube3[]>>(tubesRunCell.id)
+  const visible = el.isConnected && el.offsetWidth > 0 && el.offsetHeight > 0
+  if (!visible) return null
+  return (
+    <>
+      <ambientLight intensity={0.75} />
+      <directionalLight position={[3, 5, 4]} intensity={1.1} />
+      <directionalLight position={[-4, -2, -3]} intensity={0.35} />
+      <TubesScene tubes={runTubes(tubes)} showVoxels={false} spin={0.22} />
+    </>
+  )
+}
+
 /** one shared Canvas over the whole desk — renders a <View> per tracked paper */
 export function Desk3DOverlay({ rootRef }: { rootRef: RefObject<HTMLDivElement | null> }) {
   const [entries, setEntries] = useState<Array<[string, HTMLElement]>>([])
-  const tubes = useKakeyaCell<ExperimentRun<Tube3[]>>(tubesRunCell.id)
 
   useEffect(() => {
     const sync = () => setEntries([...trackedViews.entries()])
@@ -116,10 +133,7 @@ export function Desk3DOverlay({ rootRef }: { rootRef: RefObject<HTMLDivElement |
       >
         {entries.map(([id, el]) => (
           <View key={id} track={{ current: el }}>
-            <ambientLight intensity={0.75} />
-            <directionalLight position={[3, 5, 4]} intensity={1.1} />
-            <directionalLight position={[-4, -2, -3]} intensity={0.35} />
-            <TubesScene tubes={runTubes(tubes)} showVoxels={false} spin={0.22} />
+            <KakeyaExperimentView el={el} />
           </View>
         ))}
       </Canvas>
