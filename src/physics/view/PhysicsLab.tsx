@@ -81,6 +81,19 @@ export function PhysicsLab({ onExit }: { onExit: () => void }) {
     params: { gravityZ: -9.81, windX: 0, timestep: 0 } as Record<string, number>,
     sceneName: 'humanoid.xml',
     lastRunId: null as string | null,
+    /** #33 live-session recorder: the USER'S actual trajectory (initial
+     *  state + every applied drag force) — the exported Run is THIS data,
+     *  never an unrelated server re-simulation */
+    recorder: {
+      active: false,
+      qpos0: [] as number[],
+      qvel0: [] as number[],
+      params: {} as Record<string, number>,
+      t: [] as number[],
+      qpos: [] as number[][],
+      forces: [] as Array<{ t: number; bodyID: number; f: [number, number, number]; p: [number, number, number] }>,
+      lastSampleT: -1,
+    },
   })
 
   // ---- boot the upstream demo skeleton once --------------------------------
@@ -153,6 +166,7 @@ export function PhysicsLab({ onExit }: { onExit: () => void }) {
             // spring force (mass * 250) anchored at the raycast world hit
             for (let i = 0; i < data.qfrc_applied.length; i++) data.qfrc_applied[i] = 0
             const dragged = drag.physicsObject
+            let stepForce: { bodyID: number; f: [number, number, number]; p: [number, number, number] } | null = null
             if (dragged && dragged.bodyID) {
               for (let b = 0; b < model.nbody; b++) {
                 if (bodies[b]) {
@@ -171,9 +185,23 @@ export function PhysicsLab({ onExit }: { onExit: () => void }) {
                 [force.x, force.y, force.z], [0, 0, 0], [point.x, point.y, point.z],
                 bodyID, data.qfrc_applied,
               )
+              stepForce = { bodyID, f: [force.x, force.y, force.z], p: [point.x, point.y, point.z] }
             }
             s.mujoco.mj_step(model, data)
             s.mujocoTime += timestep * 1000
+            if (s.recorder.active) {
+              const rec = s.recorder
+              const now = data.time as number
+              // decimate state samples (≤1200); forces kept every step (≤6000)
+              if (now - rec.lastSampleT >= Math.max(timestep, 1e-4) && rec.t.length < 1200) {
+                rec.lastSampleT = now
+                rec.t.push(now)
+                rec.qpos.push(Array.from(data.qpos as Float64Array))
+              }
+              if (stepForce && rec.forces.length < 6000) {
+                rec.forces.push({ t: now, ...stepForce })
+              }
+            }
           }
         } else {
           // paused idle branch (upstream): mj_forward so drags/shadows settle
@@ -233,7 +261,17 @@ export function PhysicsLab({ onExit }: { onExit: () => void }) {
     s.loaded = fresh
     s.sceneName = name
     s.mujocoTime = 0
-    s.params.timestep = (fresh.model as unknown as { opt: { timestep: number } }).opt.timestep
+    const freshOpt = (fresh.model as unknown as { opt: { timestep: number; gravity: Float64Array; wind: Float64Array } }).opt
+    // #33: params reset to the FRESH model's own defaults — carrying the old
+    // scene's gravity/wind into the new one silently changed its physics
+    s.params = { gravityZ: freshOpt.gravity[2], windX: freshOpt.wind[0], timestep: freshOpt.timestep }
+    s.recorder.active = false
+    s.recorder.t = []
+    s.recorder.forces = []
+    s.lastRunId = null
+    setRecording(false)
+    setRun(null)
+    setPlayback(initialPlayback())
     setScene(name)
     setPlayback(initialPlayback())
     s.phase = 'idle'
@@ -279,41 +317,77 @@ export function PhysicsLab({ onExit }: { onExit: () => void }) {
   }, [])
 
   // ---- record a real Run (backend engine, same wasm version) ----------------
-  const recordRun = useCallback(async () => {
-    setRecording(true)
-    try {
-      const res = await fetch('/api/engine/execute', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          skill: 'mujoco.simulate',
-          input: { scene: st.current.sceneName, steps: 500, sampleEvery: 25, params: { gravityZ: st.current.params.gravityZ } },
-          planId: 'plan-physics-lab',
-          plan: {
-            planId: 'plan-physics-lab',
-            skill: 'mujoco.simulate',
-            goal: '重放当前场景的真实物理（MuJoCo 内核）',
-            metrics: ['finalTime'],
-            nonClaims: ['数值仿真，不构成解析证明'],
-          },
-        }),
-      })
-      if (!res.ok) throw new Error(`engine HTTP ${res.status}`)
-      const body = (await res.json()) as { outcome: { status: string; run?: { runId: string; engine: string; engineVersion: string; result: { metrics: RecordedRun['metrics']; t: number[]; qpos: number[][]; nq: number } } } }
-      const out = body.outcome
-      if (out.status !== 'ok' || !out.run) throw new Error(`engine returned ${out.status}`)
-      registerImportedRun(out.run as never)
-      st.current.lastRunId = out.run.runId
-      const com = out.run.result.t.map((_, i) => (out.run!.result.qpos[i]?.[2] ?? null))
-      setRun({ runId: out.run.runId, engine: out.run.engine, engineVersion: out.run.engineVersion, metrics: out.run.result.metrics, t: out.run.result.t, com })
-      setStatus(`CALCULATED · run …${out.run.runId.slice(-4)} · ${out.run.engine}@${out.run.engineVersion}`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setRecording(false)
+  // ---- record THE USER'S LIVE SESSION (#33) -----------------------------------
+  // the old button re-ran 500 server steps with only scene+gravity — the
+  // exported Run was NOT the trajectory the user just played. Now the
+  // recorder captures the live wasm session itself: initial state, params
+  // and every applied drag force; the exported Run IS this data (evidence
+  // CALCULATED, engine = the browser wasm build that actually stepped it).
+  const toggleRecording = useCallback(() => {
+    const s = st.current
+    if (!s.loaded) return
+    const rec = s.recorder
+    if (!rec.active) {
+      rec.active = true
+      rec.qpos0 = Array.from(s.loaded.data.qpos as Float64Array)
+      rec.qvel0 = Array.from(s.loaded.data.qvel as Float64Array)
+      rec.params = { ...s.params }
+      rec.t = []
+      rec.qpos = []
+      rec.forces = []
+      rec.lastSampleT = -1
+      setRecording(true)
+      setStatus('● REC — 记录你的操作（初态/参数/施力）')
+      return
     }
-  }, [])
-
+    rec.active = false
+    setRecording(false)
+    if (rec.t.length < 2) {
+      setStatus('录制为空（没有可导出的轨迹）')
+      return
+    }
+    const qpos = rec.qpos
+    const t = rec.t
+    const nq = qpos[0]?.length ?? 0
+    const metrics = {
+      finalTime: t[t.length - 1],
+      qposNormFinal: Math.hypot(...(qpos[qpos.length - 1] ?? [])),
+      comZFinal: null as number | null,
+    }
+    const runId = `mujoco-live-${Date.now().toString(36)}`
+    const startedAt = Date.now()
+    const liveRun = {
+      runId,
+      spec: {
+        kind: 'mujoco.sim' as const,
+        params: { ...rec.params },
+        seed: 0,
+        model: {
+          scene: s.sceneName,
+          source: 'live-session',
+          qpos0: rec.qpos0,
+          qvel0: rec.qvel0,
+          forceEvents: rec.forces,
+          samples: t.length,
+        },
+      },
+      status: 'resolved' as const,
+      result: { scene: s.sceneName, steps: t.length, sampleEvery: 1, nq, t, qpos, metrics },
+      engine: 'mujoco-wasm-browser',
+      engineVersion: '3.12.0',
+      durationMs: 0,
+      evidence: 'CALCULATED' as const,
+      createdAt: startedAt,
+      startedAt,
+      errors: [],
+    }
+    registerImportedRun(liveRun as never)
+    s.lastRunId = runId
+    const com = t.map((_, i) => (qpos[i]?.[2] ?? null))
+    setRun({ runId, engine: liveRun.engine, engineVersion: liveRun.engineVersion, metrics, t, com })
+    setPlayback({ runId, params: { ...playback.params }, phase: 'idle', cursor: 0 })
+    setStatus(`CALCULATED · live-session run …${runId.slice(-4)} · ${t.length} 采样 · ${rec.forces.length} 施力步`)
+  }, [playback.params])
   const exportRun = useCallback(() => {
     if (!run) return
     const blob = new Blob([exportExperimentRuns([run.runId])], { type: 'application/json' })
@@ -347,8 +421,8 @@ export function PhysicsLab({ onExit }: { onExit: () => void }) {
         <button type="button" className="desk-btn" data-testid="pb-start" onClick={() => command({ op: 'start' })}>▶ 播放</button>
         <button type="button" className="desk-btn" data-testid="pb-pause" onClick={() => command({ op: 'pause' })}>⏸ 暂停</button>
         <button type="button" className="desk-btn" data-testid="pb-reset" onClick={() => command({ op: 'reset' })}>⟲ 重置</button>
-        <button type="button" className="desk-btn desk-btn-play" data-testid="record-run" disabled={recording} onClick={() => void recordRun()}>
-          {recording ? '引擎计算中…' : '记录 Run（500 步真算）'}
+        <button type="button" className="desk-btn desk-btn-play" data-testid="record-run" onClick={toggleRecording}>
+          {recording ? '■ 停止并导出 Run' : '● 记录我的操作'}
         </button>
         {run && <button type="button" className="desk-btn" data-testid="export-run" onClick={exportRun}>导出 Run</button>}
       </div>

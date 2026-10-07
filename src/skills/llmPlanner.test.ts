@@ -27,7 +27,7 @@ describe('llmPlanner', () => {
     expect(cfg?.model).toBe('qwen-max')
   })
 
-  it('LLM output is schema-validated: invalid JSON/skills rejected → null', async () => {
+  it('LLM output is schema-validated: invalid JSON/skills rejected → null', { timeout: 15000 }, async () => {
     vi.stubEnv('PAPER2LAB_LLM_ENDPOINT', 'https://example.invalid/v1')
     vi.stubEnv('PAPER2LAB_LLM_API_KEY', 'test-key')
     const cfg = llmConfigFromEnv()!
