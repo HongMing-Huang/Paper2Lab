@@ -23,13 +23,22 @@ COPY . .
 RUN pnpm build
 
 # ---- Stage 2: production node_modules for the engine (no browser deps) ----
-# tsx is a RUNTIME dependency (the engine runs `node --import tsx`).
+# tsx is a RUNTIME dependency (the engine runs `node --import tsx` as a
+# fallback); the primary engine artifact is a PREBUILT esbuild bundle —
+# plain node boots it in <1s, no transpile (weak-cloud-CPU 504 root cause).
 FROM node:22-slim AS engine-deps
 WORKDIR /app
 ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 COPY package.json pnpm-lock.yaml ./
+COPY src/ src/
+COPY scripts/engine_server.ts /tmp/bundle-src/engine_server.ts
 RUN corepack enable && corepack prepare pnpm@10.30.2 --activate \
-  && (pnpm install --frozen-lockfile --prod || pnpm install --frozen-lockfile --prod --registry=https://registry.npmmirror.com) \
+  && pnpm install --frozen-lockfile \
+  && node_modules/.bin/esbuild /tmp/bundle-src/engine_server.ts \
+       --bundle --packages=external --platform=node --format=esm \
+       --outfile=/tmp/engine_server.bundle.mjs --log-level=warning \
+  && mkdir -p scripts && cp /tmp/engine_server.bundle.mjs scripts/engine_server.bundle.mjs \
+  && pnpm install --frozen-lockfile --prod \
   && pnpm store prune
 
 # ---- Stage 3: python + node single-origin runtime --------------------------
@@ -47,18 +56,16 @@ RUN pip install --no-cache-dir --timeout 120 --retries 5 -r server/requirements.
     --extra-index-url https://download.pytorch.org/whl/cpu \
     -r server/requirements.txt
 
-# node binary (static) + the engine's production node_modules (tsx, cortex,
-# @mujoco/mujoco wasm, …) — the backend engine bridge execs:
-#   node --import tsx scripts/engine_server.ts
+# node binary (static) + the engine's production node_modules (cortex,
+# @mujoco/mujoco wasm, …) and the PREBUNDLED engine (bridge prefers
+# engine_server.bundle.mjs; falls back to tsx when absent)
 COPY --from=node:22-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=engine-deps /app/node_modules/ node_modules/
+COPY --from=engine-deps /app/scripts/engine_server.bundle.mjs scripts/engine_server.bundle.mjs
 
-# backend + engine sources (same unified executor the browser tests run)
+# backend + engine sources
 COPY server/ server/
-COPY scripts/engine_server.ts scripts/
-COPY src/ src/
 COPY tsconfig.json ./
-COPY package.json ./
 
 # built SPA + static papers; MuJoCo wasm served same-origin for the page
 COPY --from=web /app/dist/ dist/
