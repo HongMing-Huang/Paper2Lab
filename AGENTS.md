@@ -215,9 +215,11 @@ v0.1 升级轮（2026-10-07③，六组问题 #29–#34，PR #35/#36/#37 已合�
 - [x] **#29 统一 AI 接入（PR #35）**：`server/agent_provider.py` env-only provider/base_url/model/key/timeout 单点解析（显式 `PAPER2LAB_AGENT_PROVIDER` 优先；OpenAI 兼容走 AgentScope `OpenAIChatModel+OpenAICredential(base_url)`，DashScope 保留）；SSRF 守卫拒环回/私网/保留地址；能力探测区分 chat/tool_calls/stream；**SOP 回退永远显式**——AI 回合首事件 `backend`（provider/model/aiVerified），失败前零事件则 `sop_fallback(reason)`，中途失败不回退；前端零密钥（llmPlanner 删 VITE_ 路径、路由辅助走 `/api/agent/route`）；AgentPhaseStrip 常驻 provider 芯片与 ⚠回退标记。真实供应商回合无凭据=未验证（不假装接通）
 - [x] **#30 工具面单一来源（PR #36）**：`scientific_execute` 模型 schema 从引擎桥 skills 面（真 Skill Registry）生成——六桌面 enum + 技能清单进描述；载荷**无 implemented 字段，在列即可执行**；桥不可达→保守回退面；Agent 上下文四段预算（paper/formulas/current/history，历史最新 6 条倒序）替代 1200 字符硬截断；引擎桥**循环亲和**修复（子进程绑启动循环，pytest 每测试新循环时 stop+重启——修跨循环 ping 永不解析）
 - [x] **#31 首批（PR #37）**：`/api/ready` 引擎检查升级**真 ping**（僵尸=不就绪带 pingError；`PAPER2LAB_READY_ENGINE_PING=0` 冷路径开关）；`PAPER2LAB_REQUIRE_MODEL_ARTIFACTS=1` 时 Docling 工件缺失=不就绪（离线不静默下载）；engine_persist JSONL **逐行容错**（崩溃半行只丢自己）；Docker 依赖核实已含 engine_persist/once.ts
-- [ ] **#31 余项**：解析超时线程隔离（main.py:223 自认）、引擎 requestId 幂等队列、偶发 boot 冻结根治（复现已记 issue）
-- [ ] **#32** 服务端完整计划验证（executor 门升级）；**#33** 物理页 Run 对应+RunView3D 按实验绑定；**#34** 部署侧 P95 与故障注入验收基线
-- 测试基线：pytest **86/86** · vitest **279/279**；工作树 9 个未跟踪草稿（10-06 会话遗留）未引用未删除
+- [x] **#31 余项（PR #38）**：docling 解析移入**可终止 worker 进程**（超时 kill+wait 真实释放槽位；queued/running/timeout/error 状态真实化；thread 模式保留）；引擎 execute 增 **requestId 幂等**（in-flight 并入/失败也缓存不重跑）；boot ping 10s×2 次重试（冻结子进程快速换新）；_ingest_lock 循环亲和+超时活读
+- [x] **#32（PR #39）**：executor 门升级为**只认注册 PlayPlan**（planCoversSkill 同技能/别名/伴随集；registerPlanFromJson 首注册幂等）；引擎 plan op + execute/agent_steps 内联计划；once argv[6] 计划槽；全部测试夹具/CI 冒烟换真计划
+- [x] **#33（PR #40）**：物理页录制器——live wasm 会话（qpos0/qvel0/逐步拖拽力事件）即导出 Run（source='live-session'，playback 直接回放用户轨迹）；场景切换释放旧 GPU 资源+参数重置为新模型默认；Desk3DOverlay 每视图独立订阅（不再全局单 Run 喂所有 3D 纸）
+- [x] **#34（PR #41）**：验收电池（参数→新 Run/Fork-Compare-Trace HTTP/6 并发/重试不重跑/重启恢复，真 app+引擎）+ 服务端 P95 基线（cold 349ms/warm p95 489ms/缓存重试 p95 1ms/隔离 ingest p95 87ms）；**修复 once-runner 两真 bug**：argv 槽位历史错位（parentRunId 血缘从未生效）与跨调用不 restoreRuns（fork 找不到源 Run）
+- 测试基线：pytest **100/100** · vitest **279/279**；工作树 9 个未跟踪草稿（10-06 会话遗留）未引用未删除；浏览器渲染 P95/真实指针验收待验证（无 GUI 约束）
 
 ## 11. 下一阶段（比赛迭代方向）
 
