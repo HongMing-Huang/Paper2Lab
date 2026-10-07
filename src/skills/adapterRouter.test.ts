@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { planFormulaActions, planFormulaQuestion, validateFormulaActions } from './formulaPlan'
 import { routeAdapter } from './adapterRouter'
+import { detectOde } from './paperBinding'
 import { normalizeDocling } from '../ingest/doclingSchema'
 
 const doc = normalizeDocling({
@@ -22,16 +23,84 @@ const kakeyaDoc = normalizeDocling({
   ],
 })
 
-describe('routeAdapter (deterministic)', () => {
-  it('routes the harmonic paper to the formula adapter with the sine formula', () => {
+describe('routeAdapter (deterministic, #22 three-state machine)', () => {
+  it('routes the harmonic paper to the formula adapter with a paper binding', () => {
     const d = routeAdapter(doc)
+    expect(d.status).toBe('ok')
+    if (d.status !== 'ok') return
     expect(d.adapter).toBe('formula')
     expect(d.keyFormula?.latex).toBe('y = a\\sin(bx)')
+    expect(d.binding.kind).toBe('formula')
+    expect(d.binding.anchors).toContain('b')
+    expect(d.binding.objects.map((o) => o.manipulates[0]).sort()).toEqual(['a', 'b'])
+    expect(d.binding.engine).toEqual({ skill: 'formula.plot', view: 'jsxgraph' })
   })
-  it('routes Kakeya papers to the dedicated 3D adapter', () => {
-    expect(routeAdapter(kakeyaDoc).adapter).toBe('kakeya')
+  it('routes Kakeya papers to the dedicated 3D adapter whose objects are tube clusters', () => {
+    const d = routeAdapter(kakeyaDoc)
+    expect(d.status).toBe('ok')
+    if (d.status !== 'ok') return
+    expect(d.adapter).toBe('kakeya')
+    expect(d.binding.engine.view).toBe('kakeya-3d')
+    expect(d.binding.objects[0].type).toBe('cluster')
+    expect(d.binding.conditions.some((c) => c.kind === 'constraint' && c.description.includes('[0,1]³'))).toBe(true)
   })
-  it('returns keyFormula null when nothing is plottable', () => {
+  it('a paper with measured data gets the FIT binding (residual is an observable)', () => {
+    const fitDoc = normalizeDocling({
+      docId: 'd4',
+      title: 'Damped Oscillator Measurements',
+      pages: [{ page: 1, width: 612, height: 792 }],
+      items: [
+        { id: 'a', kind: 'text', page: 1, bbox: { x: 0.1, y: 0.1, w: 0.8, h: 0.05 }, text: 'we fit the model to measured data' },
+        { id: 'b', kind: 'formula', page: 1, bbox: { x: 0.3, y: 0.4, w: 0.4, h: 0.05 }, latex: 'y = a e^{-bx}' },
+      ],
+    })
+    const d = routeAdapter(fitDoc)
+    expect(d.status).toBe('ok')
+    if (d.status !== 'ok') return
+    expect(d.binding.kind).toBe('fit')
+    expect(d.binding.observables.some((o) => o.name.includes('残差'))).toBe(true)
+    expect(d.binding.engine.view).toBe('jsxgraph-fit')
+  })
+  it('an ODE paper WITH initial conditions binds the phase-plane experiment to the paper values', () => {
+    const odeDoc = normalizeDocling({
+      docId: 'd5',
+      title: 'Predator-prey dynamics',
+      pages: [{ page: 1, width: 612, height: 792 }],
+      items: [
+        { id: 'a', kind: 'text', page: 1, bbox: { x: 0.1, y: 0.1, w: 0.8, h: 0.05 }, text: 'population dynamics with x(0) = 2 and y(0) = 0.5' },
+        { id: 'b', kind: 'formula', page: 1, bbox: { x: 0.3, y: 0.4, w: 0.4, h: 0.05 }, latex: '\\dot{x} = x - xy' },
+        { id: 'c', kind: 'formula', page: 1, bbox: { x: 0.3, y: 0.5, w: 0.4, h: 0.05 }, latex: '\\dot{y} = xy - y' },
+      ],
+    })
+    const d = routeAdapter(odeDoc)
+    expect(d.status).toBe('ok')
+    if (d.status !== 'ok') return
+    expect(d.adapter).toBe('ode')
+    expect(d.keyFormula).toBeNull() // never re-skin an ODE paper as a formula demo
+    const initial = d.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> }
+    expect(initial.values).toEqual({ x: 2, y: 0.5 })
+    expect(d.binding.objects[0].type).toBe('initial-state')
+    expect(d.binding.engine).toEqual({ skill: 'ode.solve', view: 'phase-plane-jsxgraph' })
+    expect(d.binding.equations.map((e) => e.anchorId)).toEqual(['b', 'c'])
+  })
+  it('an ODE paper WITHOUT initial conditions → needs-info with concrete questions, not an invented demo', () => {
+    const odeNoIc = normalizeDocling({
+      docId: 'd6',
+      title: 'Stability of the Lotka-Volterra system',
+      pages: [{ page: 1, width: 612, height: 792 }],
+      items: [
+        { id: 'a', kind: 'text', page: 1, bbox: { x: 0.1, y: 0.1, w: 0.8, h: 0.05 }, text: 'we study stability of the equilibrium' },
+        { id: 'b', kind: 'formula', page: 1, bbox: { x: 0.3, y: 0.4, w: 0.4, h: 0.05 }, latex: '\\frac{dx}{dt} = x(1-y)' },
+      ],
+    })
+    const d = routeAdapter(odeNoIc)
+    expect(d.status).toBe('needs-info')
+    if (d.status !== 'needs-info') return
+    expect(d.adapter).toBe('ode')
+    expect(d.questions.length).toBeGreaterThan(0)
+    expect(d.questions[0]).toMatch(/初值/)
+  })
+  it('a bare text paper is explicitly out-of-scope — no formula explorer is conjured', () => {
     const bare = normalizeDocling({
       docId: 'd3',
       title: 'Words',
@@ -40,7 +109,41 @@ describe('routeAdapter (deterministic)', () => {
         { id: 'a', kind: 'text', page: 1, bbox: { x: 0.1, y: 0.1, w: 0.8, h: 0.05 }, text: 'no math here' },
       ],
     })
-    expect(routeAdapter(bare).keyFormula).toBeNull()
+    const d = routeAdapter(bare)
+    expect(d.status).toBe('out-of-scope')
+    if (d.status !== 'out-of-scope') return
+    expect(d.adapter).toBe('none')
+    expect(d.keyFormula).toBeNull()
+    expect(d.reason).toMatch(/不套固定 Demo/)
+  })
+})
+
+describe('PaperBinding builders (#22)', () => {
+  it('detectOde extracts initials via x(0)= / y_0= / (t=0) forms', () => {
+    const doc = normalizeDocling({
+      docId: 'd7',
+      title: 't',
+      pages: [{ page: 1, width: 612, height: 792 }],
+      items: [
+        { id: 'a', kind: 'text', page: 1, bbox: { x: 0.1, y: 0.1, w: 0.8, h: 0.05 }, text: 'y_0 = 1.5 and x(t = 0) = -2' },
+        { id: 'b', kind: 'formula', page: 1, bbox: { x: 0.3, y: 0.4, w: 0.4, h: 0.05 }, latex: '\\dot{y} = -y' },
+      ],
+    })
+    const det = detectOde(doc)
+    expect(det.isOde).toBe(true)
+    expect(det.hasInitial).toBe(true)
+    expect(det.initials).toEqual({ y: 1.5, x: -2 })
+  })
+  it('a dynamics keyword alone (no equations) is NOT an ODE paper', () => {
+    const doc = normalizeDocling({
+      docId: 'd8',
+      title: '摆',
+      pages: [{ page: 1, width: 612, height: 792 }],
+      items: [
+        { id: 'a', kind: 'text', page: 1, bbox: { x: 0.1, y: 0.1, w: 0.8, h: 0.05 }, text: '我们讨论摆的历史' },
+      ],
+    })
+    expect(detectOde(doc).isOde).toBe(false)
   })
 })
 

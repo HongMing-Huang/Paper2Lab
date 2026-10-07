@@ -88,9 +88,13 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       latex,
     })
     const id = explorerStore.nextId()
-    explorerStore.create(id, spec, compiled)
+    // the ROUTER's binding is authoritative for the paper's key formula —
+    // forks/side formulas synthesise their own (playPlan fallback)
+    const d = payload.decision
+    const binding = d.status === 'ok' && d.adapter === 'formula' && d.keyFormula?.id === anchorId ? d.binding : undefined
+    explorerStore.create(id, spec, compiled, undefined, binding)
     return id
-  }, [payload.doc])
+  }, [payload.doc, payload.decision])
 
   /** fork an explorer and grow its experiment sheet + comparison chart below */
   const createForkShape = useCallback(
@@ -577,36 +581,38 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
               {payload.doc.engine} v{payload.doc.doclingVersion} · {payload.doc.items.length} items ·{' '}
               {payload.doc.pages.length} pages
             </span>
-            {payload.decision.adapter === 'kakeya' && (
+            {payload.decision.status === 'ok' && payload.decision.adapter === 'kakeya' && (
               <button type="button" className="desk-btn desk-btn-play" onClick={() => deskBus.emit({ kind: 'goto-kakeya' })}>
                 → 打开 3D Kakeya Lab
               </button>
             )}
-            <button
-              type="button"
-              className="desk-btn"
-              data-testid="grow-3d"
-              onClick={() => {
-                const editor = editorRef.current
-                if (!editor) return
-                if (editor.getShape(ids.current.run3d)) {
-                  message('3D 实验纸已在桌面上')
-                  return
-                }
-                editor.createShape({
-                  id: ids.current.run3d,
-                  type: 'p2l-3d',
-                  x: PAPER_X + PAPER_W + 60,
-                  y: PAPER_Y + 40,
-                  parentId: ids.current.lab,
-                  props: { title: 'Kakeya 3D（Run 驱动 · 拖管族反写 packing）', w: 380, h: 320 },
-                })
-                applyLabLayout(editor, ids.current.lab)
-                message('3D 实验纸已长出 — 画面由 kakeya.geometry Run 驱动，拖动管族反写参数')
-              }}
-            >
-              ◈ 长出 3D 实验纸
-            </button>
+            {payload.decision.status === 'ok' && payload.decision.adapter === 'kakeya' && (
+              <button
+                type="button"
+                className="desk-btn"
+                data-testid="grow-3d"
+                onClick={() => {
+                  const editor = editorRef.current
+                  if (!editor) return
+                  if (editor.getShape(ids.current.run3d)) {
+                    message('3D 实验纸已在桌面上')
+                    return
+                  }
+                  editor.createShape({
+                    id: ids.current.run3d,
+                    type: 'p2l-3d',
+                    x: PAPER_X + PAPER_W + 60,
+                    y: PAPER_Y + 40,
+                    parentId: ids.current.lab,
+                    props: { title: 'Kakeya 3D（Run 驱动 · 拖管族反写 packing）', w: 380, h: 320 },
+                  })
+                  applyLabLayout(editor, ids.current.lab)
+                  message('3D 实验纸已长出 — 画面由 kakeya.geometry Run 驱动，拖动管族反写参数')
+                }}
+              >
+                ◈ 长出 3D 实验纸
+              </button>
+            )}
             <button type="button" className="desk-btn" onClick={() => window.location.reload()}>
               ← 换一篇论文
             </button>
@@ -623,6 +629,28 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
             </button>
           </div>
           {note && <div className="desk-note">{note}</div>}
+          {payload.decision.status === 'needs-info' && (
+            <div className="desk-note" data-testid="needs-info">
+              ⚠ 该论文的实验缺少必要条件，需先补充（不会套用通用 Demo）：
+              <ul>
+                {payload.decision.questions.map((q) => (
+                  <li key={q}>{q}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {payload.decision.status === 'out-of-scope' && (
+            <div className="desk-note" data-testid="out-of-scope">
+              ✖ {payload.decision.reason}
+            </div>
+          )}
+          {payload.decision.status === 'ok' && payload.decision.adapter === 'ode' && (
+            <div className="desk-note" data-testid="ode-pending">
+              该论文已绑定为 ODE 相平面实验（初值{' '}
+              {Object.entries((payload.decision.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> } | undefined)?.values ?? {}).map(([k, v]) => `${k}(0)=${v}`).join('、') || '待定'}）
+              —— 相平面执行面在 #24 交付；此处不套用公式 Demo。
+            </div>
+          )}
           <AgentPhaseStrip />
         </Tldraw>
       </div>
