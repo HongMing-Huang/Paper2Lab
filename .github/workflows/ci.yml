@@ -14,7 +14,11 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # queue, don't cancel: the integration job runs REAL Docling parses and
+  # needs ~20min; cancel-in-progress kept killing it mid-flight whenever a
+  # new push landed, so main never got a completed verdict. PRs still
+  # supersede safely — the newest queued run is the authoritative one.
+  cancel-in-progress: false
 
 jobs:
   frontend:
