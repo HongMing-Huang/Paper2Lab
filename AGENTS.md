@@ -200,6 +200,11 @@ v0.6 补充（2026-10-07，魔搭部署实跑与云侧限制确诊）：
 - [x] **线上已验证**：SPA 200 · /api/ready ready:true（storage=/mnt/workspace）· CI 三段 Actions 全绿（PR #20 合并）
 - [ ] **开放（平台限制确诊）**：免费 FC runtime 对 spawn 的 node 子进程调度不保证——`[engine-boot] spawned pid=N` 后无 engine-ready，网关 120s 取消，多轮复现；本地同镜像同 env（2cpu/1.5g+冻结模拟）全部通过。需付费硬件（paid/ecs.*）或平台工单确认后台子进程调度策略后方可关闭。once-runner 内联路径即为绕开此限制设计，但 spawn 本身仍受调度影响。
 
+v0.1 升级轮补充②（2026-10-07④，真实论文 PDF 验收语料，PR #42）：
+
+- [x] **#24 五收口**：四篇 tectonic 真排版论文（捕食-猎物/阻尼振子/指数衰减拟合/正弦标定）+ 真实 Docling dump 入库 fixtures；管线补缺——normalizeDocling 保留结构化 table{columns,rows}（真实 docling 表非 text）、parseDataPairs 读 table.rows（表头 NaN 跳过）；`src/skills/realPdfs.test.ts` 每类两篇**零合成全链**（路由→绑定→论文 latex 含尾标点原样编译真算：LV 周期/阻尼衰减/拟合 RMSE<0.1）；`test_real_pdf_corpus.py` real_docling 漂移守卫（重解析逐字比对，本地 79.9s 过，快集按名排除）
+- 测试基线：pytest **100/100** · vitest **283/283**
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
