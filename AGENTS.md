@@ -217,6 +217,13 @@ v0.1 升级轮补充④（2026-10-08②，用户报告云侧实测收敛：离�
 - [x] **云端终验**：部署实例上传真实论文 fit-sine-fit.pdf → **离线完整解析 done**（14 items/1 公式/表格 5 数据行）——用户报告的 Errno 101 在云侧与本机（download_docling_models.py）两条路径均已消除
 - 测试基线：pytest **103/103** · vitest **283/283**；魔搭 main=760cbb6 Running
 
+v0.1 升级轮补充⑤（2026-10-08③，真实供应商实配验证：discovery-api × qwen3.8-27b，PR #44）：
+
+- [x] **真实模型服务端执行闭环（此前"未验证"项）**：用户提供 OpenAI 兼容端点 discovery-api.intern-ai.org.cn/v1 + qwen3.8-27b（推理型；chat/流式/tool_calls 实测全支持）。真实回合端到端：backend(openai/qwen3.8-27b)→模型自主 tool call→服务端经引擎桥真算（formula a×2：peak 2.998≈2×1.5，integral 9.85→19.69 精确 2×，comparison 携带真 runId）→结果回填续跑→done。凭据仅 Studio secrets/env，未入源码
+- [x] `agentscope_stream` 增 server_execute：execution:"server" 时模型工具调用直接走引擎桥（计划按 #32 注册），ExternalExecutionResultEvent 回填同一 agent 续跑；浏览器 Lane B 行为不变
+- [x] 实配修出三真 bug：①AgentScope 2.0.9 权限引擎先读 `is_read_only` 类属性——缺 class attr 第一个真实回合即崩；②真实模型失败步骤无界重试 ~40 轮→PAPER2LAB_AGENT_MAX_ROUNDS=6 显式上限；③推理型模型终答只在 reasoning_content→提示要求纯文本终答+兜底 observation（真实 run 数字，标注"模型未给出文字结论"）
+- 魔搭 Studio 已配置 5 个 provider secrets（PROVIDER/BASE_URL/API_KEY/MODEL/TIMEOUT），随部署注入容器
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
