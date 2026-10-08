@@ -86,6 +86,10 @@ _sop_sessions: dict[str, SopSession] = {}
 MAX_ROUNDS = 5
 ALLOWED_TOOLS = ("scientific_execute", "canvas_apply")
 
+# server-execution rounds per agent turn (runaway tool loops abort loudly —
+# reproduced with a real model retrying failing steps ~40 times)
+_MAX_AGENT_SERVER_ROUNDS = int(os.environ.get("PAPER2LAB_AGENT_MAX_ROUNDS", "6"))
+
 # ---- session persistence (restart recovery) ----------------------------------
 # Sessions live in the same DATA_DIR as ingest jobs; a server restart reloads
 # them so answered/issued toolCallIds stay enforced across restarts.
@@ -515,7 +519,9 @@ _SYSTEM_PROMPT = (
     "(ops: {'op':'compare'} | {'op':'highlight-source','anchorId':...} | "
     "{'op':'focus','target':'chart'}).\n"
     "4. Finish with ONE short sentence citing run ids and the measured "
-    "differences the tool returned. Finite-scale results are never proofs."
+    "differences the tool returned. Finite-scale results are never proofs.\n"
+    "5. Your FINAL message must contain a plain-text answer (content), not "
+    "only internal reasoning — reasoning-only replies produce no observation."
 )
 
 
@@ -570,6 +576,10 @@ def _external_tool_cls() -> Any:
 
     class _ExternalTool(ToolBase):
         is_concurrency_safe = False
+        # AgentScope 2.0.9 permission engine reads this class attribute before
+        # any check runs — omitting it crashed the FIRST real-model turn
+        # ("'_ExternalTool' object has no attribute 'is_read_only'")
+        is_read_only = False
 
         def __init__(self, name: str, description: str, input_schema: dict) -> None:
             super().__init__()
@@ -691,42 +701,150 @@ def _evt_type(chunk: Any) -> str:
     return str(getattr(t, "value", t) or "").lower()
 
 
-async def agentscope_stream(session_id: str, inputs: Any) -> AsyncGenerator[dict, None]:
+async def agentscope_stream(
+    session_id: str,
+    inputs: Any,
+    server_execute: bool = False,
+    intent: str = "",
+    context: dict | None = None,
+) -> AsyncGenerator[dict, None]:
+    """stream one agent interaction. With server_execute=True the tool call
+    the REAL model just made is run through the ENGINE BRIDGE headlessly and
+    the result is fed back into the same agent — the turn completes without
+    a browser (#30/#29 real-model integration)."""
+    from agentscope.event import ExternalExecutionResultEvent
+    from agentscope.message import ToolResultBlock, ToolResultState
+
     agent = _agentscope_sessions.get(session_id)
     if agent is None:
         agent = await _build_agent()
         _agentscope_sessions[session_id] = agent
 
-    saw_external = False
     final_text = ""
-    async for chunk in agent.reply_stream(inputs):
-        etype = _evt_type(chunk)
-        if etype == "tool_call_start":
-            yield ev("tool_started", tool=getattr(chunk, "name", ""))
-        elif etype == "require_external_execution":
-            saw_external = True
-            for call in chunk.tool_calls:
-                try:
-                    args = json.loads(call.input) if call.input else {}
-                except json.JSONDecodeError:
-                    args = {"raw": call.input}
-                yield ev(
-                    "require_execution",
-                    toolCallId=call.id,
-                    replyId=chunk.reply_id,
-                    tool=call.name,
-                    args=args,
-                )
-        elif etype == "reply_end" and not saw_external:
-            reason = getattr(chunk, "finished_reason", "completed")
-            yield ev("done", reason=str(reason))
-        elif chunk.__class__.__name__ == "Msg":
-            for blk in getattr(chunk, "content", []) or []:
-                t = getattr(blk, "text", None)
-                if t:
-                    final_text += t
-    if final_text and not saw_external:
+    global _last_ok_summary
+    _last_ok_summary = None
+    rounds = 0
+    while True:
+        rounds += 1
+        if rounds > _MAX_AGENT_SERVER_ROUNDS:
+            yield ev("error", message=f"agent exceeded {_MAX_AGENT_SERVER_ROUNDS} execution rounds (each failing?) — turn aborted")
+            return
+        saw_external = False
+        resume_blocks: list = []
+        async for chunk in agent.reply_stream(inputs):
+            etype = _evt_type(chunk)
+            if etype == "tool_call_start":
+                yield ev("tool_started", tool=getattr(chunk, "name", ""))
+            elif etype == "require_external_execution":
+                saw_external = True
+                for call in chunk.tool_calls:
+                    try:
+                        args = json.loads(call.input) if call.input else {}
+                    except json.JSONDecodeError:
+                        args = {"raw": call.input}
+                    if not server_execute:
+                        # browser is the executor — park and forward (Lane B)
+                        yield ev(
+                            "require_execution",
+                            toolCallId=call.id,
+                            replyId=chunk.reply_id,
+                            tool=call.name,
+                            args=args,
+                        )
+                        continue
+                    # SERVER execution: run the model's own steps through the
+                    # same engine bridge the SOP path uses, then feed back
+                    yield ev(
+                        "tool_started",
+                        toolCallId=call.id,
+                        tool=call.name,
+                        mode="server",
+                    )
+                    ok, payload = await _server_run_tool_call(call, args, intent, context or {})
+                    yield ev("tool_result", toolCallId=call.id, status="ok" if ok else "error",
+                             **({"summary": payload} if ok else {"error": payload}))
+                    if ok and isinstance(payload, dict):
+                        runs = payload.get("runs") or []
+                        cmp_ = payload.get("comparison")
+                        bits = [f"run …{r.get('runId', '')[-8:]} metrics={json.dumps(r.get('metrics', {}), ensure_ascii=False)}" for r in runs[-2:]]
+                        if cmp_:
+                            bits.append(f"comparison={json.dumps(cmp_, ensure_ascii=False)[:200]}")
+                        if bits:
+                            _last_ok_summary = "；".join(bits)
+                    state = ToolResultState.SUCCESS if ok else ToolResultState.ERROR
+                    out = payload if ok else {"error": payload}
+                    resume_blocks.append(
+                        ToolResultBlock(id=call.id, name=call.name or "scientific_execute",
+                                        output=json.dumps(out, ensure_ascii=False)[:8000], state=state)
+                    )
+            elif etype == "reply_end" and not saw_external:
+                reason = getattr(chunk, "finished_reason", "completed")
+                yield ev("done", reason=str(reason))
+            elif chunk.__class__.__name__ == "Msg":
+                for blk in getattr(chunk, "content", []) or []:
+                    t = getattr(blk, "text", None)
+                    if t:
+                        final_text += t
+        if not (server_execute and saw_external and resume_blocks):
+            break
+        # feed the engine results back; the agent continues (bounded rounds)
+        inputs = ExternalExecutionResultEvent(
+            reply_id="", execution_results=resume_blocks,
+        )
+    if final_text:
         yield ev("observation_ready", text=final_text, evidence="AI_INFERENCE")
+    elif server_execute and _last_ok_summary is not None:
+        # reasoning models sometimes end without plain content — surface the
+        # REAL run numbers as the observation instead of nothing (labeled)
+        yield ev(
+            "observation_ready",
+            text=f"模型未给出文字结论；真实计算结果：{_last_ok_summary}",
+            evidence="AI_INFERENCE",
+        )
+
+
+_last_ok_summary: str | None = None
+
+
+async def _server_run_tool_call(call: Any, args: dict, intent: str, context: dict) -> tuple[bool, Any]:
+    """execute a model-proposed tool call through the engine bridge (#29/#30):
+    scientific_execute → agent_steps (plan registered engine-side per #32);
+    canvas_apply → no headless surface in 0.1, answered honestly."""
+    tool = str(getattr(call, "name", "") or args.get("tool") or "scientific_execute")
+    if tool == "canvas_apply":
+        return False, "canvas_apply has no headless surface in 0.1 — answer from the run results"
+    desk = str(args.get("deskKind") or context.get("deskKind") or "formula")
+    steps = args.get("steps") if isinstance(args.get("steps"), list) else []
+    meta = {
+        "kakeya": "kakeya.measure", "ode": "ode.solve", "geometry": "geometry.2d",
+        "mujoco": "mujoco.simulate", "challenge": "challenge.attempt",
+    }.get(desk, "formula.plot")
+    plan = {
+        "planId": f"plan-agent-{uuid.uuid4().hex[:8]}",
+        "goal": f"Agent 提出的实验：{intent[:80]}",
+        "skill": meta,
+        "metrics": [],
+        "nonClaims": ["有限尺度数值实验，不构成证明"],
+        "steps": steps,
+    }
+    from server.engine_bridge import bridge
+
+    base = context.get("base") if isinstance(context.get("base"), dict) else {}
+    if not base and isinstance(context.get("current"), dict):
+        # current carries the live experiment spec when the browser sends it
+        # (expression/parameters/values); a bare values map only works for
+        # desks whose base is parameter-only
+        base = context["current"]
+    try:
+        resp = await bridge.call(
+            "agent_steps", deskKind=desk, steps=steps, base=base,
+            planId=plan["planId"], plan=plan,
+        )
+    except TimeoutError:
+        return False, "engine timed out"
+    if not resp.get("ok"):
+        return False, resp.get("error", "engine error")
+    return True, resp.get("result")
 
 
 # --------------------------------------------------------------------------
@@ -883,8 +1001,12 @@ async def orchestrator_stream(body: "TurnBody", status: Any) -> AsyncGenerator[d
         yield ev("error", message=str(exc))
         return
     emitted = False
+    server_mode = body.context.get("execution") == "server"
     try:
-        agen = agentscope_stream(body.sessionId, agent_input)
+        agen = agentscope_stream(
+            body.sessionId, agent_input,
+            server_execute=server_mode, intent=body.intent, context=body.context,
+        )
         async for e in agen:
             emitted = True
             yield e
