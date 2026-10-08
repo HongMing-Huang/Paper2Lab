@@ -67,6 +67,43 @@
     transform: rotate(360deg);
   }
 }
+.home-parsebar {
+  margin: 14px auto 0;
+  width: 340px;
+  max-width: 80%;
+  height: 6px;
+  border-radius: 3px;
+  background: #eadfca;
+  overflow: hidden;
+  position: relative;
+}
+.home-parsebar-scan {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 34%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(47, 90, 143, 0.15), rgba(47, 90, 143, 0.75), rgba(47, 90, 143, 0.15));
+  animation: home-scan 1.6s ease-in-out infinite;
+}
+/* model warm-up: slower, breathing motion — communicates "heavy, not stuck" */
+.home-parsebar.st-warming .home-parsebar-scan {
+  animation-duration: 3.2s;
+  background: linear-gradient(90deg, rgba(179, 84, 46, 0.12), rgba(179, 84, 46, 0.6), rgba(179, 84, 46, 0.12));
+}
+/* queued: near-still crawl — waiting, not computing */
+.home-parsebar.st-queued .home-parsebar-scan {
+  animation-duration: 5s;
+  opacity: 0.55;
+}
+@keyframes home-scan {
+  0% {
+    left: -34%;
+  }
+  100% {
+    left: 100%;
+  }
+}
 .home-error {
   margin-top: 14px;
   font-size: 13px;

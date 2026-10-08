@@ -32,14 +32,18 @@ def _setup_offline() -> None:
 _setup_offline()
 
 
-def warm_convert(pdf: str, title_hint: str) -> dict:
+def warm_convert(pdf: str, title_hint: str, notify) -> dict:
     """convert via server.ingest_core.convert_pdf — ONE shared code path; the
     converter is cached in THIS process (ingest_core._converter), so only the
-    first request pays the docling model load."""
+    first request pays the docling model load. `notify(stage)` lets the parent
+    surface warming vs parsing (#15 UX)."""
     sys.path.insert(0, os.getcwd())
-    from server.ingest_core import convert_pdf, get_converter
+    from server.ingest_core import convert_pdf, get_converter, _converter
 
-    get_converter()  # eager warm on first use
+    if _converter is None:
+        notify("warming")  # first parse: docling models load (~10-40s)
+        get_converter()
+    notify("parsing")
     return convert_pdf(pdf, title_hint=title_hint)
 
 
@@ -67,7 +71,10 @@ def main() -> int:
                 sys.stderr.write("simulated docling crash\n")
                 return 3
             if mode != "ok":
-                result = warm_convert(str(req["pdf"]), str(req.get("title") or "Untitled paper"))
+                def notify(stage: str, _rid=rid):
+                    sys.stdout.write(json.dumps({"id": _rid, "stage": stage}) + "\n")
+                    sys.stdout.flush()
+                result = warm_convert(str(req["pdf"]), str(req.get("title") or "Untitled paper"), notify)
             else:
                 result = {"docId": "test", "title": str(req.get("title") or "t"), "ok": True}
             sys.stdout.write(json.dumps({"id": rid, "ok": True, "result": result}, ensure_ascii=False) + "\n")

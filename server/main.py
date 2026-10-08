@@ -109,7 +109,9 @@ class IngestJob:
     def __init__(self, job_id: str, filename: str) -> None:
         self.job_id = job_id
         self.filename = filename
-        self.status: str = "pending"  # pending | running | done | error
+        self.status: str = "pending"  # pending | queued | running | done | timeout | error
+        # #15 UX: stage refines "running" — warming (model load) | parsing
+        self.stage: str | None = None
         self.created_at = time.time()
         self.finished_at: float | None = None
         self.error: str | None = None
@@ -120,6 +122,7 @@ class IngestJob:
             "jobId": self.job_id,
             "filename": self.filename,
             "status": self.status,
+            "stage": self.stage,
             "createdAt": self.created_at,
             "finishedAt": self.finished_at,
             "error": self.error,
@@ -146,6 +149,7 @@ def _restore_jobs() -> None:
             continue
         job = IngestJob(str(data.get("jobId") or path.stem.removeprefix("job-")), str(data.get("filename", "")))
         job.status = str(data.get("status", "error"))
+        job.stage = data.get("stage")
         job.created_at = float(data.get("createdAt", 0))
         job.finished_at = data.get("finishedAt")
         job.error = data.get("error")
@@ -303,7 +307,12 @@ class _WarmIngestWorker:
                 raise RuntimeError("ingest worker did not boot in 30s")
         return self._proc
 
-    async def convert(self, pdf_path: str, title_hint: str, test_mode: str) -> dict[str, Any]:
+    async def convert(
+        self, pdf_path: str, title_hint: str, test_mode: str,
+        on_stage=None,
+    ) -> dict[str, Any]:
+        """on_stage(stage) fires when the worker reports warming/parsing so the
+        job (and the UI) can tell model-load from actual parsing (#15 UX)."""
         async with self._lock:
             proc = await self._ensure()
             self._rid += 1
@@ -319,22 +328,40 @@ class _WarmIngestWorker:
                 proc = await self._respawn()
                 proc.stdin.write(req)
                 await proc.stdin.drain()
-            try:
-                raw = await asyncio.wait_for(proc.stdout.readline(), timeout=_ingest_timeout_s())
-            except asyncio.TimeoutError:
-                await self._kill()
-                raise _IngestTimeout(
-                    f"docling exceeded {_ingest_timeout_s():.0f}s — warm worker killed (pid {proc.pid})"
-                ) from None
-            if not raw:
-                err = await proc.stderr.read() if proc.stderr else b""
-                await self._kill()
-                raise RuntimeError(f"ingest worker died: {err.decode('utf-8', 'replace')[-300:]}")
-            msg = json.loads(raw)
-            if msg.get("id") != rid:
-                # protocol desync — replace the worker and fail loudly
-                await self._kill()
-                raise RuntimeError(f"ingest worker response desync ({msg.get('id')} != {rid})")
+            loop = asyncio.get_event_loop()
+            deadline = loop.time() + _ingest_timeout_s()
+            msg: dict[str, Any] = {}
+            while True:
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    await self._kill()
+                    raise _IngestTimeout(
+                        f"docling exceeded {_ingest_timeout_s():.0f}s — warm worker killed (pid {proc.pid})"
+                    )
+                try:
+                    raw = await asyncio.wait_for(proc.stdout.readline(), timeout=remaining)
+                except asyncio.TimeoutError:
+                    await self._kill()
+                    raise _IngestTimeout(
+                        f"docling exceeded {_ingest_timeout_s():.0f}s — warm worker killed (pid {proc.pid})"
+                    ) from None
+                if not raw:
+                    err = await proc.stderr.read() if proc.stderr else b""
+                    await self._kill()
+                    raise RuntimeError(f"ingest worker died: {err.decode('utf-8', 'replace')[-300:]}")
+                try:
+                    msg = json.loads(raw)
+                except ValueError:
+                    continue
+                if msg.get("stage"):
+                    if on_stage:
+                        on_stage(str(msg["stage"]))
+                    continue
+                if msg.get("id") != rid:
+                    # protocol desync — replace the worker and fail loudly
+                    await self._kill()
+                    raise RuntimeError(f"ingest worker response desync ({msg.get('id')} != {rid})")
+                break
             if not msg.get("ok"):
                 raise RuntimeError(f"docling failed: {msg.get('error', 'unknown')}")
             return msg["result"]
@@ -395,7 +422,12 @@ async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") ->
             raise _IngestTimeout(f"docling exceeded {_ingest_timeout_s()}s (thread finished)") from exc
 
     test_mode = os.environ.get("PAPER2LAB_TEST_CONVERT", "")
-    return await _warm_worker.convert(pdf_path, title_hint, test_mode)
+    on_stage = None
+    if job is not None:
+        def on_stage(stage: str, _job=job) -> None:
+            _job.stage = stage
+            _job.persist()
+    return await _warm_worker.convert(pdf_path, title_hint, test_mode, on_stage)
 
 
 @app.post("/api/ingest", status_code=202)
@@ -459,6 +491,10 @@ def ingest_status(job_id: str) -> dict:
     if not job:
         raise HTTPException(status_code=404, detail=f"unknown job: {job_id}")
     out = job.to_json()
+    # #15 UX: the poller gets live stage, elapsed time and queue depth — a
+    # static spinner for 20-60s reads as "stuck" and is the top complaint
+    out["elapsedMs"] = int((time.time() - job.created_at) * 1000)
+    out["queueDepth"] = sum(1 for j in _jobs.values() if j.status == "queued")
     if job.result:
         out["document"] = job.result
     return out
