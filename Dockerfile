@@ -78,6 +78,9 @@ RUN pip install --no-cache-dir --timeout 120 --retries 5 -r server/requirements.
 COPY --from=node:22-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=engine-deps /app/node_modules/ node_modules/
 COPY --from=engine-deps /app/scripts/engine_server.bundle.mjs scripts/engine_server.bundle.mjs
+# the INLINE once-runner is the FC-primary path — missing it forced the cloud
+# into the stdio bridge (which the FC scheduler starves): execute 500s
+COPY --from=engine-deps /app/scripts/engine_once.mjs scripts/engine_once.mjs
 
 # backend + engine sources
 COPY server/ server/

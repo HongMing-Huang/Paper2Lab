@@ -130,6 +130,7 @@ async def _execute_raw(req: ExecuteRequest) -> dict[str, Any]:
         raise HTTPException(status_code=504, detail="engine execution timed out") from None
     if not resp.get("ok"):
         raise HTTPException(status_code=502, detail=f"engine error: {resp.get('error', 'unknown')}")
+    # (bridge fallback only reached when the once-bundle is absent)
     return {"outcome": resp["outcome"]}
 
 
