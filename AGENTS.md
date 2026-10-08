@@ -198,7 +198,7 @@ v0.6 补充（2026-10-07，魔搭部署实跑与云侧限制确诊）：
 - [x] **ms-studio-deploy 技能落地**：`npx skills add` 注册表无此技能（npm skills ≠ 魔搭技能中心）——从官方 GitHub `modelscope/modelscope-skills` 装入 `~/.agents/skills/ms-studio-deploy/`；按 10 步 OpenAPI 工作流完成：Studio `Jack0702/paper2lab`（Docker 型/免费 2v-cpu-8g/已公开 https://jack0702-paper2lab.ms.show）创建、git 推送（--allow-unrelated-histories+README 冲突 keep-ours）、deploy、build/run 日志诊断多轮
 - [x] **云侧 Bug 修复链**（线上 504 根因逐层剥）：① 首次构建缺 bundle（Dockerfile.smoke 未产出 engine_once.mjs）② YAML step 名裸冒号 ③ tsx 冷启动 >300s（弱 CPU）→ esbuild 预打包 `scripts/engine_once.mjs`+`engine_server.bundle.mjs` ④ serverless 内联执行路径（`engine_api.execute` 优先 spawn 短命 `engine_once.mjs`，进程生命周期完全在 HTTP 调用内——**本地容器模拟 FC 冻结 130s 后 0.12s 即答**）⑤ `engine_bridge._guard()` 修 asyncio.Lock 跨事件循环绑定
 - [x] **线上已验证**：SPA 200 · /api/ready ready:true（storage=/mnt/workspace）· CI 三段 Actions 全绿（PR #20 合并）
-- [ ] **开放（平台限制确诊）**：免费 FC runtime 对 spawn 的 node 子进程调度不保证——`[engine-boot] spawned pid=N` 后无 engine-ready，网关 120s 取消，多轮复现；本地同镜像同 env（2cpu/1.5g+冻结模拟）全部通过。需付费硬件（paid/ecs.*）或平台工单确认后台子进程调度策略后方可关闭。once-runner 内联路径即为绕开此限制设计，但 spawn 本身仍受调度影响。
+- [x] **已解决（2026-10-08 确诊非平台限制，是镜像缺件）**：所谓"FC 调度不保证"实为 ①最终镜像缺 engine_once.mjs（execute 被迫走 stdio 桥）②最终镜像缺 vendored MuJoCo scenes（**两个** engine bundle 导入期 findScenesDir 即崩，stderr 只剩 'Node.js v22' 尾巴误导诊断）。修复后云端实测：execute sin(1)=0.8415 / 1.5s、mujoco 100 步 / 1.7s、ready 全绿、真实模型全回合完成。
 
 v0.1 升级轮补充②（2026-10-07④，真实论文 PDF 验收语料，PR #42）：
 
@@ -223,6 +223,12 @@ v0.1 升级轮补充⑤（2026-10-08③，真实供应商实配验证：discover
 - [x] `agentscope_stream` 增 server_execute：execution:"server" 时模型工具调用直接走引擎桥（计划按 #32 注册），ExternalExecutionResultEvent 回填同一 agent 续跑；浏览器 Lane B 行为不变
 - [x] 实配修出三真 bug：①AgentScope 2.0.9 权限引擎先读 `is_read_only` 类属性——缺 class attr 第一个真实回合即崩；②真实模型失败步骤无界重试 ~40 轮→PAPER2LAB_AGENT_MAX_ROUNDS=6 显式上限；③推理型模型终答只在 reasoning_content→提示要求纯文本终答+兜底 observation（真实 run 数字，标注"模型未给出文字结论"）
 - 魔搭 Studio 已配置 5 个 provider secrets（PROVIDER/BASE_URL/API_KEY/MODEL/TIMEOUT），随部署注入容器
+
+v0.1 升级轮补充⑥（2026-10-08④，云侧引擎修复 + 真实 AI 云端上线，PR #44 + 3 hotfix commit）：
+
+- [x] **云侧引擎全通（此前误诊为 FC 平台限制）**：构建/运行日志逐层确诊——①最终镜像漏 COPY engine_once.mjs（云 execute 落入 stdio 桥→冻结饿死）②漏 vendored MuJoCo scenes：engine bundle 导入期 findScenesDir 抛错即崩，stderr 尾巴只剩 Node 崩溃横幅误导为"调度问题"。修复（engine_once.mjs + scripts/scenes 随镜像）：云端 execute **sin(1)=0.8415/1.5s**、**mujoco 月球重力 100 步/1.7s**、/api/ready 全绿（engine booted:true）
+- [x] **真实 AI 云端上线**：Studio secrets 配置 provider/openai 兼容 discovery-api.intern-ai.org.cn/v1 + qwen3.8-27b；云端 /api/agent/health backend=agentscope-openai·aiVerified=true；**云侧真实模型完整回合**：模型自主 tool call→引擎真算（peak 2.998≈2×1.5、integral 9.85→19.69 精确 2×、comparison 真 runId）→canvas_apply 诚实拒绝→done+observation
+- PR #44 服务端执行闭环 + AgentScope 2.0.9 三兼容修复（is_read_only 类属性/无界重试上限 6/推理模型兜底 observation）
 
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
