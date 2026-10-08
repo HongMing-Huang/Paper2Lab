@@ -1,49 +1,82 @@
-"""Isolated Docling conversion process (#31).
+"""Warm, KILLABLE Docling worker process (#31 speed + offline fix).
 
-Usage: python -m server.ingest_worker <pdf-path> [title-hint]
+Long-lived line-protocol worker: the converter is loaded ONCE and reused for
+every request (the old per-parse spawn paid the full docling model load on
+EVERY conversion — tens of seconds); the parent still enforces per-job
+timeouts and can KILL the whole process on overrun (a hung parse dies, the
+next request gets a fresh worker).
 
-Prints the ingest result JSON to stdout, exit 0 on success; on failure prints
-{"error": "..."} with exit 1 (docling logs stay on stderr). The point of a
-separate process: a TIMED-OUT conversion can be KILLED — a docling thread
-could only be abandoned, haunting the executor pool and the serialization
-slot. Test hooks (no credentials, test-only): PAPER2LAB_TEST_CONVERT
-= ok | hang | crash make the worker behave deterministically for tests.
+Protocol (one JSON object per line, both directions):
+  request : {"id": <int>, "pdf": <path>, "title": <str>, "testMode": "ok"|"hang"|"crash"|""}
+  response: {"id": <int>, "ok": true, "result": {...}} | {"id": <int>, "ok": false, "error": "..."}
+
+Offline (#15 user report): when PAPER2LAB_DOCLING_OFFLINE=1 the worker sets
+HF_HUB_OFFLINE=1 BEFORE importing docling — combined with a pre-populated
+HF cache or DOCLING_ARTIFACTS_PATH this removes the
+"Network is unreachable / cannot find snapshot on the Hub" failure entirely.
 """
+from __future__ import annotations
+
 import json
 import os
 import sys
 import time
 
 
+def _setup_offline() -> None:
+    if os.environ.get("PAPER2LAB_DOCLING_OFFLINE", "0") == "1":
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
+
+_setup_offline()
+
+
+def warm_convert(pdf: str, title_hint: str) -> dict:
+    """convert via server.ingest_core.convert_pdf — ONE shared code path; the
+    converter is cached in THIS process (ingest_core._converter), so only the
+    first request pays the docling model load."""
+    sys.path.insert(0, os.getcwd())
+    from server.ingest_core import convert_pdf, get_converter
+
+    get_converter()  # eager warm on first use
+    return convert_pdf(pdf, title_hint=title_hint)
+
+
 def main() -> int:
-    if len(sys.argv) < 2:
-        sys.stdout.write(json.dumps({"error": "usage: ingest_worker <pdf> [title]"}))
-        return 2
-    mode = os.environ.get("PAPER2LAB_TEST_CONVERT", "")
-    if mode:
-        # test hooks — deterministic behaviors for process-isolation tests
-        if mode == "hang":
-            time.sleep(120)
-            return 0
-        if mode == "crash":
-            sys.stderr.write("simulated docling crash\n")
-            return 3
-        if mode == "ok":
-            sys.stdout.write(json.dumps({"docId": "test", "title": sys.argv[2] if len(sys.argv) > 2 else "t", "ok": True}))
-            return 0
-
-    from server.ingest_core import convert_pdf
-
-    try:
-        result = convert_pdf(
-            sys.argv[1],
-            title_hint=sys.argv[2] if len(sys.argv) > 2 else "Untitled paper",
-        )
-        sys.stdout.write(json.dumps(result, ensure_ascii=False))
-        return 0
-    except Exception as exc:  # noqa: BLE001 — the failure IS the payload
-        sys.stdout.write(json.dumps({"error": f"{type(exc).__name__}: {exc}"[:500]}, ensure_ascii=False))
-        return 1
+    print(json.dumps({"event": "worker-ready", "pid": os.getpid()}), flush=True)
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            req = json.loads(line)
+        except ValueError:
+            sys.stdout.write(json.dumps({"id": -1, "ok": False, "error": "bad request line"}) + "\n")
+            sys.stdout.flush()
+            continue
+        rid = req.get("id", -1)
+        mode = str(req.get("testMode") or "")
+        try:
+            if mode == "hang":
+                time.sleep(300)  # killed by the parent's timeout
+                sys.stdout.write(json.dumps({"id": rid, "ok": True, "result": {}}) + "\n")
+                sys.stdout.flush()
+                continue
+            if mode == "crash":
+                sys.stderr.write("simulated docling crash\n")
+                return 3
+            if mode != "ok":
+                result = warm_convert(str(req["pdf"]), str(req.get("title") or "Untitled paper"))
+            else:
+                result = {"docId": "test", "title": str(req.get("title") or "t"), "ok": True}
+            sys.stdout.write(json.dumps({"id": rid, "ok": True, "result": result}, ensure_ascii=False) + "\n")
+        except Exception as exc:  # noqa: BLE001 — the failure IS the payload
+            sys.stdout.write(
+                json.dumps({"id": rid, "ok": False, "error": f"{type(exc).__name__}: {exc}"[:500]}) + "\n"
+            )
+        sys.stdout.flush()
+    return 0
 
 
 if __name__ == "__main__":
