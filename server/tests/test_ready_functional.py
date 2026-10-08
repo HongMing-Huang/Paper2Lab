@@ -73,23 +73,35 @@ class TestReadyEnginePing:
 
 class TestReadyDoclingArtifacts:
     @pytest.mark.asyncio
-    async def test_flag_on_missing_artifacts_fails_ready(self, monkeypatch):
+    async def test_flag_on_missing_artifacts_fails_ready(self, monkeypatch, tmp_path):
         monkeypatch.setenv("PAPER2LAB_REQUIRE_MODEL_ARTIFACTS", "1")
 
-        class FakeSettings:
-            artifacts_path = None
-
-        import docling.datamodel.settings as ds
-
-        monkeypatch.setattr(ds, "settings", FakeSettings, raising=False)
+        monkeypatch.setenv("HF_HOME", str(tmp_path))
         from server.main import app
 
         async with LifespanManager(app) as mgr:
             async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
                 resp = await client.get("/api/ready")
         body = resp.json()
-        assert body["checks"].get("doclingArtifacts", {}).get("ok") is False
-        assert "not pre-downloaded" in body["checks"]["doclingArtifacts"]["error"]
+        assert body["checks"].get("doclingModels", {}).get("ok") is False
+        assert "not pre-downloaded" in body["checks"]["doclingModels"]["error"]
+
+    @pytest.mark.asyncio
+    async def test_flag_on_with_warmed_hf_cache_passes(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("PAPER2LAB_REQUIRE_MODEL_ARTIFACTS", "1")
+        hub = tmp_path / "hub" / "models--docling-project--docling-layout-heron"
+        hub.mkdir(parents=True)
+        from server.main import app
+
+        async with LifespanManager(app) as mgr:
+            async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
+                resp = await client.get("/api/ready")
+        checks = resp.json()["checks"]
+        assert checks["doclingModels"]["ok"] is True
+        # a docling-project model is listed from the pointed-at cache (dev
+        # machines carry their own warm cache too — both are valid evidence)
+        listed = " ".join(checks["doclingModels"]["models"])
+        assert "docling-project" in listed
 
     @pytest.mark.asyncio
     async def test_flag_off_default_keeps_dev_ready(self):
@@ -99,5 +111,5 @@ class TestReadyDoclingArtifacts:
         async with LifespanManager(app) as mgr:
             async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
                 resp = await client.get("/api/ready")
-        assert "doclingArtifacts" not in resp.json()["checks"]
+        assert "doclingModels" not in resp.json()["checks"]
         assert json.dumps(resp.json())  # serializable

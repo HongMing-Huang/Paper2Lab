@@ -33,12 +33,14 @@ def main() -> int:
 
     if args.artifacts:
         art = pathlib.Path(args.artifacts).resolve()
-        (art / "hf").mkdir(parents=True, exist_ok=True)
-        # portable dir must capture BOTH model families: docling-native
-        # layout/tableformer respect DOCLING_ARTIFACTS_PATH, while Hub models
-        # (CodeFormula …) respect HF_HOME — set both before any docling import
-        os.environ["DOCLING_ARTIFACTS_PATH"] = str(art)
-        os.environ["HF_HOME"] = str(art / "hf")
+        art.mkdir(parents=True, exist_ok=True)
+        # SINGLE mechanism (#43 hotfix): docling ≥2.13 pulls ALL its models
+        # (layout-heron, tableformer, CodeFormula…) through the HF hub into
+        # HF_HOME. Setting artifacts_path here would make docling look for a
+        # manual layout INSIDE that dir and miss the hub-downloaded ones
+        # (cloud repro: "Model 'docling-project/docling-layout-heron' not
+        # found in artifacts"). So: warm ONE hub cache, point HF_HOME at it.
+        os.environ["HF_HOME"] = str(art)
     else:
         art = None
 
@@ -57,9 +59,11 @@ def main() -> int:
 
     print("MODELS_WARM")
     if art is not None:
-        sub = sorted(p.name for p in art.iterdir())
-        print(f"artifacts dir: {art} ({len(sub)} entries: {', '.join(sub[:8])})")
-        print("export DOCLING_ARTIFACTS_PATH=" + str(art))
+        hub = art / "hub"
+        models = sorted(p.name for p in hub.glob("models--*")) if hub.exists() else []
+        print(f"HF cache dir: {art} ({len(models)} models: {', '.join(models[:6])})")
+        assert any("docling" in m for m in models), "docling models did not land in HF_HOME"
+        print("export HF_HOME=" + str(art))
         print("export PAPER2LAB_DOCLING_OFFLINE=1   # workers never touch the Hub")
     else:
         print("HF cache warmed — parses now work offline after the first run.")

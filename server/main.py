@@ -226,20 +226,22 @@ async def ready() -> dict:
     # flag is set (Docker sets it), ready FAILS if the artifacts path is
     # missing/empty instead of silently downloading on the first parse.
     if os.environ.get("PAPER2LAB_REQUIRE_MODEL_ARTIFACTS", "0") == "1":
+        # single mechanism (#43 hotfix): ALL docling models live in the HF hub
+        # cache under HF_HOME — check for docling model entries there
+        # (artifacts_path-based layouts missed the hub-downloaded models)
         try:
-            from docling.datamodel.settings import settings as docling_settings
-
-            artifacts = getattr(docling_settings, "artifacts_path", None)
-            if artifacts is None or not Path(str(artifacts)).exists():
-                checks["doclingArtifacts"] = {
-                    "ok": False,
-                    "error": f"model artifacts not pre-downloaded at {artifacts}",
-                }
+            hf_home = os.environ.get("HF_HOME") or str(Path.home() / ".cache" / "huggingface")
+            hub = Path(hf_home) / "hub"
+            models = sorted(p.name for p in hub.glob("models--docling-project--*")) if hub.exists() else []
+            if models:
+                checks["doclingModels"] = {"ok": True, "cache": hf_home, "models": models[:6]}
             else:
-                n = sum(1 for _ in Path(str(artifacts)).iterdir())
-                checks["doclingArtifacts"] = {"ok": n > 0, "path": str(artifacts), "entries": n}
+                checks["doclingModels"] = {
+                    "ok": False,
+                    "error": f"docling models not pre-downloaded under {hub}",
+                }
         except Exception as exc:  # noqa: BLE001
-            checks["doclingArtifacts"] = {"ok": False, "error": str(exc)[:200]}
+            checks["doclingModels"] = {"ok": False, "error": str(exc)[:200]}
     ready = all(c["ok"] for c in checks.values())
     return JSONResponse({"ready": ready, "checks": checks}, status_code=200 if ready else 503)
 

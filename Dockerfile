@@ -83,8 +83,7 @@ COPY server/ server/
 COPY scripts/download_docling_models.py scripts/download_docling_models.py
 RUN python scripts/download_docling_models.py --artifacts /opt/docling-models || \
     python scripts/download_docling_models.py
-ENV DOCLING_ARTIFACTS_PATH=/opt/docling-models \
-    HF_HOME=/opt/docling-models/hf \
+ENV HF_HOME=/opt/docling-models \
     PAPER2LAB_DOCLING_OFFLINE=1 \
     PAPER2LAB_REQUIRE_MODEL_ARTIFACTS=1
 COPY tsconfig.json ./
