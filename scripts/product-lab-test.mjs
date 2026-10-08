@@ -65,7 +65,10 @@ async function main() {
     await page.locator('button.home-drop').click()
     const chooser = await chooserP
     await chooser.setFiles([SAMPLE])
-    await page.waitForSelector('.lab-frame', { timeout: 180000 })
+    // same REAL-parse reality as the formula test: on the shared CI runner a
+    // 2-page PDF takes minutes (CPU OCR+layout); locally ~45s warm. See
+    // product-formula-test.mjs — 480s keeps CI honest without flaking.
+    await page.waitForSelector('.lab-frame', { timeout: 480000 })
     console.log('[desk] uploaded → desk mounted, lab frame present')
 
     // 1. paper lives inside the frame
