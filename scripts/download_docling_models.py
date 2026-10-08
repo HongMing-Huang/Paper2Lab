@@ -49,14 +49,22 @@ def main() -> int:
 
     get_converter()  # builds the pipeline → pulls layout/tableformer/formula models
     # warm with a REAL, parseable PDF from the corpus so model loads and
-    # layout+formula inference both actually run
+    # layout+formula inference both actually run — a missing/unparseable warm
+    # PDF is FATAL (models would not be pinned and the offline runtime dies)
     warm_pdf = REPO / "public" / "papers" / "fit-sine-fit.pdf"
-    try:
-        doc = convert_pdf(str(warm_pdf), title_hint="warmup")
-        print(f"warm parse ok: {len(doc.get('items', []))} items")
-    except Exception as exc:  # noqa: BLE001 — models still landed even if this parse hiccups
-        print(f"warm convert note: {exc}")
+    if not warm_pdf.exists():
+        print(f"warm PDF missing: {warm_pdf}", file=sys.stderr)
+        return 1
+    doc = convert_pdf(str(warm_pdf), title_hint="warmup")
+    print(f"warm parse ok: {len(doc.get('items', []))} items")
 
+    # verify the docling model family actually landed in the TARGET cache —
+    # "warmed" without evidence once shipped an empty cache
+    cache_root = pathlib.Path(os.environ.get("HF_HOME") or pathlib.Path.home() / ".cache" / "huggingface")
+    models = sorted(p.name for p in (cache_root / "hub").glob("models--docling-project--*"))
+    if not models:
+        print(f"no docling models landed in {cache_root / 'hub'}", file=sys.stderr)
+        return 1
     print("MODELS_WARM")
     if art is not None:
         hub = art / "hub"

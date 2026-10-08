@@ -81,8 +81,11 @@ COPY server/ server/
 # land under /opt/docling-models (docling-native + HF_HOME); the ready check
 # then enforces their presence (PAPER2LAB_REQUIRE_MODEL_ARTIFACTS=1).
 COPY scripts/download_docling_models.py scripts/download_docling_models.py
-RUN python scripts/download_docling_models.py --artifacts /opt/docling-models || \
-    python scripts/download_docling_models.py
+# the warm PDF must exist at THIS layer (papers are copied with dist later)
+COPY public/papers/fit-sine-fit.pdf public/papers/fit-sine-fit.pdf
+# hard-fail bake: no || fallback (a fallback once silently warmed the wrong
+# cache and the runtime died with "cached snapshot folder not found")
+RUN HF_HOME=/opt/docling-models python scripts/download_docling_models.py
 ENV HF_HOME=/opt/docling-models \
     PAPER2LAB_DOCLING_OFFLINE=1 \
     PAPER2LAB_REQUIRE_MODEL_ARTIFACTS=1
