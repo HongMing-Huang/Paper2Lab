@@ -89,6 +89,9 @@ class TestReadyDoclingArtifacts:
     @pytest.mark.asyncio
     async def test_flag_on_with_warmed_hf_cache_passes(self, monkeypatch, tmp_path):
         monkeypatch.setenv("PAPER2LAB_REQUIRE_MODEL_ARTIFACTS", "1")
+        # point HF_HOME at the fixture cache — without this the ready check
+        # reads the runner's real ~/.cache/huggingface (empty on CI) and fails
+        monkeypatch.setenv("HF_HOME", str(tmp_path))
         hub = tmp_path / "hub" / "models--docling-project--docling-layout-heron"
         hub.mkdir(parents=True)
         from server.main import app
