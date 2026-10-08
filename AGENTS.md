@@ -211,6 +211,12 @@ v0.1 升级轮补充③（2026-10-08，用户报告修复：解析慢+离线 Err
 - [x] **解析提速**：#38 的每 PDF 全新进程令模型每次重载——`ingest_worker` 改**常驻行协议 warm worker**（converter 加载一次复用，首载后秒级）；per-job 超时仍整体 KILL（可杀不丢）+ 自愈重启 + 响应 id 失配换新；实测 HF_HUB_OFFLINE+暖缓存下真实论文离线解析 13 items/2 公式
 - 测试基线：pytest **102/102** · vitest **283/283**（warm 同 pid 复用/杀后换新/crash 尾巴入消息）
 
+v0.1 升级轮补充④（2026-10-08②，用户报告云侧实测收敛：离线解析全通，3 个 hotfix）：
+
+- [x] **云侧解析三连修（构建日志逐层确诊）**：① 烘焙层早于 papers COPY 且 `||` 回退掩盖失败（假 MODELS_WARM 带空缓存上线）→ warm PDF 随层 COPY + 硬失败 + 两模式断言 `models--docling-project--*` 落盘；② DOCLING_ARTIFACTS_PATH 手工布局找不到 hub 模型 → **单机制 HF_HOME**（本机验证 3 模型族全落目标目录）；③ docling-ibm-models 依赖非 headless opencv，slim 镜像缺 libxcb/libgl → apt 层补齐
+- [x] **云端终验**：部署实例上传真实论文 fit-sine-fit.pdf → **离线完整解析 done**（14 items/1 公式/表格 5 数据行）——用户报告的 Errno 101 在云侧与本机（download_docling_models.py）两条路径均已消除
+- 测试基线：pytest **103/103** · vitest **283/283**；魔搭 main=760cbb6 Running
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
