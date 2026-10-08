@@ -75,12 +75,25 @@ jobs:
         run: |
           # NOTE: PlayPlans register idempotently BY planId — first registration
           # wins (#32), so each skill must carry its OWN distinct planId.
+          # Engine runs as an esbuild bundle (same artifact shape the python
+          # bridge and Docker ship). Two hard requirements verified locally:
+          #   1) bundle must live INSIDE the repo — --packages=external keeps
+          #      runtime `import '@mujoco/mujoco'`, which cannot resolve from
+          #      /tmp (this is what killed the step in <1s with empty stdout);
+          #   2) rebuilt from HEAD so the smoke tests current source.
+          ESB=$(echo ./node_modules/.pnpm/esbuild@*/node_modules/esbuild/bin/esbuild)
+          "$ESB" scripts/engine_server.ts \
+            --bundle --packages=external --platform=node --format=esm \
+            --outfile=scripts/engine-smoke.bundle.mjs --log-level=warning
           printf '%s\n' \
-            '{"id":1,"op":"execute","skill":"formula.evaluate","input":{"expression":["Sin","x"],"bindings":{"x":1}},"planId":"ci-f","plan":{"planId":"ci-f","skill":"formula.evaluate","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
-            '{"id":2,"op":"execute","skill":"mujoco.simulate","input":{"scene":"simple.xml","steps":50,"sampleEvery":25},"planId":"ci-m","plan":{"planId":"ci-m","skill":"mujoco.simulate","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
-            '{"id":3,"op":"execute","skill":"challenge.attempt","input":{"challenge":"pendulum","changes":{"length":0.994}},"planId":"ci-c","plan":{"planId":"ci-c","skill":"challenge.attempt","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
+            '{"id":1,"op":"execute","skill":"formula.evaluate","input":{"expression":["Sin","x"],"bindings":{"x":1}},"planId":"ci-f","plan":{"planId":"ci-f","skill":"formula.evaluate","goal":"ci smoke","metrics":[],"nonClaims":[]}}' \
+            '{"id":2,"op":"execute","skill":"mujoco.simulate","input":{"scene":"simple.xml","steps":50,"sampleEvery":25},"planId":"ci-m","plan":{"planId":"ci-m","skill":"mujoco.simulate","goal":"ci smoke","metrics":[],"nonClaims":[]}}' \
+            '{"id":3,"op":"execute","skill":"challenge.attempt","input":{"challenge":"pendulum","changes":{"length":0.994}},"planId":"ci-c","plan":{"planId":"ci-c","skill":"challenge.attempt","goal":"ci smoke","metrics":[],"nonClaims":[]}}' \
             '{"id":4,"op":"shutdown"}' \
-            | node --import tsx scripts/engine_server.ts > /tmp/engine-out.jsonl
+            | node scripts/engine-smoke.bundle.mjs > /tmp/engine-out.jsonl; rc=$?
+          echo "--- engine-out.jsonl (exit=$rc) ---"; cat /tmp/engine-out.jsonl
+          rm -f scripts/engine-smoke.bundle.mjs
+          test "$rc" -eq 0
           grep -q '"status":"ok"' /tmp/engine-out.jsonl
           test "$(grep -c '"status":"ok"' /tmp/engine-out.jsonl)" -ge 3
           ! grep -q '"status":"error"' /tmp/engine-out.jsonl
