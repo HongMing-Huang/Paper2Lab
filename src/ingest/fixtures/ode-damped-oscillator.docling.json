@@ -1,0 +1,171 @@
+{
+ "docId": "doc-52f5c3d9ae",
+ "engine": "docling",
+ "doclingVersion": "2.131.0",
+ "title": "ode-damped-oscillator",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612.0,
+   "height": 792.0
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.24786,
+    "y": 0.15156,
+    "w": 0.50428,
+    "h": 0.04941
+   },
+   "text": "Free Decay of a Linearly Damped Oscillator: A Benchmark Note"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.46162,
+    "y": 0.22284,
+    "w": 0.07677,
+    "h": 0.01509
+   },
+   "text": "C. Bench"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44393,
+    "y": 0.25372,
+    "w": 0.11215,
+    "h": 0.01509
+   },
+   "text": "October 2026"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.46419,
+    "y": 0.3066,
+    "w": 0.07163,
+    "h": 0.01258
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i4",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.17398,
+    "y": 0.3305,
+    "w": 0.65205,
+    "h": 0.04277
+   },
+   "text": "A unit-mass, unit-stiffness oscillator with viscous damping coefficient 0.5 is released from rest conditions in the bench fixture. We record the decay envelope and the zero crossings of the displacement x with velocity y."
+  },
+  {
+   "id": "p1-i5",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.39965,
+    "w": 0.27068,
+    "h": 0.01811
+   },
+   "text": "1 Equations of motion"
+  },
+  {
+   "id": "p1-i6",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.43391,
+    "w": 0.36445,
+    "h": 0.01377
+   },
+   "text": "With the state vector (x, y) the dynamics read"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.47586,
+    "y": 0.46485,
+    "w": 0.39473,
+    "h": 0.01377
+   },
+   "latex": "\\dot { x } = y ,"
+  },
+  {
+   "id": "p1-i8",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.44047,
+    "y": 0.4958,
+    "w": 0.43012,
+    "h": 0.01377
+   },
+   "latex": "\\dot { y } = - x - 0 . 5 \\, y ."
+  },
+  {
+   "id": "p1-i9",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.53572,
+    "w": 0.24916,
+    "h": 0.01811
+   },
+   "text": "2 Release conditions"
+  },
+  {
+   "id": "p1-i10",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.56998,
+    "w": 0.74119,
+    "h": 0.04799
+   },
+   "text": "The arm is clamped at a displacement of one and a half units and released from rest: the initial state is x(0) = 1.5 and y(0) = 0. The motion is underdamped, so the amplitude envelope decays geometrically while the sign of x alternates each half period."
+  },
+  {
+   "id": "p1-i11",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.64412,
+    "w": 0.19344,
+    "h": 0.01811
+   },
+   "text": "3 Stability note"
+  },
+  {
+   "id": "p1-i12",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.67838,
+    "w": 0.74118,
+    "h": 0.03088
+   },
+   "text": "Both eigenvalues have negative real part, so every trajectory converges to the origin regardless of the release displacement."
+  }
+ ]
+}

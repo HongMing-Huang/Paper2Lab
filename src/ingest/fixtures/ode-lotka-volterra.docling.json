@@ -1,0 +1,171 @@
+{
+ "docId": "doc-9494372700",
+ "engine": "docling",
+ "doclingVersion": "2.131.0",
+ "title": "ode-lotka-volterra",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612.0,
+   "height": 792.0
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.28949,
+    "y": 0.15156,
+    "w": 0.42102,
+    "h": 0.04941
+   },
+   "text": "Population Cycles in a Dimensionless Predator-Prey System"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44607,
+    "y": 0.22284,
+    "w": 0.10787,
+    "h": 0.01509
+   },
+   "text": "B. Fieldwork"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44393,
+    "y": 0.25372,
+    "w": 0.11215,
+    "h": 0.01509
+   },
+   "text": "October 2026"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.46419,
+    "y": 0.3066,
+    "w": 0.07163,
+    "h": 0.01258
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i4",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.17398,
+    "y": 0.3305,
+    "w": 0.65206,
+    "h": 0.05786
+   },
+   "text": "We examine the classical predator-prey interaction after rescaling to dimensionless variables, where the prey density is x and the predator density is y. The oscillation period and the phase lag between the two populations follow from the trajectory starting at the field-observed initial state."
+  },
+  {
+   "id": "p1-i5",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.41474,
+    "w": 0.33467,
+    "h": 0.01811
+   },
+   "text": "1 The dimensionless system"
+  },
+  {
+   "id": "p1-i6",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.449,
+    "w": 0.31886,
+    "h": 0.01377
+   },
+   "text": "In dimensionless form the dynamics read"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.45478,
+    "y": 0.47995,
+    "w": 0.41581,
+    "h": 0.01377
+   },
+   "latex": "\\dot { x } = x - x y ,"
+  },
+  {
+   "id": "p1-i8",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.45559,
+    "y": 0.51089,
+    "w": 0.415,
+    "h": 0.01377
+   },
+   "latex": "\\dot { y } = x y - y ."
+  },
+  {
+   "id": "p1-i9",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.55082,
+    "w": 0.24557,
+    "h": 0.01811
+   },
+   "text": "2 Field observations"
+  },
+  {
+   "id": "p1-i10",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.58508,
+    "w": 0.74118,
+    "h": 0.04799
+   },
+   "text": "The pond was seeded from the survey counts, giving the initial state x(0) = 2 and y(0) = 0.5. All trajectories reported below start from these values; the predator peak follows the prey peak by roughly a quarter cycle, as expected for this system."
+  },
+  {
+   "id": "p1-i11",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.65921,
+    "w": 0.15696,
+    "h": 0.01811
+   },
+   "text": "3 Discussion"
+  },
+  {
+   "id": "p1-i12",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.69347,
+    "w": 0.74119,
+    "h": 0.03088
+   },
+   "text": "Small perturbations of the initial state preserve the closed orbits, which is the stabilising property exploited by the field census design."
+  }
+ ]
+}

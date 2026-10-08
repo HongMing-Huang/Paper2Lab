@@ -128,7 +128,21 @@ export function detectData(doc: IngestedDoc): boolean {
 export function parseDataPairs(doc: IngestedDoc): Array<[number, number]> {
   const pairs: Array<[number, number]> = []
   for (const item of doc.items) {
-    if (item.kind !== 'table' || !item.text) continue
+    if (item.kind !== 'table') continue
+    // REAL docling tables are structured: { columns, rows } (verified against
+    // tectonic papers); the synthetic fixtures carry plain text lines
+    const rows = (item as { table?: { rows?: string[][] } }).table?.rows
+    if (Array.isArray(rows)) {
+      for (const row of rows) {
+        if (!Array.isArray(row) || row.length < 2) continue
+        const x = Number(row[0])
+        const y = Number(row[1])
+        // header rows ("x (m)", "y (mV)") are NaN and skipped — never faked
+        if (Number.isFinite(x) && Number.isFinite(y)) pairs.push([x, y])
+      }
+      continue
+    }
+    if (!item.text) continue
     for (const line of item.text.split(/\n+/)) {
       const nums = line.match(/-?\d+(?:\.\d+)?/g)
       if (nums && nums.length >= 2) {

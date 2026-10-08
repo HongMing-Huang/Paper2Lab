@@ -31,6 +31,9 @@ export interface IngestedItem {
   text?: string
   /** predicted LaTeX (formula kind) */
   latex?: string
+  /** structured table content (table kind) — real Docling emits
+   *  { columns, rows }; measurement tables feed the fit binding */
+  table?: { columns?: string[]; rows?: string[][] }
 }
 
 export interface IngestedPage {
@@ -80,6 +83,13 @@ export function normalizeDocling(raw: unknown): IngestedDoc {
     if ([b.x, b.y, b.w, b.h].some((v) => typeof v !== 'number' || !Number.isFinite(v))) continue
     const latex = typeof it.latex === 'string' && it.latex.trim() ? it.latex.trim() : undefined
     const text = typeof it.text === 'string' && it.text.trim() ? it.text.trim() : undefined
+    const rawTable = (it as { table?: { columns?: unknown; rows?: unknown } }).table
+    const table = rawTable && Array.isArray(rawTable.rows)
+      ? {
+          columns: Array.isArray(rawTable.columns) ? rawTable.columns.map(String) : undefined,
+          rows: (rawTable.rows as unknown[]).map((row) => (Array.isArray(row) ? row.map(String) : [])),
+        }
+      : undefined
     items.push({
       id: it.id ?? `p${it.page}-i${n}`,
       kind,
@@ -92,6 +102,7 @@ export function normalizeDocling(raw: unknown): IngestedDoc {
       },
       text: text ?? latex,
       latex,
+      ...(table ? { table } : {}),
     })
     n++
   }

@@ -1,0 +1,214 @@
+{
+ "docId": "doc-4dc34212d5",
+ "engine": "docling",
+ "doclingVersion": "2.131.0",
+ "title": "fit-exponential-decay",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612.0,
+   "height": 792.0
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.25423,
+    "y": 0.15156,
+    "w": 0.49154,
+    "h": 0.04941
+   },
+   "text": "Signal Attenuation Through a Lossy Cable: Fitting the Decay Model"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.452,
+    "y": 0.22284,
+    "w": 0.09599,
+    "h": 0.01509
+   },
+   "text": "D. Measure"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44393,
+    "y": 0.25372,
+    "w": 0.11215,
+    "h": 0.01509
+   },
+   "text": "October 2026"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.46419,
+    "y": 0.3066,
+    "w": 0.07163,
+    "h": 0.01258
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i4",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.17398,
+    "y": 0.3305,
+    "w": 0.65205,
+    "h": 0.04277
+   },
+   "text": "A tone is injected into a lossy cable and the received amplitude is recorded against distance. We fit the measured data to the two-parameter decay model and report the residual of the fit."
+  },
+  {
+   "id": "p1-i5",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.39965,
+    "w": 0.16036,
+    "h": 0.01811
+   },
+   "text": "1 The model"
+  },
+  {
+   "id": "p1-i6",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.43391,
+    "w": 0.44973,
+    "h": 0.01377
+   },
+   "text": "The received amplitude follows the exponential decay law"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.45796,
+    "y": 0.46339,
+    "w": 0.41262,
+    "h": 0.01523
+   },
+   "latex": "y = a \\, e ^ { - b x } ,"
+  },
+  {
+   "id": "p1-i8",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.4958,
+    "w": 0.74118,
+    "h": 0.03088
+   },
+   "text": "where x is distance in metres, y the measured amplitude, a the launch amplitude and b the attenuation constant."
+  },
+  {
+   "id": "p1-i9",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.55283,
+    "w": 0.203,
+    "h": 0.01811
+   },
+   "text": "2 Measurements"
+  },
+  {
+   "id": "p1-i10",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.58709,
+    "w": 0.27897,
+    "h": 0.01377
+   },
+   "text": "The bench data used for the fit are:"
+  },
+  {
+   "id": "p1-i11",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.73357,
+    "w": 0.15917,
+    "h": 0.01811
+   },
+   "text": "3 Fit quality"
+  },
+  {
+   "id": "p1-i12",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.76783,
+    "w": 0.74118,
+    "h": 0.03088
+   },
+   "text": "The least-squares fit of the model to the measured data above is assessed by its residual pattern; a systematic residual indicates a non-exponential loss channel."
+  },
+  {
+   "id": "p1-i13",
+   "kind": "table",
+   "page": 1,
+   "bbox": {
+    "x": 0.439,
+    "y": 0.61211,
+    "w": 0.12112,
+    "h": 0.09761
+   },
+   "table": {
+    "columns": [
+     "0",
+     "1"
+    ],
+    "rows": [
+     [
+      "x (m)",
+      "y (mV)"
+     ],
+     [
+      "0.0",
+      "1.98"
+     ],
+     [
+      "1.0",
+      "1.21"
+     ],
+     [
+      "2.0",
+      "0.74"
+     ],
+     [
+      "3.0",
+      "0.45"
+     ],
+     [
+      "4.0",
+      "0.28"
+     ]
+    ]
+   }
+  }
+ ]
+}
