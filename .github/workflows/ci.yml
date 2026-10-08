@@ -73,10 +73,12 @@ jobs:
         run: python -m pytest server/tests -q -k "not real_docling"
       - name: engine smoke — real kernels over the stdio bridge (formula + physics + challenge)
         run: |
+          # NOTE: PlayPlans register idempotently BY planId — first registration
+          # wins (#32), so each skill must carry its OWN distinct planId.
           printf '%s\n' \
-            '{"id":1,"op":"execute","skill":"formula.evaluate","input":{"expression":["Sin","x"],"bindings":{"x":1}},"planId":"ci","plan":{"planId":"ci","skill":"formula.evaluate","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
-            '{"id":2,"op":"execute","skill":"mujoco.simulate","input":{"scene":"simple.xml","steps":50,"sampleEvery":25},"planId":"ci","plan":{"planId":"ci","skill":"mujoco.simulate","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
-            '{"id":3,"op":"execute","skill":"challenge.attempt","input":{"challenge":"pendulum","changes":{"length":0.994}},"planId":"ci","plan":{"planId":"ci","skill":"challenge.attempt","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
+            '{"id":1,"op":"execute","skill":"formula.evaluate","input":{"expression":["Sin","x"],"bindings":{"x":1}},"planId":"ci-f","plan":{"planId":"ci-f","skill":"formula.evaluate","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
+            '{"id":2,"op":"execute","skill":"mujoco.simulate","input":{"scene":"simple.xml","steps":50,"sampleEvery":25},"planId":"ci-m","plan":{"planId":"ci-m","skill":"mujoco.simulate","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
+            '{"id":3,"op":"execute","skill":"challenge.attempt","input":{"challenge":"pendulum","changes":{"length":0.994}},"planId":"ci-c","plan":{"planId":"ci-c","skill":"challenge.attempt","goal":"ci smoke","metrics":[],"nonClaims":[]}"}' \
             '{"id":4,"op":"shutdown"}' \
             | node --import tsx scripts/engine_server.ts > /tmp/engine-out.jsonl
           grep -q '"status":"ok"' /tmp/engine-out.jsonl
