@@ -1,7 +1,7 @@
 // The clean home: one dropzone, one hero-demo link. No chat, no cards.
 // Dragging a PDF in transitions to the ingest desk (Docling → playable paper).
-import { useRef, useState } from 'react'
-import { ingestPdf } from '../ingest/upload'
+import { useEffect, useRef, useState } from 'react'
+import { ingestPdf, type IngestProgress } from '../ingest/upload'
 import { routeAdapterWithLlm } from '../skills/adapterRouter'
 
 export function Home({
@@ -19,6 +19,16 @@ export function Home({
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  // #15 UX: live parse progress — stage/elapsed/queue instead of a dead
+  // spinner (real parses take 20-60s; silence reads as "stuck")
+  const [progress, setProgress] = useState<IngestProgress | null>(null)
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    if (state !== 'parsing') return
+    const t = window.setInterval(() => setTick((n) => n + 1), 1000)
+    return () => window.clearInterval(t)
+  }, [state])
+  void tick
 
   const handleFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -28,13 +38,15 @@ export function Home({
     }
     setState('parsing')
     setError(null)
+    setProgress({ status: 'queued', stage: null, elapsedMs: 0, queueDepth: 0 })
     try {
-      const doc = await ingestPdf(file)
+      const doc = await ingestPdf(file, { onProgress: (p) => setProgress(p) })
       const decision = await routeAdapterWithLlm(doc)
       onDesk(file, URL.createObjectURL(file), doc, decision)
     } catch (err) {
       setState('error')
       setError(err instanceof Error ? err.message : String(err))
+      setProgress(null)
     }
   }
 
@@ -66,13 +78,12 @@ export function Home({
           disabled={state === 'parsing'}
         >
           {state === 'parsing' ? (
-            <>
-              <span className="home-spin">◌</span> Docling 解析中 — 版面 · 公式 · 图表…
-            </>
+            <ParseProgress p={progress} />
           ) : (
             <>拖入一篇 PDF，或点击选择</>
           )}
         </button>
+        {state === 'parsing' && <ParseBar p={progress} />}
         <input
           ref={inputRef}
           type="file"
@@ -107,6 +118,45 @@ export function Home({
           PDF 解析 Docling · 公式 Cortex Compute Engine · 曲线 JSXGraph · 画布 tldraw · 数值全部本地真实计算
         </div>
       </div>
+    </div>
+  )
+}
+
+/** staged parse status: queue → model warm-up → page/formula/table parse,
+ *  with live elapsed seconds and queue depth. No fabricated percentages. */
+function ParseProgress({ p }: { p: IngestProgress | null }) {
+  if (!p) return <>准备上传…</>
+  const secs = Math.floor((p.elapsedMs || 0) / 1000)
+  if (p.status === 'queued') {
+    return (
+      <>
+        <span className="home-spin">◌</span> 排队中 · 前面还有 {Math.max(0, p.queueDepth - 1)} 个任务
+        {secs > 0 ? ` · 已等 ${secs}s` : ''}
+      </>
+    )
+  }
+  if (p.stage === 'warming') {
+    return (
+      <>
+        <span className="home-spin">◌</span> 正在加载解析模型（首次较慢，约 30–60s）· {secs}s
+      </>
+    )
+  }
+  return (
+    <>
+      <span className="home-spin">◌</span> 正在解析 · 版面 → 公式 → 表格 · {secs}s
+    </>
+  )
+}
+
+/** paper-scan progress bar: an indeterminate scan line (width is NOT a
+ *  percentage — parse progress is not linearly measurable; the motion shows
+ *  liveness, the text above shows truth) */
+function ParseBar({ p }: { p: IngestProgress | null }) {
+  const phase = p?.stage ?? (p?.status === 'queued' ? 'queued' : 'running')
+  return (
+    <div className={`home-parsebar st-${phase}`} aria-hidden="true">
+      <div className="home-parsebar-scan" />
     </div>
   )
 }
