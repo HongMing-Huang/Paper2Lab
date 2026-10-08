@@ -409,7 +409,9 @@ var ENGINES = {
 };
 var runSeq = 0;
 function nextRunId(prefix) {
-  return `${prefix}-${Date.now().toString(36)}-${(runSeq++).toString(36)}`;
+  const ms = Date.now().toString(36);
+  const rnd = Math.random().toString(36).slice(2, 7);
+  return `${prefix}-${ms}-${rnd}-${runSeq++}`;
 }
 var history = /* @__PURE__ */ new Map();
 function getExperimentRun(runId) {

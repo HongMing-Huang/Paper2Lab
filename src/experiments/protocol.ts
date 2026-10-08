@@ -61,7 +61,13 @@ export const ENGINES = {
 
 let runSeq = 0
 export function nextRunId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${(runSeq++).toString(36)}`
+  // cross-process safe run ids: short-lived engine processes spawned in the
+  // same millisecond collide on `${ms}-${seq}` (seq restarts at 0 per process
+  // — the 6-way concurrency battery caught two requests sharing a runId).
+  // Random entropy is for uniqueness only, never for crypto.
+  const ms = Date.now().toString(36)
+  const rnd = Math.random().toString(36).slice(2, 7)
+  return `${prefix}-${ms}-${rnd}-${runSeq++}`
 }
 
 /** Session-local immutable records; exporting never recomputes results. */
