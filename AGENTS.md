@@ -205,6 +205,12 @@ v0.1 升级轮补充②（2026-10-07④，真实论文 PDF 验收语料，PR #42
 - [x] **#24 五收口**：四篇 tectonic 真排版论文（捕食-猎物/阻尼振子/指数衰减拟合/正弦标定）+ 真实 Docling dump 入库 fixtures；管线补缺——normalizeDocling 保留结构化 table{columns,rows}（真实 docling 表非 text）、parseDataPairs 读 table.rows（表头 NaN 跳过）；`src/skills/realPdfs.test.ts` 每类两篇**零合成全链**（路由→绑定→论文 latex 含尾标点原样编译真算：LV 周期/阻尼衰减/拟合 RMSE<0.1）；`test_real_pdf_corpus.py` real_docling 漂移守卫（重解析逐字比对，本地 79.9s 过，快集按名排除）
 - 测试基线：pytest **100/100** · vitest **283/283**
 
+v0.1 升级轮补充③（2026-10-08，用户报告修复：解析慢+离线 Errno 101，PR #43）：
+
+- [x] **离线解析**：docling 冷缓存首解析上 HF Hub（无网即 `ConnectError [Errno 101] …snapshot not found`）——`scripts/download_docling_models.py` 一次性预下载（`--artifacts` 便携目录同时钉 DOCLING_ARTIFACTS_PATH+HF_HOME，docling 原生与 Hub 两类模型家族都落盘）；`PAPER2LAB_DOCLING_OFFLINE=1` 在任何 docling 导入前置 HF_HUB_OFFLINE=1；Docker 构建期烘焙 /opt/docling-models（ready 工件检查可满足）
+- [x] **解析提速**：#38 的每 PDF 全新进程令模型每次重载——`ingest_worker` 改**常驻行协议 warm worker**（converter 加载一次复用，首载后秒级）；per-job 超时仍整体 KILL（可杀不丢）+ 自愈重启 + 响应 id 失配换新；实测 HF_HUB_OFFLINE+暖缓存下真实论文离线解析 13 items/2 公式
+- 测试基线：pytest **102/102** · vitest **283/283**（warm 同 pid 复用/杀后换新/crash 尾巴入消息）
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
