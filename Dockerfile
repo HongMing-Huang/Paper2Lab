@@ -72,6 +72,9 @@ COPY --from=node:22-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=engine-deps /app/node_modules/ node_modules/
 COPY --from=engine-deps /app/scripts/engine_server.bundle.mjs scripts/engine_server.bundle.mjs
 
+# backend + engine sources
+COPY server/ server/
+
 # pre-bake the Docling models INTO the image: parsing must never touch the
 # Hub at runtime (the FC container has no egress — the parse would die with
 # "Network is unreachable / snapshot folder not found"). Both model families
@@ -84,9 +87,6 @@ ENV DOCLING_ARTIFACTS_PATH=/opt/docling-models \
     HF_HOME=/opt/docling-models/hf \
     PAPER2LAB_DOCLING_OFFLINE=1 \
     PAPER2LAB_REQUIRE_MODEL_ARTIFACTS=1
-
-# backend + engine sources
-COPY server/ server/
 COPY tsconfig.json ./
 
 # built SPA + static papers; MuJoCo wasm served same-origin for the page
