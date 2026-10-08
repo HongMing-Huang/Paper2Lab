@@ -123,6 +123,12 @@ jobs:
           cache-dependency-path: server/requirements.txt
       - name: python deps
         run: pip install -r server/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: pre-warm docling models (the formula test does a REAL parse)
+        run: |
+          # the browser tests trigger real /api/ingest parses; a cold parse
+          # would download Docling models inside the request (often >180s on
+          # CI) — warm the HF cache once here instead
+          python scripts/download_docling_models.py
       - name: build the SPA
         run: pnpm build
       - name: install chrome (playwright-core drives the system chrome)
@@ -140,7 +146,9 @@ jobs:
       - name: challenges — real-mouse three levels
         run: node scripts/product-challenges-test.mjs
       - name: formula desk — multi-formula + multi-page
-        run: node scripts/product-formula-test.mjs
+        if: always()
+        run: |
+          node scripts/product-formula-test.mjs || { echo '--- uvicorn-ci.log tail ---'; tail -100 /tmp/uvicorn-ci.log; exit 1; }
       - name: desk upgrade — frames/actions/3D (own origin on :8798)
         run: |
           nohup python -m uvicorn server.main:app --host 127.0.0.1 --port 8798 \
@@ -149,4 +157,4 @@ jobs:
             curl -sf -m 3 http://127.0.0.1:8798/api/health && break
             sleep 3
           done
-          node scripts/product-lab-test.mjs
+          node scripts/product-lab-test.mjs || { echo '--- uvicorn-8798.log tail ---'; tail -100 /tmp/uvicorn-8798.log; exit 1; }
