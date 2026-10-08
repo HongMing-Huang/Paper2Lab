@@ -37,8 +37,18 @@ _converter: DocumentConverter | None = None
 def get_converter() -> DocumentConverter:
     global _converter
     if _converter is None:
+        import os
+        from pathlib import Path
+
         opts = PdfPipelineOptions()
         opts.do_formula_enrichment = True
+        # offline deployments: a pre-populated artifacts dir means the
+        # converter NEVER touches the Hub ("Network is unreachable" fix)
+        artifacts = os.environ.get("DOCLING_ARTIFACTS_PATH") or os.environ.get(
+            "PAPER2LAB_DOCLING_ARTIFACTS"
+        )
+        if artifacts:
+            opts.artifacts_path = Path(artifacts)
         _converter = DocumentConverter(
             format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
         )

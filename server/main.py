@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -26,6 +27,13 @@ from fastapi.staticfiles import StaticFiles
 
 from server.agent import router as agent_router
 from server.engine_api import router as engine_router
+# offline deployments (#15 user report): pin BEFORE docling/HF imports so a
+# pre-warmed cache is used and the Hub is never contacted ("Network is
+# unreachable / snapshot not found" is a cold-cache problem, not a bug)
+if os.environ.get("PAPER2LAB_DOCLING_OFFLINE", "0") == "1":
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 from server.engine_bridge import bridge
 from server.ingest_core import convert_pdf
 
@@ -41,6 +49,7 @@ async def _lifespan(_app: FastAPI):
         yield
     finally:
         await bridge.stop()
+        await _warm_worker.stop()  # killable-ingest child goes down with the app
 
 
 app = FastAPI(title="Paper2Lab backend", version="0.4", lifespan=_lifespan)
@@ -259,14 +268,110 @@ class _IngestTimeout(Exception):
     """docling conversion exceeded the budget — the worker process was killed"""
 
 
-async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") -> dict[str, Any]:
-    """#31: docling runs in a KILLABLE worker process (default) — a timed-out
-    conversion terminates instead of haunting the executor thread pool. The
-    serialization slot is only held while real work happens. Thread mode
-    (PAPER2LAB_INGEST_ISOLATION=thread) keeps the old executor path with its
-    hold-until-thread-exits guarantee."""
-    import sys as _sys
+class _WarmIngestWorker:
+    """#31 speed + killability in ONE shape: a LONG-LIVED worker process whose
+    docling converter is loaded once and reused (the per-parse spawn paid the
+    full model load on every PDF — tens of seconds — and a cold cache tried
+    the Hub). Per-job timeout KILLS the process; the next request respawns.
+    Serialization stays with _ingest_guard as before."""
 
+    def __init__(self) -> None:
+        self._proc: asyncio.subprocess.Process | None = None
+        self._rid = 0
+        self._lock = asyncio.Lock()
+
+    async def _ensure(self) -> asyncio.subprocess.Process:
+        if self._proc is None or self._proc.returncode is not None:
+            env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+            self._proc = await asyncio.create_subprocess_exec(
+                sys.executable, "-m", "server.ingest_worker",
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+            )
+            # wait for the ready banner (bounded — a wedged boot is replaced)
+            try:
+                line = await asyncio.wait_for(self._proc.stdout.readline(), timeout=30.0)
+                if b"worker-ready" not in line:
+                    raise RuntimeError(f"ingest worker bad banner: {line[:120]!r}")
+            except asyncio.TimeoutError:
+                self._proc.kill()
+                self._proc = None
+                raise RuntimeError("ingest worker did not boot in 30s")
+        return self._proc
+
+    async def convert(self, pdf_path: str, title_hint: str, test_mode: str) -> dict[str, Any]:
+        async with self._lock:
+            proc = await self._ensure()
+            self._rid += 1
+            rid = self._rid
+            req = json.dumps(
+                {"id": rid, "pdf": pdf_path, "title": title_hint, "testMode": test_mode}
+            ).encode() + b"\n"
+            try:
+                proc.stdin.write(req)
+                await proc.stdin.drain()
+            except (BrokenPipeError, OSError):
+                # worker died between jobs — respawn once and retry
+                proc = await self._respawn()
+                proc.stdin.write(req)
+                await proc.stdin.drain()
+            try:
+                raw = await asyncio.wait_for(proc.stdout.readline(), timeout=_ingest_timeout_s())
+            except asyncio.TimeoutError:
+                await self._kill()
+                raise _IngestTimeout(
+                    f"docling exceeded {_ingest_timeout_s():.0f}s — warm worker killed (pid {proc.pid})"
+                ) from None
+            if not raw:
+                err = await proc.stderr.read() if proc.stderr else b""
+                await self._kill()
+                raise RuntimeError(f"ingest worker died: {err.decode('utf-8', 'replace')[-300:]}")
+            msg = json.loads(raw)
+            if msg.get("id") != rid:
+                # protocol desync — replace the worker and fail loudly
+                await self._kill()
+                raise RuntimeError(f"ingest worker response desync ({msg.get('id')} != {rid})")
+            if not msg.get("ok"):
+                raise RuntimeError(f"docling failed: {msg.get('error', 'unknown')}")
+            return msg["result"]
+
+    async def _respawn(self) -> asyncio.subprocess.Process:
+        await self._kill()
+        return await self._ensure()
+
+    async def _kill(self) -> None:
+        proc, self._proc = self._proc, None
+        if proc is None:
+            return
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+        await proc.wait()
+
+    async def stop(self) -> None:
+        proc, self._proc = self._proc, None
+        if proc is not None and proc.stdin is not None and not proc.stdin.is_closing():
+            try:
+                proc.stdin.close()
+            except OSError:
+                pass
+        if proc is not None:
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=5)
+            except (asyncio.TimeoutError, ProcessLookupError):
+                proc.kill()
+
+
+_warm_worker = _WarmIngestWorker()
+
+
+async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") -> dict[str, Any]:
+    """#31: default path is the warm killable worker process above; the old
+    thread mode stays as PAPER2LAB_INGEST_ISOLATION=thread (slot held until
+    the thread truly exits)."""
     mode = os.environ.get("PAPER2LAB_INGEST_ISOLATION", "process")
     if mode == "thread":
         loop = asyncio.get_running_loop()
@@ -287,31 +392,8 @@ async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") ->
             await done.wait()  # release the slot only after REAL work ends
             raise _IngestTimeout(f"docling exceeded {_ingest_timeout_s()}s (thread finished)") from exc
 
-    proc = await asyncio.create_subprocess_exec(
-        _sys.executable, "-m", "server.ingest_worker", pdf_path, title_hint,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        env={**os.environ, "PYTHONUNBUFFERED": "1"},
-    )
-    try:
-        out, err = await asyncio.wait_for(proc.communicate(), timeout=_ingest_timeout_s())
-    except asyncio.TimeoutError:
-        proc.kill()
-        await proc.wait()  # the slot frees only when the process is REALLY gone
-        raise _IngestTimeout(
-            f"docling exceeded {_ingest_timeout_s()}s — worker process killed (pid {proc.pid})"
-        ) from None
-    text = out.decode("utf-8", "replace").strip()
-    if proc.returncode != 0 or not text:
-        detail = err.decode("utf-8", "replace")[-400:] or f"exit {proc.returncode}"
-        raise RuntimeError(f"ingest worker failed: {detail}")
-    try:
-        result = json.loads(text)
-    except ValueError as exc:
-        raise RuntimeError(f"ingest worker produced unparseable output: {text[:200]}") from exc
-    if isinstance(result, dict) and "error" in result:
-        raise RuntimeError(f"docling failed: {result['error']}")
-    return result
+    test_mode = os.environ.get("PAPER2LAB_TEST_CONVERT", "")
+    return await _warm_worker.convert(pdf_path, title_hint, test_mode)
 
 
 @app.post("/api/ingest", status_code=202)

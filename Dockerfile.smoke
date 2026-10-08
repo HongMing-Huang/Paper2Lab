@@ -49,6 +49,14 @@ COPY --from=engine-deps /app/node_modules/ node_modules/
 COPY --from=engine-deps /app/scripts/engine_server.bundle.mjs scripts/engine_server.bundle.mjs
 COPY scripts/engine_server.ts scripts/engine_persist.ts scripts/
 
+# pre-bake Docling models (offline runtime — see Dockerfile note)
+COPY scripts/download_docling_models.py scripts/download_docling_models.py
+RUN python scripts/download_docling_models.py --artifacts /opt/docling-models || \
+    python scripts/download_docling_models.py
+ENV DOCLING_ARTIFACTS_PATH=/opt/docling-models \
+    HF_HOME=/opt/docling-models/hf \
+    PAPER2LAB_DOCLING_OFFLINE=1
+
 COPY server/ server/
 COPY src/ src/
 COPY tsconfig.json ./

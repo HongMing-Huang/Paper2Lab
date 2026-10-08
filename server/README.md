@@ -3,6 +3,26 @@
 Real PDF → structured JSON: layout, formulas (LaTeX + bbox), figures, tables,
 reading order — powered by [Docling](https://github.com/docling-project/docling).
 
+## Offline parsing (no egress: "Network is unreachable / snapshot not found")
+
+Docling pulls its layout/table/formula models on first use. On a machine or
+container without internet the FIRST parse dies with
+`ConnectError: [Errno 101] Network is unreachable ... cannot find the
+appropriate snapshot folder`. Fix once, on a machine WITH network:
+
+```bash
+server/.venv/bin/python scripts/download_docling_models.py            # warm the standard HF cache
+# or, portable:
+server/.venv/bin/python scripts/download_docling_models.py --artifacts /opt/docling-models
+export DOCLING_ARTIFACTS_PATH=/opt/docling-models
+export PAPER2LAB_DOCLING_OFFLINE=1
+```
+
+The Docker image pre-bakes both model families into `/opt/docling-models`
+and sets both variables plus `PAPER2LAB_REQUIRE_MODEL_ARTIFACTS=1` — the
+ready check fails fast if the artifacts ever go missing instead of letting
+the first parse hit the network.
+
 ## Run
 
 ```bash

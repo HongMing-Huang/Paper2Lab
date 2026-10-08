@@ -104,7 +104,7 @@ class TestProcessIsolation:
                 job_id = await _submit(client)
                 st = await _wait_terminal(client, job_id)
         assert st["status"] == "error"
-        assert "worker failed" in st["error"]
+        assert "simulated docling crash" in st["error"]  # the worker stderr tail travels in-band
 
     @pytest.mark.asyncio
     async def test_ok_worker_round_trips_result_json(self, monkeypatch):
@@ -117,3 +117,41 @@ class TestProcessIsolation:
                 job_id = await _submit(client)
                 st = await _wait_terminal(client, job_id)
         assert st["status"] == "done"
+
+class TestWarmWorker:
+    @pytest.mark.asyncio
+    async def test_converter_warms_once_and_survives_across_parses(self, monkeypatch):
+        """the per-parse spawn paid the FULL docling model load every time —
+        the warm worker must reuse ONE process across parses"""
+        _clear_test_hooks(monkeypatch)
+        monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "ok")
+        from server.main import app, _warm_worker
+
+        async with LifespanManager(app) as mgr:
+            async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
+                j1 = await _submit(client)
+                st1 = await _wait_terminal(client, j1)
+                pid1 = _warm_worker._proc.pid if _warm_worker._proc else None
+                j2 = await _submit(client)
+                st2 = await _wait_terminal(client, j2)
+                pid2 = _warm_worker._proc.pid if _warm_worker._proc else None
+        assert st1["status"] == "done" and st2["status"] == "done"
+        assert pid1 is not None and pid1 == pid2  # SAME process — warm
+
+    @pytest.mark.asyncio
+    async def test_timeout_kills_and_next_parse_gets_a_fresh_worker(self, monkeypatch):
+        _clear_test_hooks(monkeypatch)
+        monkeypatch.setenv("PAPER2LAB_INGEST_TIMEOUT", "2")
+        from server.main import app, _warm_worker
+
+        async with LifespanManager(app) as mgr:
+            async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
+                monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "hang")
+                j1 = await _submit(client)
+                st1 = await _wait_terminal(client, j1, timeout_s=15)
+                assert st1["status"] == "timeout"
+                assert "warm worker killed" in st1["error"]
+                monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "ok")
+                j2 = await _submit(client)
+                st2 = await _wait_terminal(client, j2, timeout_s=15)
+                assert st2["status"] == "done"  # respawned and healthy
