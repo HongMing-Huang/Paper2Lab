@@ -79,8 +79,11 @@ COPY --from=node:22-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=engine-deps /app/node_modules/ node_modules/
 COPY --from=engine-deps /app/scripts/engine_server.bundle.mjs scripts/engine_server.bundle.mjs
 # the INLINE once-runner is the FC-primary path — missing it forced the cloud
-# into the stdio bridge (which the FC scheduler starves): execute 500s
+# into the stdio bridge (which the FC scheduler starves): execute 500s.
+# The once bundle imports the physics runner at startup, which locates the
+# vendored MuJoCo scenes — ship them at the bundle's expected relative path.
 COPY --from=engine-deps /app/scripts/engine_once.mjs scripts/engine_once.mjs
+COPY src/physics/scenes/ scripts/scenes/
 
 # backend + engine sources
 COPY server/ server/
