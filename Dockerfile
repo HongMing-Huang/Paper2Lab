@@ -55,6 +55,13 @@ FROM python:3.12-slim AS api
 WORKDIR /app
 # torch cpu wheels keep the image smaller than the cuda default
 ENV PIP_NO_CACHE_DIR=1
+# opencv (docling-ibm-models dep) is NOT headless — slim images lack its
+# system libs and the import dies with "libxcb.so.1: cannot open shared
+# object" (cloud build确诊). Install them BEFORE any docling import runs.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libglib2.0-0 libxcb1 libsm6 libxext6 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY server/requirements.txt server/requirements.txt
 # pypi egress can time out on build hosts — retry, then fall back to the
 # aliyun mirror (same packages; torch still from the cpu index)
