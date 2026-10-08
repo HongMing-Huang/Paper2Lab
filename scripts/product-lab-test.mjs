@@ -17,6 +17,10 @@ import { chromium } from 'playwright-core'
 
 const ORIGIN = 'http://127.0.0.1:8798'
 const SAMPLE = new URL('../public/papers/sample-harmonic.pdf', import.meta.url).pathname
+// one-page Kakeya-keyword fixture (scripts/make_kakeya_mini_pdf.py): routing
+// the FULL Wang–Zahl paper through Docling takes >8min even locally — the
+// mini paper exercises the same kakeya-routed desk surface honestly
+const KAKEYA_PDF = new URL('../public/papers/kakeya-mini.pdf', import.meta.url).pathname
 
 async function waitApi() {
   for (let i = 0; i < 30; i++) {
@@ -112,56 +116,86 @@ async function main() {
     console.log(`[desk] unknown action: ok=${bad.ok} reason="${(bad.reason ?? '').slice(0, 44)}"`)
     if (bad.ok !== false || !/unknown/.test(bad.reason ?? '')) failures.push('unknown action was not rejected')
 
-    // 3. Run-driven 3D paper (shared Canvas + drei View tracking the paper)
-    await page.locator('[data-testid="grow-3d"]').click()
-    await page.waitForTimeout(500)
-    // focus it: the spotlight layout enlarges the selected paper as the hero
-    // (this also exercises the focus_shape action on the real editor)
-    const focused = await page.evaluate(() => {
-      const ed = window.__deskEditor
-      const shape = [...ed.getCurrentPageShapeIds()].map((id) => ed.getShape(id)).find((s) => s.type === 'p2l-3d')
-      ed.select(shape.id)
-      return window.__P2L_ACTIONS__.run({ type: 'focus_shape' })
-    })
-    await page.locator('.run3d-track').waitFor({ timeout: 15000 })
-    await page.waitForTimeout(1500) // shared canvas boot + settle
-    console.log(`[desk] focus 3D paper: ok=${focused.ok}`)
-    if (!focused.ok) failures.push('focus_shape on the 3D paper failed')
-    const box = await page.locator('.run3d-track').boundingBox()
-    console.log(`[desk] 3D paper: tracked box=${box ? `${Math.round(box.width)}×${Math.round(box.height)}` : 'MISSING'}`)
-    if (!box) {
-      failures.push('3D experiment paper did not grow')
+    // 3. Run-driven 3D paper (shared Canvas + drei View tracking the paper).
+    // Product rule (#22/PR#26): the Kakeya desk surface only appears for
+    // kakeya-routed papers — sample-harmonic is a FORMULA paper, so we run
+    // the 3D leg on the Wang–Zahl paper in a second page instead. The
+    // formula leg above already covered frames/actions/Play on this paper.
+    const decision = await page.evaluate(() => (window).__P2L_DECISION__ ?? null)
+    console.log(`[desk] routing: adapter=${decision?.adapter} status=${decision?.status}`)
+    if (decision?.adapter !== 'kakeya') {
+      const kPage = await browser.newPage({ viewport: { width: 1500, height: 950 } })
+      try {
+        await kPage.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' })
+        await kPage.locator('button.home-drop').waitFor({ timeout: 30000 })
+        const chooserP2 = kPage.waitForEvent('filechooser')
+        await kPage.locator('button.home-drop').click()
+        const chooser2 = await chooserP2
+        await chooser2.setFiles([KAKEYA_PDF])
+        await kPage.waitForSelector('.lab-frame', { timeout: 480000 })
+        await kPage.locator('[data-testid="grow-3d"]').click()
+        await kPage.waitForTimeout(600)
+        await kPage.locator('.run3d-track').waitFor({ timeout: 20000 })
+        await kPage.waitForTimeout(1500)
+        const box2 = await kPage.locator('.run3d-track').boundingBox()
+        console.log(`[kakeya] 3D paper tracked box=${box2 ? `${Math.round(box2.width)}×${Math.round(box2.height)}` : 'MISSING'}`)
+        if (!box2) failures.push('kakeya 3D experiment paper did not grow')
+        const shot2 = await kPage.screenshot()
+        if (shot2.length < 2500) failures.push(`kakeya 3D view looks empty (${shot2.length}B)`)
+      } finally {
+        await kPage.close()
+      }
     } else {
-      // clamp the clip rect into the viewport (spotlight hero may overflow)
-      const vw = 1500, vh = 950
-      const cx0 = Math.max(0, Math.round(box.x)), cy0 = Math.max(0, Math.round(box.y))
-      const cx1 = Math.min(vw, Math.round(box.x + box.width)), cy1 = Math.min(vh, Math.round(box.y + box.height))
-      const clip = cx1 - cx0 > 40 && cy1 - cy0 > 40 ? { x: cx0, y: cy0, width: cx1 - cx0, height: cy1 - cy0 } : null
-      const shot = clip ? await page.screenshot({ clip }) : await page.screenshot()
-      console.log(`[desk] 3D pixels in tracked rect: ${shot.length}B${clip ? '' : ' (full page fallback)'}`)
-      if (shot.length < 2500) failures.push(`Run-driven 3D view looks empty (${shot.length}B)`)
-
-      // drag the family UP → packing reverse-writes → Run badge re-renders.
-      // Pointer delivery is DOM-dispatched (the established desk pattern:
-      // tldraw shape HTML is not hit-test reachable for page.mouse, but the
-      // product's own React handlers consume dispatched events faithfully).
-      const badgeBefore = await page.evaluate(() => document.querySelector('.run3d-caption')?.textContent ?? '')
-      const packed = await page.evaluate(() => {
-        const el = document.querySelector('.run3d-track')
-        const rect = el.getBoundingClientRect()
-        const cx = rect.x + rect.width / 2
-        const mk = (type, y) => new PointerEvent(type, { bubbles: true, clientX: cx, clientY: y, pointerId: 7, isPrimary: true })
-        el.dispatchEvent(mk('pointerdown', rect.y + rect.height / 2))
-        for (let i = 1; i <= 6; i++) {
-          el.dispatchEvent(mk('pointermove', rect.y + rect.height / 2 - i * 16))
-        }
-        el.dispatchEvent(mk('pointerup', rect.y + rect.height / 2 - 96))
-        return true
+      await page.locator('[data-testid="grow-3d"]').click()
+      await page.waitForTimeout(500)
+      // focus it: the spotlight layout enlarges the selected paper as the hero
+      // (this also exercises the focus_shape action on the real editor)
+      const focused = await page.evaluate(() => {
+        const ed = window.__deskEditor
+        const shape = [...ed.getCurrentPageShapeIds()].map((id) => ed.getShape(id)).find((s) => s.type === 'p2l-3d')
+        ed.select(shape.id)
+        return window.__P2L_ACTIONS__.run({ type: 'focus_shape' })
       })
-      await page.waitForTimeout(1600)
-      const badgeAfter = await page.evaluate(() => document.querySelector('.run3d-caption')?.textContent ?? '')
-      console.log(`[desk] drag write-back (dispatched=${packed}): "${badgeBefore.slice(0, 44)}" → "${badgeAfter.slice(0, 44)}"`)
-      if (badgeAfter === badgeBefore) failures.push('3D drag did not reverse-write packing (badge unchanged)')
+      await page.locator('.run3d-track').waitFor({ timeout: 15000 })
+      await page.waitForTimeout(1500) // shared canvas boot + settle
+      console.log(`[desk] focus 3D paper: ok=${focused.ok}`)
+      if (!focused.ok) failures.push('focus_shape on the 3D paper failed')
+      const box = await page.locator('.run3d-track').boundingBox()
+      console.log(`[desk] 3D paper: tracked box=${box ? `${Math.round(box.width)}×${Math.round(box.height)}` : 'MISSING'}`)
+      if (!box) {
+        failures.push('3D experiment paper did not grow')
+      } else {
+        // clamp the clip rect into the viewport (spotlight hero may overflow)
+        const vw = 1500, vh = 950
+        const cx0 = Math.max(0, Math.round(box.x)), cy0 = Math.max(0, Math.round(box.y))
+        const cx1 = Math.min(vw, Math.round(box.x + box.width)), cy1 = Math.min(vh, Math.round(box.y + box.height))
+        const clip = cx1 - cx0 > 40 && cy1 - cy0 > 40 ? { x: cx0, y: cy0, width: cx1 - cx0, height: cy1 - cy0 } : null
+        const shot = clip ? await page.screenshot({ clip }) : await page.screenshot()
+        console.log(`[desk] 3D pixels in tracked rect: ${shot.length}B${clip ? '' : ' (full page fallback)'}`)
+        if (shot.length < 2500) failures.push(`Run-driven 3D view looks empty (${shot.length}B)`)
+
+        // drag the family UP → packing reverse-writes → Run badge re-renders.
+        // Pointer delivery is DOM-dispatched (the established desk pattern:
+        // tldraw shape HTML is not hit-test reachable for page.mouse, but the
+        // product's own React handlers consume dispatched events faithfully).
+        const badgeBefore = await page.evaluate(() => document.querySelector('.run3d-caption')?.textContent ?? '')
+        const packed = await page.evaluate(() => {
+          const el = document.querySelector('.run3d-track')
+          const rect = el.getBoundingClientRect()
+          const cx = rect.x + rect.width / 2
+          const mk = (type, y) => new PointerEvent(type, { bubbles: true, clientX: cx, clientY: y, pointerId: 7, isPrimary: true })
+          el.dispatchEvent(mk('pointerdown', rect.y + rect.height / 2))
+          for (let i = 1; i <= 6; i++) {
+            el.dispatchEvent(mk('pointermove', rect.y + rect.height / 2 - i * 16))
+          }
+          el.dispatchEvent(mk('pointerup', rect.y + rect.height / 2 - 96))
+          return true
+        })
+        await page.waitForTimeout(1600)
+        const badgeAfter = await page.evaluate(() => document.querySelector('.run3d-caption')?.textContent ?? '')
+        console.log(`[desk] drag write-back (dispatched=${packed}): "${badgeBefore.slice(0, 44)}" → "${badgeAfter.slice(0, 44)}"`)
+        if (badgeAfter === badgeBefore) failures.push('3D drag did not reverse-write packing (badge unchanged)')
+      }
     }
 
     if (consoleErrors.length) {

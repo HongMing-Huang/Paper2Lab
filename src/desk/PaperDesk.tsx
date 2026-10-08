@@ -621,6 +621,8 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
             ;(window as unknown as { __P2L_ACTIONS__?: { run(a: unknown): Promise<{ ok: boolean; reason?: string }> } }).__P2L_ACTIONS__ = {
               run: (a) => runAgentAction(agentHelpers(), a as never),
             }
+            // routing decision for headless tests (adapter-gated UI assertions)
+            ;(window as unknown as { __P2L_DECISION__?: unknown }).__P2L_DECISION__ = payload.decision
           }}
         >
           <div className="desk-topbar">

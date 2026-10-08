@@ -1,0 +1,31 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.2in]{geometry}
+\usepackage{amsmath,amssymb}
+\title{A Kakeya Set Miniature: Tubes in the Unit Cube}
+\author{Test Fixture}
+\date{}
+\begin{document}
+\maketitle
+
+A \emph{Kakeya set} in $\mathbb{R}^{3}$ contains a unit line segment in every
+direction. We study the Besicovitch--Kakeya conjecture at finite scale: a
+family $\mathbb{T}$ of $\delta$-tubes pointing in $\delta$-separated
+directions satisfies the Wolff axioms, and we measure the volume of its union
+on a voxel grid.
+
+\section{Setup}
+Take $\delta = 2^{-4}$ and $N = 96$ tubes through directions sampled on the
+Fibonacci hemisphere. The Kakeya maximal estimate we probe numerically is
+\[
+\Bigl|\bigcup_{T\in\mathbb{T}} Y(T)\Bigr| \;\ge\; \delta^{\varepsilon}
+\lambda^{K} \sum_{T\in\mathbb{T}} |T|.
+\]
+Dragging the packing parameter from separated to sticky, all tubes converge
+without changing directions; the multiplicity of the central voxel grows
+toward $N$.
+
+\section{Observation}
+At finite resolution the union volume decreases as the family packs toward
+the Kakeya configuration, in line with the sticky Kakeya phenomenon.
+
+\end{document}
