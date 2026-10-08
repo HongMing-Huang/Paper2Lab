@@ -230,6 +230,11 @@ v0.1 升级轮补充⑥（2026-10-08④，云侧引擎修复 + 真实 AI 云端�
 - [x] **真实 AI 云端上线**：Studio secrets 配置 provider/openai 兼容 discovery-api.intern-ai.org.cn/v1 + qwen3.8-27b；云端 /api/agent/health backend=agentscope-openai·aiVerified=true；**云侧真实模型完整回合**：模型自主 tool call→引擎真算（peak 2.998≈2×1.5、integral 9.85→19.69 精确 2×、comparison 真 runId）→canvas_apply 诚实拒绝→done+observation
 - PR #44 服务端执行闭环 + AgentScope 2.0.9 三兼容修复（is_read_only 类属性/无界重试上限 6/推理模型兜底 observation）
 
+v0.1 升级轮补充⑦（2026-10-08⑤，解析进度可视化，PR #45）：
+
+- [x] **解析进度 UX（用户报告：20-60s 静态转圈读作卡死）**：worker 行协议增中间 stage 通知（warming=模型加载/parsing=转换），状态端点增 stage/elapsedMs/queueDepth；Home 分阶段解析卡（排队中·前面 N 个/模型加载·首次约 30-60s/解析中·版面→公式→表格·Ns 实时秒表）+ 三速扫描条（宽度非百分比——解析非线性可测，动效示活文字示真）；upload.ts onProgress 流式回传 + timeout 终态明确报错 + 404=任务丢失即报 + **轮询失败不再重传整个 PDF**（旧代码解析中途失联会重试 POST——一张纸最多解析 3 次）。实测时间线：首次 warming@2.0s→parsing@2.2s→done@48.7s；暖机 parsing@0→done@21.3s
+- 测试基线：pytest **106/106** · vitest **287/287**
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
