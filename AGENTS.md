@@ -241,6 +241,13 @@ v0.1 升级轮补充⑧（2026-10-08⑥，解析任务 latest-wins + 刷新重�
 - [x] **根治跨事件循环 bug**：warm worker 原模块级单例把子进程状态带过已关闭 loop（lifespan 关停崩 'Event loop is closed'）——改随 app 生命周期（lifespan 建停/app.state 持有/headless fallback）
 - 测试基线：pytest **108/108** · vitest **287/287**
 
+v0.1 升级轮补充⑨（2026-10-08⑦，PDF 先展示 + 真路由 bug，PR #47）：
+
+- [x] **PDF 先展示（目标明示项）**：uploadFlow——blob URL 文件落地第一刻创建（解析前）；流 settle 不 throw（失败态保留原文 URL）；重试复用同一 URL 零泄漏；Home 解析中/失败态渲染原生 PDF 预览 iframe + 真实错误 + 重试解析按钮（解析失败绝不阻断原文访问）
+- [x] **修真 bug（旧测试空过掩盖）**：ODE_LATEX[0] `\\dot\{` 不容空格——真实 Docling 输出 `\\dot { x }` 带空格，捕食-猎物真实论文一直误路由 formula；PR #42 两处早退守卫（if adapter!=ode return）是空过——改硬断言
+- 失败路径验证（两真实论文 fixture）：A(crash)→URL 保留→重试→decision=ode；B(timeout)→原文可用→重试→fit 表格；404 同样保留；后端 retry-after-error（error 带 stderr→同 clientId 重传→done）
+- 测试基线：pytest **109/109** · vitest **290/290**
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
