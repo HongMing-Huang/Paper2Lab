@@ -99,6 +99,10 @@ COPY public/papers/fit-sine-fit.pdf public/papers/fit-sine-fit.pdf
 # hard-fail bake: no || fallback (a fallback once silently warmed the wrong
 # cache and the runtime died with "cached snapshot folder not found")
 RUN HF_HOME=/opt/docling-models python scripts/download_docling_models.py
+# the warm script ALSO downloads the RapidOCR family (scanned-PDF path); they
+# land in rapidocr's site-packages models dir. Assert they actually landed —
+# missing => scanned PDFs silently yield 0 items => build fails here instead:
+RUN python -c "import rapidocr, pathlib; d = pathlib.Path(rapidocr.__file__).parent / 'models'; n = sum(1 for _ in d.rglob('*') if _.is_file()); assert n > 0, f'rapidocr models missing ({n} files)'; print(f'rapidocr models baked: {n} files')"
 ENV HF_HOME=/opt/docling-models \
     PAPER2LAB_DOCLING_OFFLINE=1 \
     PAPER2LAB_REQUIRE_MODEL_ARTIFACTS=1
