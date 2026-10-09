@@ -58,6 +58,27 @@ def main() -> int:
     doc = convert_pdf(str(warm_pdf), title_hint="warmup")
     print(f"warm parse ok: {len(doc.get('items', []))} items")
 
+    # OCR models (RapidOCR) live in rapidocr's OWN package dir — not HF_HOME.
+    # A scanned PDF on the cloud silently produced 0 items without them.
+    # Force-download them now so the image bakes BOTH model families.
+    try:
+        import rapidocr  # noqa: F401
+        from rapidocr.utils.download_models import download_models
+
+        download_models()
+        import pathlib as _pl
+        import rapidocr as _ro
+
+        _models_dir = _pl.Path(_ro.__file__).parent / "models"
+        _n = sum(1 for _ in _models_dir.rglob("*") if _.is_file()) if _models_dir.exists() else 0
+        print(f"rapidocr models: {_n} files under {_models_dir}")
+        if _n == 0:
+            print("rapidocr model dir empty after warm — OCR of scanned PDFs will fail", file=sys.stderr)
+            return 1
+    except Exception as exc:  # noqa: BLE001 — OCR warm failure is fatal for scans
+        print(f"rapidocr warm failed: {exc}", file=sys.stderr)
+        return 1
+
     # verify the docling model family actually landed in the TARGET cache —
     # "warmed" without evidence once shipped an empty cache
     cache_root = pathlib.Path(os.environ.get("HF_HOME") or pathlib.Path.home() / ".cache" / "huggingface")

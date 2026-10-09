@@ -59,6 +59,13 @@ def convert_pdf(path: str, title_hint: str = "Untitled paper") -> dict[str, Any]
     import docling
 
     doc = get_converter().convert(path).document
+    # a scanned PDF with missing/failing OCR yields an EMPTY document — the
+    # old code returned "done" with 0 items and the failure only surfaced
+    # later as a confusing routing refusal. Fail HERE with the real cause.
+    if not doc.pages:
+        raise RuntimeError(
+            "解析产出 0 页——文件可能损坏或为空扫描件"
+        )
     pages: list[dict[str, Any]] = []
     for no, page in doc.pages.items():
         size = page.size
@@ -135,6 +142,14 @@ def convert_pdf(path: str, title_hint: str = "Untitled paper") -> dict[str, Any]
         items.append(entry)
         n += 1
 
+    if not items:
+        # pages exist but NOTHING was extracted — scanned PDF whose OCR
+        # produced no text (missing OCR models on this host is the usual
+        # cause). Surface the real reason instead of an empty "done".
+        raise RuntimeError(
+            "解析产出 0 个条目——扫描件/图片型 PDF 需要 OCR，但本环境未产出任何文本"
+            "（通常是 OCR 模型未安装；数字 PDF 不受影响）"
+        )
     return {
         "docId": f"doc-{uuid.uuid4().hex[:10]}",
         "engine": "docling",
