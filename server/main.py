@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 import shutil
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -45,11 +45,16 @@ async def _lifespan(_app: FastAPI):
     # the next request then waited on it and blew the gateway window. The
     # engine boots lazily per request; the prebuilt bundle boots in <1s and
     # the bridge fast-probes/replaces stale children (see engine_bridge).
+    # per-app warm worker: every app instance (every pytest loop, every
+    # redeploy) gets its OWN ingest child — module-global singletons carried
+    # subprocess state across closed event loops and broke shutdown
+    _warm_worker = _WarmIngestWorker()
+    app.state.warm_worker = _warm_worker
     try:
         yield
     finally:
-        await bridge.stop()
         await _warm_worker.stop()  # killable-ingest child goes down with the app
+        await bridge.stop()
 
 
 app = FastAPI(title="Paper2Lab backend", version="0.4", lifespan=_lifespan)
@@ -112,6 +117,9 @@ class IngestJob:
         self.status: str = "pending"  # pending | queued | running | done | timeout | error
         # #15 UX: stage refines "running" — warming (model load) | parsing
         self.stage: str | None = None
+        # latest-wins (#15): same browser tab's newer upload supersedes this
+        # job — queued ones cancel, a hung running one is killed for the slot
+        self.client_id: str | None = None
         self.created_at = time.time()
         self.finished_at: float | None = None
         self.error: str | None = None
@@ -123,6 +131,7 @@ class IngestJob:
             "filename": self.filename,
             "status": self.status,
             "stage": self.stage,
+            "clientId": self.client_id,
             "createdAt": self.created_at,
             "finishedAt": self.finished_at,
             "error": self.error,
@@ -150,6 +159,7 @@ def _restore_jobs() -> None:
         job = IngestJob(str(data.get("jobId") or path.stem.removeprefix("job-")), str(data.get("filename", "")))
         job.status = str(data.get("status", "error"))
         job.stage = data.get("stage")
+        job.client_id = data.get("clientId")
         job.created_at = float(data.get("createdAt", 0))
         job.finished_at = data.get("finishedAt")
         job.error = data.get("error")
@@ -382,19 +392,42 @@ class _WarmIngestWorker:
 
     async def stop(self) -> None:
         proc, self._proc = self._proc, None
-        if proc is not None and proc.stdin is not None and not proc.stdin.is_closing():
+        if proc is None:
+            return
+        if proc.stdin is not None and not proc.stdin.is_closing():
             try:
                 proc.stdin.close()
             except OSError:
                 pass
-        if proc is not None:
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
-            except (asyncio.TimeoutError, ProcessLookupError):
-                proc.kill()
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=5)
+        except (asyncio.TimeoutError, ProcessLookupError):
+            _sync_kill(proc)
+        except RuntimeError:
+            # the child belongs to a CLOSED event loop (app restarted between
+            # tests / redeploys) — its transport can't be awaited here; reap
+            # synchronously instead of failing the app shutdown
+            _sync_kill(proc)
 
 
-_warm_worker = _WarmIngestWorker()
+def _sync_kill(proc: asyncio.subprocess.Process) -> None:
+    """best-effort reaping when the child's loop is gone: SIGKILL now; the OS
+    reaps it (or pytest's process exit does). No await on a dead loop."""
+    try:
+        proc.kill()
+    except ProcessLookupError:
+        pass
+
+
+
+def _current_warm_worker() -> "_WarmIngestWorker":
+    """the per-app worker (set at lifespan startup); a fresh module-level
+    fallback keeps headless scripts (no app) working"""
+    return getattr(app.state, "warm_worker", None) or _fallback_worker
+
+
+_fallback_worker = _WarmIngestWorker()
+
 
 
 async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") -> dict[str, Any]:
@@ -427,11 +460,37 @@ async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") ->
         def on_stage(stage: str, _job=job) -> None:
             _job.stage = stage
             _job.persist()
-    return await _warm_worker.convert(pdf_path, title_hint, test_mode, on_stage)
+    return await _current_warm_worker().convert(pdf_path, title_hint, test_mode, on_stage)
+
+
+async def _supersede_client_jobs(client_id: str, new_job_id: str) -> None:
+    """latest-wins (#15): a fresh upload from the SAME tab immediately
+    supersedes that tab's older tasks — queued ones cancel outright; a hung
+    running one gets the worker killed so the slot frees for the new task
+    instead of making the user's retry queue behind their own stale job."""
+    for j in _jobs.values():
+        if j.client_id != client_id or j.job_id == new_job_id:
+            continue
+        if j.status == "queued":
+            j.status = "superseded"
+            j.error = "已被同一页面的新上传取代"
+            j.finished_at = time.time()
+            j.persist()
+        elif j.status == "running":
+            # mark first (the run() coroutine must not overwrite this), then
+            # kill the warm worker — the blocked read unblocks and settles
+            j.status = "superseded"
+            j.error = "已被同一页面的新上传取代"
+            j.finished_at = time.time()
+            j.persist()
+            await _current_warm_worker().stop()
 
 
 @app.post("/api/ingest", status_code=202)
-async def ingest(file: UploadFile = File(...)) -> dict:
+async def ingest(
+    file: UploadFile = File(...),
+    clientId: str | None = Form(default=None),
+) -> dict:
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=415, detail="only PDF is supported in 0.1")
     payload = await _read_bounded(file)
@@ -441,6 +500,9 @@ async def ingest(file: UploadFile = File(...)) -> dict:
     job_id = uuid.uuid4().hex[:12]
     job = IngestJob(job_id, file.filename or "upload.pdf")
     job.status = "queued"  # the docling slot may still be busy (#31)
+    if clientId:
+        job.client_id = clientId[:64]
+        await _supersede_client_jobs(clientId, job_id)
     job.persist()
     _jobs[job_id] = job
 
@@ -458,6 +520,8 @@ async def ingest(file: UploadFile = File(...)) -> dict:
             job.status = "done"
             job.finished_at = time.time()
         except _IngestTimeout as exc:
+            if job.status == "superseded":
+                return  # a newer upload already took over — keep that truth
             # process isolation (#31): the worker was KILLED — the slot is
             # genuinely free and the upload file is closed; a distinct status
             # separates "timed out (terminated)" from "parser failed"
@@ -465,6 +529,8 @@ async def ingest(file: UploadFile = File(...)) -> dict:
             job.error = str(exc)
             job.finished_at = time.time()
         except Exception as exc:  # noqa: BLE001 — parser errors are job results
+            if job.status == "superseded":
+                return  # a newer upload already took over — keep that truth
             job.status = "error"
             job.error = f"docling failed: {exc}"
             job.finished_at = time.time()

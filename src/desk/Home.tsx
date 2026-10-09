@@ -1,7 +1,13 @@
 // The clean home: one dropzone, one hero-demo link. No chat, no cards.
 // Dragging a PDF in transitions to the ingest desk (Docling → playable paper).
 import { useEffect, useRef, useState } from 'react'
-import { ingestPdf, type IngestProgress } from '../ingest/upload'
+import {
+  clearLastJob,
+  ingestPdf,
+  lastJob,
+  pollIngestJob,
+  type IngestProgress,
+} from '../ingest/upload'
 import { routeAdapterWithLlm } from '../skills/adapterRouter'
 
 export function Home({
@@ -22,6 +28,7 @@ export function Home({
   // #15 UX: live parse progress — stage/elapsed/queue instead of a dead
   // spinner (real parses take 20-60s; silence reads as "stuck")
   const [progress, setProgress] = useState<IngestProgress | null>(null)
+  const [reattached, setReattached] = useState<string | null>(null) // filename of the reattached job
   const [tick, setTick] = useState(0)
   useEffect(() => {
     if (state !== 'parsing') return
@@ -29,6 +36,33 @@ export function Home({
     return () => window.clearInterval(t)
   }, [state])
   void tick
+
+  // #15 latest-wins: a refresh must FOLLOW the newest task, not blank out —
+  // reattach to the still-running job this tab started (server keeps state)
+  const resumedRef = useRef(false)
+  useEffect(() => {
+    if (resumedRef.current) return
+    resumedRef.current = true
+    const last = lastJob()
+    if (!last) return
+    setState('parsing')
+    setReattached(last.filename)
+    setProgress({ status: 'queued', stage: null, elapsedMs: 0, queueDepth: 0 })
+    void pollIngestJob(last.jobId, (p) => setProgress(p))
+      .then((doc) => {
+        // the parsed DOCUMENT survives; the file object does not — ask the
+        // user to re-drop the same PDF to enter the desk with full paper view
+        clearLastJob()
+        setReattached(null)
+        setState('idle')
+        setError(`「${last.filename}」解析已完成（${doc.items.length} 项）——请重新拖入该 PDF 进入实验台`)
+      })
+      .catch(() => {
+        clearLastJob()
+        setReattached(null)
+        setState('idle')
+      })
+  }, [])
 
   const handleFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -78,7 +112,7 @@ export function Home({
           disabled={state === 'parsing'}
         >
           {state === 'parsing' ? (
-            <ParseProgress p={progress} />
+            <ParseProgress p={progress} name={reattached ?? undefined} />
           ) : (
             <>拖入一篇 PDF，或点击选择</>
           )}
@@ -124,13 +158,14 @@ export function Home({
 
 /** staged parse status: queue → model warm-up → page/formula/table parse,
  *  with live elapsed seconds and queue depth. No fabricated percentages. */
-function ParseProgress({ p }: { p: IngestProgress | null }) {
+function ParseProgress({ p, name }: { p: IngestProgress | null; name?: string }) {
   if (!p) return <>准备上传…</>
+  const ctx = name ? `${name} · ` : ''
   const secs = Math.floor((p.elapsedMs || 0) / 1000)
   if (p.status === 'queued') {
     return (
       <>
-        <span className="home-spin">◌</span> 排队中 · 前面还有 {Math.max(0, p.queueDepth - 1)} 个任务
+        <span className="home-spin">◌</span> {ctx}排队中 · 前面还有 {Math.max(0, p.queueDepth - 1)} 个任务
         {secs > 0 ? ` · 已等 ${secs}s` : ''}
       </>
     )
@@ -138,13 +173,13 @@ function ParseProgress({ p }: { p: IngestProgress | null }) {
   if (p.stage === 'warming') {
     return (
       <>
-        <span className="home-spin">◌</span> 正在加载解析模型（首次较慢，约 30–60s）· {secs}s
+        <span className="home-spin">◌</span> {ctx}正在加载解析模型（首次较慢，约 30–60s）· {secs}s
       </>
     )
   }
   return (
     <>
-      <span className="home-spin">◌</span> 正在解析 · 版面 → 公式 → 表格 · {secs}s
+      <span className="home-spin">◌</span> {ctx}正在解析 · 版面 → 公式 → 表格 · {secs}s
     </>
   )
 }

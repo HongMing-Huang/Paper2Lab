@@ -11,6 +11,43 @@ import { normalizeDocling, type IngestedDoc } from './doclingSchema'
 const POLL_INTERVAL_MS = 1000
 const POLL_TIMEOUT_MS = 10 * 60 * 1000
 
+/** per-tab identity (survives refresh, cleared per new tab): lets a retried
+ * upload SUPERSEDE this tab's stale job server-side (#15 latest-wins) and
+ * lets the page reattach to the in-flight job after a refresh */
+export function ingestClientId(): string {
+  try {
+    let id = sessionStorage.getItem('p2l-ingest-client')
+    if (!id) {
+      id = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+      sessionStorage.setItem('p2l-ingest-client', id)
+    }
+    return id
+  } catch {
+    return 'c-ephemeral'
+  }
+}
+
+/** remember the latest job so a refresh can REATTACH to it (latest task
+ * follows the user) instead of silently starting from scratch */
+export function rememberLastJob(jobId: string, filename: string): void {
+  try {
+    sessionStorage.setItem('p2l-last-ingest', JSON.stringify({ jobId, filename }))
+  } catch { /* private mode */ }
+}
+export function clearLastJob(): void {
+  try {
+    sessionStorage.removeItem('p2l-last-ingest')
+  } catch { /* private mode */ }
+}
+export function lastJob(): { jobId: string; filename: string } | null {
+  try {
+    const raw = sessionStorage.getItem('p2l-last-ingest')
+    return raw ? (JSON.parse(raw) as { jobId: string; filename: string }) : null
+  } catch {
+    return null
+  }
+}
+
 export interface IngestProgress {
   status: string
   /** warming (model load) | parsing | null (not yet running) */
@@ -26,6 +63,7 @@ export async function ingestPdf(
   const attempts = opts.attempts ?? 3
   const body = new FormData()
   body.append('file', file, file.name)
+  body.append('clientId', ingestClientId())
   let lastErr: unknown = null
 
   for (let i = 0; i < attempts; i++) {
@@ -35,6 +73,7 @@ export async function ingestPdf(
       if (res.status === 202) {
         const j = (await res.json()) as { jobId: string }
         jobId = j.jobId
+        rememberLastJob(j.jobId, file.name)
         // poll OUTSIDE the retry loop: a poll transport failure must NOT
         // re-upload the whole PDF (the old code retried the POST on a dead
         // backend mid-parse, restarting the job up to 3 times)
@@ -56,6 +95,13 @@ export async function ingestPdf(
       ? lastErr.message
       : 'Docling 服务未启动 — 请先运行: server/.venv/bin/uvicorn server.main:app --port 8787',
   )
+}
+
+export async function pollIngestJob(
+  jobId: string,
+  onProgress?: (p: IngestProgress) => void,
+): Promise<IngestedDoc> {
+  return pollJob(jobId, onProgress)
 }
 
 async function pollJob(jobId: string, onProgress?: (p: IngestProgress) => void): Promise<IngestedDoc> {
@@ -94,9 +140,19 @@ async function pollJob(jobId: string, onProgress?: (p: IngestProgress) => void):
       elapsedMs: body.elapsedMs ?? 0,
       queueDepth: body.queueDepth ?? 0,
     })
-    if (body.status === 'done' && body.document) return normalizeDocling(body.document)
+    if (body.status === 'done' && body.document) {
+      clearLastJob()
+      return normalizeDocling(body.document)
+    }
+    if (body.status === 'superseded') {
+      clearLastJob()
+      throw new Error('ingest superseded: 本任务已被更新的上传取代')
+    }
     if (body.status === 'error') throw new Error(`ingest failed (parse): ${body.error ?? 'unknown parser error'}`)
-    if (body.status === 'timeout') throw new Error(`ingest failed (timeout): ${body.error ?? '解析超时，已被终止'}`)
+    if (body.status === 'timeout') {
+      clearLastJob()
+      throw new Error(`ingest failed (timeout): ${body.error ?? '解析超时，已被终止'}`)
+    }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
   }
   throw new Error(`ingest failed (timeout): docling did not finish job ${jobId}`)
