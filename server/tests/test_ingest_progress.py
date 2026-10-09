@@ -100,8 +100,8 @@ class TestStageSurface:
                             stages.append("parsing")
                         return {"docId": "staged", "title": title, "ok": True}
 
-                real = srv._warm_worker
-                srv._warm_worker = FakeWorker()
+                real_fn = srv._current_warm_worker
+                srv._current_warm_worker = lambda: FakeWorker()
                 try:
                     j = await _submit(client)
                     for _ in range(40):
@@ -113,4 +113,70 @@ class TestStageSurface:
                     assert st["stage"] == "parsing"  # last stage persisted
                     assert stages == ["warming", "parsing"]
                 finally:
-                    srv._warm_worker = real
+                    srv._current_warm_worker = real_fn
+
+
+class TestLatestWins:
+    @pytest.mark.asyncio
+    async def test_new_upload_supersedes_queued_sibling_of_same_tab(self, monkeypatch):
+        """retry must WIN, not queue behind its own stale job: a newer upload
+        with the same clientId supersedes the tab's queued/running stale job;
+        another tab's job is immune"""
+        _clear(monkeypatch)
+        monkeypatch.setenv("PAPER2LAB_INGEST_TIMEOUT", "8")
+        from server.main import app
+
+        async with LifespanManager(app) as mgr:
+            async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
+                monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "hang")
+                r1 = await client.post("/api/ingest", data={"clientId": "tab-A"}, files={"file": ("a.pdf", PDF, "application/pdf")})
+                r2 = await client.post("/api/ingest", data={"clientId": "tab-B"}, files={"file": ("b.pdf", PDF, "application/pdf")})
+                j1, j2 = r1.json()["jobId"], r2.json()["jobId"]
+                await asyncio.sleep(0.8)  # both entered the pipeline
+                monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "ok")
+                r3 = await client.post("/api/ingest", data={"clientId": "tab-A"}, files={"file": ("a2.pdf", PDF, "application/pdf")})
+                j3 = r3.json()["jobId"]
+                for _ in range(80):
+                    s1 = (await client.get(f"/api/ingest/{j1}")).json()
+                    if s1["status"] not in ("queued", "running"):
+                        break
+                    await asyncio.sleep(0.25)
+                assert s1["status"] == "superseded"
+                assert "取代" in (s1.get("error") or "")
+                s3 = (await client.get(f"/api/ingest/{j3}")).json()
+                while s3["status"] in ("queued", "running"):
+                    await asyncio.sleep(0.25)
+                    s3 = (await client.get(f"/api/ingest/{j3}")).json()
+                assert s3["status"] == "done"
+                s2 = (await client.get(f"/api/ingest/{j2}")).json()
+                while s2["status"] in ("queued", "running"):
+                    await asyncio.sleep(0.25)
+                    s2 = (await client.get(f"/api/ingest/{j2}")).json()
+                # tab-B was NOT collateral-damaged: it settles on its own
+                # (done under ok-mode after the slot freed, or its own timeout
+                # — the invariant is: never 'superseded' by ANOTHER tab)
+                assert s2["status"] in ("done", "timeout")
+                assert s2["status"] != "superseded"
+
+    @pytest.mark.asyncio
+    async def test_superseded_running_job_keeps_the_supersede_truth(self, monkeypatch):
+        """the killed running job settles as 'superseded' — its unblocked
+        coroutine must NOT overwrite the truth with error/timeout"""
+        _clear(monkeypatch)
+        monkeypatch.setenv("PAPER2LAB_INGEST_TIMEOUT", "30")
+        from server.main import app
+
+        async with LifespanManager(app) as mgr:
+            async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
+                monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "hang")
+                r1 = await client.post("/api/ingest", data={"clientId": "tab-X"}, files={"file": ("x.pdf", PDF, "application/pdf")})
+                j1 = r1.json()["jobId"]
+                await asyncio.sleep(0.8)  # j1 RUNNING inside the worker
+                monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "ok")
+                await client.post("/api/ingest", data={"clientId": "tab-X"}, files={"file": ("x2.pdf", PDF, "application/pdf")})
+                for _ in range(60):
+                    s1 = (await client.get(f"/api/ingest/{j1}")).json()
+                    if s1["status"] not in ("queued", "running"):
+                        break
+                    await asyncio.sleep(0.25)
+                assert s1["status"] == "superseded", s1

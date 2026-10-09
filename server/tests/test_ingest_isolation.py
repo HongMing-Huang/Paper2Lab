@@ -125,16 +125,16 @@ class TestWarmWorker:
         the warm worker must reuse ONE process across parses"""
         _clear_test_hooks(monkeypatch)
         monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "ok")
-        from server.main import app, _warm_worker
+        from server.main import app, _current_warm_worker
 
         async with LifespanManager(app) as mgr:
             async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
                 j1 = await _submit(client)
                 st1 = await _wait_terminal(client, j1)
-                pid1 = _warm_worker._proc.pid if _warm_worker._proc else None
+                pid1 = _current_warm_worker()._proc.pid if _current_warm_worker()._proc else None
                 j2 = await _submit(client)
                 st2 = await _wait_terminal(client, j2)
-                pid2 = _warm_worker._proc.pid if _warm_worker._proc else None
+                pid2 = _current_warm_worker()._proc.pid if _current_warm_worker()._proc else None
         assert st1["status"] == "done" and st2["status"] == "done"
         assert pid1 is not None and pid1 == pid2  # SAME process — warm
 
@@ -142,7 +142,7 @@ class TestWarmWorker:
     async def test_timeout_kills_and_next_parse_gets_a_fresh_worker(self, monkeypatch):
         _clear_test_hooks(monkeypatch)
         monkeypatch.setenv("PAPER2LAB_INGEST_TIMEOUT", "2")
-        from server.main import app, _warm_worker
+        from server.main import app, _current_warm_worker
 
         async with LifespanManager(app) as mgr:
             async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
