@@ -235,6 +235,12 @@ v0.1 升级轮补充⑦（2026-10-08⑤，解析进度可视化，PR #45）：
 - [x] **解析进度 UX（用户报告：20-60s 静态转圈读作卡死）**：worker 行协议增中间 stage 通知（warming=模型加载/parsing=转换），状态端点增 stage/elapsedMs/queueDepth；Home 分阶段解析卡（排队中·前面 N 个/模型加载·首次约 30-60s/解析中·版面→公式→表格·Ns 实时秒表）+ 三速扫描条（宽度非百分比——解析非线性可测，动效示活文字示真）；upload.ts onProgress 流式回传 + timeout 终态明确报错 + 404=任务丢失即报 + **轮询失败不再重传整个 PDF**（旧代码解析中途失联会重试 POST——一张纸最多解析 3 次）。实测时间线：首次 warming@2.0s→parsing@2.2s→done@48.7s；暖机 parsing@0→done@21.3s
 - 测试基线：pytest **106/106** · vitest **287/287**
 
+v0.1 升级轮补充⑧（2026-10-08⑥，解析任务 latest-wins + 刷新重连，PR #46）：
+
+- [x] **latest-wins（用户报告：刷新重试效果差——重试排在自己卡住的任务后）**：POST /api/ingest 增 clientId（每标签页稳定）；同页新上传**立即取代**旧任务（排队中→superseded 终态；卡住运行中→杀 warm worker 释放槽位，run() 不得覆写 superseded 真相）；他页任务免疫。客户端 sessionStorage 记 lastJob——**刷新后重连**仍在跑的最新任务（文件名·阶段·秒表），完成提示重新拖入；superseded/timeout/404 三终态明确报错
+- [x] **根治跨事件循环 bug**：warm worker 原模块级单例把子进程状态带过已关闭 loop（lifespan 关停崩 'Event loop is closed'）——改随 app 生命周期（lifespan 建停/app.state 持有/headless fallback）
+- 测试基线：pytest **108/108** · vitest **287/287**
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
