@@ -180,3 +180,35 @@ class TestLatestWins:
                         break
                     await asyncio.sleep(0.25)
                 assert s1["status"] == "superseded", s1
+
+class TestRetryAfterError:
+    @pytest.mark.asyncio
+    async def test_retry_after_parse_error_completes_on_the_backend(self, monkeypatch):
+        """the PDF-first retry chain's backend half: a crashed parse settles
+        as error (with the worker stderr detail), and the SAME tab's re-POST
+        runs fresh and completes — the failed job is history, not a blocker"""
+        _clear(monkeypatch)
+        from server.main import app
+
+        async with LifespanManager(app) as mgr:
+            async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
+                monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "crash")
+                r1 = await client.post("/api/ingest", data={"clientId": "tab-R"}, files={"file": ("p.pdf", PDF, "application/pdf")})
+                j1 = r1.json()["jobId"]
+                for _ in range(60):
+                    s1 = (await client.get(f"/api/ingest/{j1}")).json()
+                    if s1["status"] not in ("queued", "running"):
+                        break
+                    await asyncio.sleep(0.25)
+                assert s1["status"] == "error"
+                assert "simulated docling crash" in s1["error"]
+
+                monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "ok")
+                r2 = await client.post("/api/ingest", data={"clientId": "tab-R"}, files={"file": ("p.pdf", PDF, "application/pdf")})
+                j2 = r2.json()["jobId"]
+                s2 = (await client.get(f"/api/ingest/{j2}")).json()
+                while s2["status"] in ("queued", "running"):
+                    await asyncio.sleep(0.25)
+                    s2 = (await client.get(f"/api/ingest/{j2}")).json()
+                assert s2["status"] == "done"
+                assert s2["stage"] in (None, "parsing")

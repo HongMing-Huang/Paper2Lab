@@ -20,7 +20,8 @@ describe('REAL PDF → experiment acceptance (two papers per class, #24 五)', (
   it('ODE paper A (predator–prey): real formulas + field initials drive a real integration', async () => {
     const d = routeAdapter(realDoc('ode-lotka-volterra'))
     expect(d.status).toBe('ok')
-    if (d.status !== 'ok' || d.adapter !== 'ode') return
+    expect(d.adapter, 'real ODE paper must route to the ode adapter (regression: dotted latex with spaces)').toBe('ode')
+    if (d.adapter !== 'ode') return
     expect(d.binding.system?.states).toEqual(['x', 'y'])
     const initial = d.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> }
     expect(initial.values.x).toBe(2)
@@ -44,7 +45,8 @@ describe('REAL PDF → experiment acceptance (two papers per class, #24 五)', (
   it('ODE paper B (damped oscillator): signed states, decay to origin', async () => {
     const d = routeAdapter(realDoc('ode-damped-oscillator'))
     expect(d.status).toBe('ok')
-    if (d.status !== 'ok' || d.adapter !== 'ode') return
+    expect(d.adapter, 'real ODE paper must route to the ode adapter').toBe('ode')
+    if (d.adapter !== 'ode') return
     const initial = d.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> }
     expect(initial.values).toEqual({ x: 1.5, y: 0 })
     const out = await executeSkill<{ s0: number[] }>(
