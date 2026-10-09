@@ -3,6 +3,9 @@ fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 python-multipart>=0.0.9,<1
 docling>=2.131,<3
+# rapidocr (docling OCR) defaults to the onnxruntime engine — without this
+# package scanned-PDF OCR silently yields 0 items on clean installs
+onnxruntime>=1.17,<2
 agentscope>=2.0.9,<3
 apscheduler>=3.10,<4
 httpx[socks]>=0.27,<1

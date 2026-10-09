@@ -55,6 +55,28 @@ def get_converter() -> DocumentConverter:
     return _converter
 
 
+def _ocr_probe() -> str:
+    """minimal RapidOCR run on a tiny synthetic image — returns its failure
+    reason verbatim (or 'ok' when OCR itself works, meaning the empty output
+    came from elsewhere, e.g. docling's page OCR being disabled)"""
+    try:
+        import io
+
+        from PIL import Image, ImageDraw
+        from rapidocr import RapidOCR
+
+        img = Image.new("RGB", (400, 80), "white")
+        ImageDraw.Draw(img).text((20, 25), "OCR PROBE 123", fill="black")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        engine = RapidOCR()
+        result = engine(buf.getvalue())
+        texts = [r[1] for r in (result.txts or [])] if hasattr(result, "txts") else []
+        return f"ok ({texts[:2]})"
+    except Exception as exc:  # noqa: BLE001 — the probe's job IS to report
+        return f"FAILED {type(exc).__name__}: {exc}"[:400]
+
+
 def convert_pdf(path: str, title_hint: str = "Untitled paper") -> dict[str, Any]:
     import docling
 
@@ -144,12 +166,10 @@ def convert_pdf(path: str, title_hint: str = "Untitled paper") -> dict[str, Any]
 
     if not items:
         # pages exist but NOTHING was extracted — scanned PDF whose OCR
-        # produced no text (missing OCR models on this host is the usual
-        # cause). Surface the real reason instead of an empty "done".
-        raise RuntimeError(
-            "解析产出 0 个条目——扫描件/图片型 PDF 需要 OCR，但本环境未产出任何文本"
-            "（通常是 OCR 模型未安装；数字 PDF 不受影响）"
-        )
+        # produced no text. Run a MINIMAL direct OCR probe so the real
+        # cloud-side cause (engine init failure / model load error) ships
+        # in the error message instead of staying silent.
+        raise RuntimeError(f"解析产出 0 个条目——扫描件需要 OCR 但未产出文本。OCR 探针：{_ocr_probe()}")
     return {
         "docId": f"doc-{uuid.uuid4().hex[:10]}",
         "engine": "docling",
