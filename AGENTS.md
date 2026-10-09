@@ -248,6 +248,13 @@ v0.1 升级轮补充⑨（2026-10-08⑦，PDF 先展示 + 真路由 bug，PR #47
 - 失败路径验证（两真实论文 fixture）：A(crash)→URL 保留→重试→decision=ode；B(timeout)→原文可用→重试→fit 表格；404 同样保留；后端 retry-after-error（error 带 stderr→同 clientId 重传→done）
 - 测试基线：pytest **109/109** · vitest **290/290**
 
+v0.1 升级轮补充⑩（2026-10-09，用户报告"解析依旧失败"确诊：扫描件 OCR 两连修，PR #48 + hotfix）：
+
+- [x] **确诊链**：构造扫描式 PDF（纯图片页）→ 云端 done/**0 items** vs 本地 2 items → 0-items 守卫上线（诚实报错）→ 内嵌最小 RapidOCR 探针 → **ImportError: onnxruntime is not installed**——RapidOCR 默认 onnxruntime 引擎从未在 requirements；本地能跑仅因 docling 回退 torch 引擎
+- [x] **修**：requirements 增 onnxruntime>=1.17,<2；download 脚本预热 OCR 模型族（rapidocr 自管 site-packages/models，**不走 HF_HOME**——此前烘焙只覆盖 HF 家族）；Dockerfile 烘焙后断言 rapidocr models 非空；ingest_core 0 页/0 条目双守卫（**不再假 done**）+ OCR 探针把真实异常写进错误消息（云端静默失败从此一眼定位）
+- [x] **云端终验**：扫描件 done@55s / **2 items**（OCR 提取出图中文字）；数字 PDF 同部署回归 done@17s / 14 items / 1 公式
+- 测试基线：pytest 109/109 · vitest 290/290
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）
