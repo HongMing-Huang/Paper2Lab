@@ -69,7 +69,7 @@ export interface PaperBinding {
 
 // ---------------------------------------------------------------- detection
 
-const ODE_LATEX = [/\\dot\{/, /\\frac\s*\{\s*d[a-zA-Z]/, /\bd[a-zA-Z]\s*\/\s*d[tτs]/, /[xy]' *\(/, /[xy]'/]
+const ODE_LATEX = [/\\dot\s*\{/, /\\frac\s*\{\s*d[a-zA-Z]/, /\bd[a-zA-Z]\s*\/\s*d[tτs]/, /[xy]' *\(/, /[xy]'/]
 const ODE_TEXT = [
   '微分方程', '动力系统', '种群', '捕食', '猎物', '稳定性', '平衡点', '周期解', '振动', '阻尼',
   'differential equation', 'dynamical system', 'population', 'predator', 'prey', 'stability',

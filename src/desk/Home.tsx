@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   clearLastJob,
-  ingestPdf,
   lastJob,
   pollIngestJob,
   type IngestProgress,
 } from '../ingest/upload'
 import { routeAdapterWithLlm } from '../skills/adapterRouter'
+import { runPdfFirstUpload, type UploadFlowState } from './uploadFlow'
 
 export function Home({
   onDesk,
@@ -16,7 +16,7 @@ export function Home({
   onPhysics,
   onChallenges,
 }: {
-  onDesk: (file: File, pdfUrl: string, doc: Awaited<ReturnType<typeof ingestPdf>>, decision: Awaited<ReturnType<typeof routeAdapterWithLlm>>) => void
+  onDesk: (file: File, pdfUrl: string, doc: import('../ingest/doclingSchema').IngestedDoc, decision: Awaited<ReturnType<typeof routeAdapterWithLlm>>) => void
   onKakeya: () => void
   onPhysics: () => void
   onChallenges: () => void
@@ -30,6 +30,11 @@ export function Home({
   const [progress, setProgress] = useState<IngestProgress | null>(null)
   const [reattached, setReattached] = useState<string | null>(null) // filename of the reattached job
   const [tick, setTick] = useState(0)
+  // #15 PDF-first: the ORIGINAL paper is viewable the instant a file lands —
+  // parse failure never blocks access (blob URL lives through retry)
+  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null)
+  const [retrying, setRetrying] = useState(false)
+  const fileRef = useRef<File | null>(null)
   useEffect(() => {
     if (state !== 'parsing') return
     const t = window.setInterval(() => setTick((n) => n + 1), 1000)
@@ -70,18 +75,47 @@ export function Home({
       setError('请拖入 PDF 论文（0.1 支持 .pdf）')
       return
     }
+    fileRef.current = file
     setState('parsing')
     setError(null)
     setProgress({ status: 'queued', stage: null, elapsedMs: 0, queueDepth: 0 })
-    try {
-      const doc = await ingestPdf(file, { onProgress: (p) => setProgress(p) })
-      const decision = await routeAdapterWithLlm(doc)
-      onDesk(file, URL.createObjectURL(file), doc, decision)
-    } catch (err) {
-      setState('error')
-      setError(err instanceof Error ? err.message : String(err))
-      setProgress(null)
+    const out = await runPdfFirstUpload(file, { onProgress: (p) => setProgress(p) })
+    settle(out, file)
+  }
+
+  /** settle a pdf-first run: done → desk (with the SAME blob URL); failed →
+   *  keep the original-PDF view up + the real reason + a retry entry */
+  const settle = (out: UploadFlowState, file: File) => {
+    if (out.phase === 'done' && out.doc && out.decision && out.decision.status === 'ok') {
+      // deterministic routing succeeded — hand over (LLM refinement path only
+      // improves the deterministic choice, so routeAdapter is sufficient here)
+      void routeAdapterWithLlm(out.doc).then((decision) => {
+        onDesk(file, out.pdfUrl, out.doc!, decision)
+      })
+      return
     }
+    // failed (parse error / lost job / superseded) or routing refused:
+    // the ORIGINAL PAPER stays accessible — never a blank error wall
+    setPreview({ file, url: out.pdfUrl })
+    setState('error')
+    setError(out.error ?? (out.decision ? out.decision.reason : '解析未完成'))
+    setProgress(null)
+  }
+
+  /** retry uses the SAME blob URL (no leak) and the same file */
+  const retryParse = async () => {
+    const file = fileRef.current
+    if (!file || retrying) return
+    setRetrying(true)
+    setState('parsing')
+    setError(null)
+    setProgress({ status: 'queued', stage: null, elapsedMs: 0, queueDepth: 0 })
+    const out = await runPdfFirstUpload(file, {
+      onProgress: (p) => setProgress(p),
+      existingUrl: preview?.url,
+    })
+    setRetrying(false)
+    settle(out, file)
   }
 
   return (
@@ -131,9 +165,30 @@ export function Home({
         {error && (
           <div className="home-error">
             {error}
-            <button type="button" className="desk-btn" onClick={() => setState('idle')}>
-              重试
-            </button>
+            {fileRef.current ? (
+              <button type="button" className="desk-btn" data-testid="retry-parse" disabled={retrying} onClick={() => void retryParse()}>
+                {retrying ? '重新解析中…' : '重试解析'}
+              </button>
+            ) : (
+              <button type="button" className="desk-btn" onClick={() => setState('idle')}>
+                重试
+              </button>
+            )}
+          </div>
+        )}
+        {/* PDF-first: the original paper stays viewable even when parsing
+            failed — access is never blocked by an ingest error (#15) */}
+        {preview && state !== 'idle' && (
+          <div className="home-pdf-first" data-testid="pdf-first-view">
+            <div className="home-pdf-first-head">
+              原文预览（解析不影响阅读）
+            </div>
+            <iframe
+              className="home-pdf-first-frame"
+              title="original paper"
+              src={preview.url}
+              data-testid="pdf-first-frame"
+            />
           </div>
         )}
         <div className="home-sep">· 或 ·</div>
