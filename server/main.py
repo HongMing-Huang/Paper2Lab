@@ -38,6 +38,60 @@ from server.engine_bridge import bridge
 from server.ingest_core import convert_pdf
 
 
+async def _background_warmup(worker: "_WarmIngestWorker") -> None:
+    """best-effort hot-path warmup at app start (never blocks/fails boot):
+
+    1. docling converter load via the warm worker (one REAL tiny parse) —
+       makes the first user PDF skip the ~30-60s model-load stage;
+    2. one once-runner engine execute — touches node + the engine bundle +
+       cortex so the first scientific call isn't a ~20s cold import.
+    Budget-bounded; any failure is swallowed (first request pays the cost as
+    before, nothing regresses)."""
+    async def _docling_warm() -> None:
+        tiny = DATA_DIR / "warmup-tiny.pdf"
+        if not tiny.exists():
+            tiny.write_bytes(b"%PDF-1.4\n%%EOF\n")
+        try:
+            await asyncio.wait_for(worker.convert(str(tiny), "warmup", ""), timeout=_ingest_timeout_s())
+        except Exception:  # noqa: BLE001 — warmup must never break boot
+            pass
+
+    async def _engine_warm() -> None:
+        try:
+            from server.engine_api import ExecuteRequest
+
+            req = ExecuteRequest(
+                skill="formula.plot",
+                input={
+                    "expression": ["Multiply", "a", ["Sin", "x"]],
+                    "parameters": ["a", "x"],
+                    "values": {"a": 1, "x": 0},
+                    "independent": "x",
+                    "range": [-1, 1],
+                    "samples": 3,
+                },
+                planId="startup-warmup",
+                plan={
+                    "planId": "startup-warmup",
+                    "skill": "formula.plot",
+                    "goal": "startup warmup",
+                    "metrics": [],
+                    "nonClaims": [],
+                },
+            )
+            from server import engine_api as _ea
+
+            await asyncio.wait_for(_ea._execute_raw(req), timeout=120.0)
+        except Exception:  # noqa: BLE001
+            pass
+
+    # tests (PAPER2LAB_TEST_CONVERT) and opt-outs skip the warmup — every
+    # pytest app instance triggering a full model load made suites crawl
+    if os.environ.get("PAPER2LAB_TEST_CONVERT") or os.environ.get("PAPER2LAB_DISABLE_STARTUP_WARMUP", "0") == "1":
+        return
+    await asyncio.gather(_docling_warm(), _engine_warm())
+
+
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     # NO startup warmup: on serverless (ModelScope FC) the instance is frozen
@@ -50,6 +104,11 @@ async def _lifespan(_app: FastAPI):
     # subprocess state across closed event loops and broke shutdown
     _warm_worker = _WarmIngestWorker()
     app.state.warm_worker = _warm_worker
+    # background warmup (#15 perf): the FIRST engine request after a cold
+    # start paid ~20s (node + bundle + cortex cold import) and the FIRST
+    # parse paid the docling model load. Warm both now, non-blocking, with
+    # a hard budget — user request #1 should land on hot paths.
+    asyncio.create_task(_background_warmup(_warm_worker))
     try:
         yield
     finally:
