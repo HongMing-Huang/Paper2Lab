@@ -44,6 +44,9 @@ async function main() {
     // upload the real PDF through the real home dropzone (single origin)
     await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' })
     await page.locator('button.home-drop').waitFor({ timeout: 30000 })
+    // this test asserts the 精读 (Docling) path — the home default is now the
+    // VLM fast path, which (correctly) errors in CI without a provider
+    await page.locator('[data-testid="parse-mode"] button').filter({ hasText: '精读定位' }).click()
     const chooserP = page.waitForEvent('filechooser')
     await page.locator('button.home-drop').click()
     const chooser = await chooserP
