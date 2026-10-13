@@ -1,0 +1,215 @@
+{
+ "docId": "vlm-1a134dc049c",
+ "engine": "vlm",
+ "doclingVersion": "qwen3.8-27b@fast-path",
+ "title": "Tuning-Fork Calibration: Fitting a Pure Sine to Sampled Data",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612,
+   "height": 792
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.06,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "Tuning-Fork Calibration: Fitting a Pure Sine to Sampled Data"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.1243,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "E. Tone"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.1886,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "October 2026"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.2529,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i4",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.3171,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "A tuning fork is struck and the displacement is sampled at fixed intervals. We fit the sampled points to the pure sine model and use the fitted frequency as the calibration value."
+  },
+  {
+   "id": "p1-i5",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.3814,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "1   The model"
+  },
+  {
+   "id": "p1-i6",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.4457,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "The displacement follows"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.51,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "latex": "y = a \\sin(bx)"
+  },
+  {
+   "id": "p1-i8",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.5743,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "with amplitude $a$ and angular frequency $b$; the independent variable $x$ is time in seconds."
+  },
+  {
+   "id": "p1-i9",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.6386,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "2   Sampled points"
+  },
+  {
+   "id": "p1-i10",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.7029,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "The calibration data used for the fit are:"
+  },
+  {
+   "id": "p1-i11",
+   "kind": "table",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.7671,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "$x$ (s) | $y$ (mm)\n0.0 | 0.00\n0.5 | 1.42\n1.0 | 2.00\n1.5 | 1.41\n2.0 | 0.03",
+   "table": {
+    "columns": [
+     "$x$ (s)",
+     "$y$ (mm)"
+    ],
+    "rows": [
+     [
+      "0.0",
+      "0.00"
+     ],
+     [
+      "0.5",
+      "1.42"
+     ],
+     [
+      "1.0",
+      "2.00"
+     ],
+     [
+      "1.5",
+      "1.41"
+     ],
+     [
+      "2.0",
+      "0.03"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "p1-i12",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.8314,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "3   Calibration remark"
+  },
+  {
+   "id": "p1-i13",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.08,
+    "y": 0.8957,
+    "w": 0.84,
+    "h": 0.04
+   },
+   "text": "The fit residual against the sampled data determines whether a second harmonic is present; for the fork in question the pure sine suffices."
+  }
+ ],
+ "_vlm": {
+  "model": "qwen3.8-27b",
+  "pages": 1
+ }
+}

@@ -56,3 +56,8 @@
 - `src/desk/odePhaseStore.ts`：`ODE_PREVIEW_STEPS = 400`（相平面拖动预览的粗积分步数）。
 - `src/desk/PhasePlaneChart.tsx`：`BOUND = 3.2`（相平面视窗半径）、`VF_GRID = 11`（向量场箭头密度——呈现层，用同一编译内核求值）。
 - 允许理由：均为采样密度/视窗/关卡设计常量，不冒充测量结果；轨迹、周期、RMSE、体积等用户可见数值仍 100% 来自 ExperimentRun。
+
+## G. VLM 快速理解路径登记常量（摄入管线配置类，非证据）
+
+- `server/vlm_parse.py`：`_RENDER_SCALE = 2.0`（pypdfium2 渲染倍率 ≈150dpi——OCR 级可读性/负载大小的折中）、`_MAX_CONCURRENT_PAGES = 4`（逐页并发视觉调用上限）、`_MAX_PAGES = 24`（快速路径页数护栏，超过应走 Docling）、`max_tokens = 8000`（单页提取响应上限）、页面级锚点 `x=0.08/w=0.84/h=0.04` + 纵向堆叠（AI 提取的锚点是页面级，非 Docling 字符级——引擎标签 `vlm` + `doclingVersion "<model>@fast-path"` 明示来源）。
+- 允许理由：均为渲染/并发/护栏配置；提取出的公式与表格数值仍须经公式编译/实验执行才成为用户可见 CALCULATED 数字（AI 只搬运会读到的论文内容，不产生计算结果）。
