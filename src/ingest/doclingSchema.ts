@@ -50,6 +50,10 @@ export interface IngestedDoc {
    * anchors, AI-assisted extraction, engine label carries the model name) */
   engine: 'docling' | 'vlm'
   doclingVersion: string
+  /** set when the fast path capped the parse (VLM _MAX_PAGES): only the
+   * first N pages were read — the corpus is PARTIAL and the UI must say so */
+  truncatedAfterPage?: number
+  pagesTotal?: number
   pages: IngestedPage[]
   items: IngestedItem[]
 }
@@ -114,6 +118,8 @@ export function normalizeDocling(raw: unknown): IngestedDoc {
     title: r.title ?? 'Untitled paper',
     engine: r.engine === 'vlm' ? 'vlm' : 'docling',
     doclingVersion: r.doclingVersion ?? 'unknown',
+    ...(typeof r.truncatedAfterPage === 'number' ? { truncatedAfterPage: r.truncatedAfterPage } : {}),
+    ...(typeof r.pagesTotal === 'number' ? { pagesTotal: r.pagesTotal } : {}),
     pages: r.pages,
     items,
   }

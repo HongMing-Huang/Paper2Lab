@@ -10,6 +10,7 @@
 // *index* (re-validated locally) and can never invent bindings or numbers.
 import { analyzeFormula } from '../formula/analyze'
 import { docText, formulasOf, type IngestedDoc, type IngestedItem } from '../ingest/doclingSchema'
+import { authHeaders } from '../ingest/apiAuth'
 import {
   buildFitBinding, buildFormulaBinding, buildKakeyaBinding, buildOdeBinding,
   detectData, detectOde, odeSystemOf, type PaperBinding,
@@ -167,7 +168,7 @@ export async function routeAdapterWithLlm(doc: IngestedDoc): Promise<AdapterDeci
   try {
     const res = await fetch('/api/agent/route', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         title: doc.title,
         formulas: formulasOf(doc).map((f) => ({ i: f.id, latex: f.latex })),

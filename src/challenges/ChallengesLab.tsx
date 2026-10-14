@@ -7,6 +7,7 @@ import { DEFAULT_LEVELS } from './levels'
 import { attempt, createLevel, type AttemptRecord, type ChallengeExecutor, type LevelState } from './store'
 import type { ChallengeResult, SceneSpec } from './levels'
 import { registerImportedRun } from '../experiments/protocol'
+import { authHeaders } from '../ingest/apiAuth'
 import type { ProjectileResult, PendulumResult, TubesResult, ChallengeKind } from './levels'
 
 function specToChanges(spec: SceneSpec): Record<string, number | number[]> {
@@ -48,7 +49,7 @@ export function ChallengesLab({ onExit }: { onExit: () => void }) {
   const engineExec: ChallengeExecutor = async (spec: SceneSpec) => {
     const res = await fetch('/api/engine/execute', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         skill: 'challenge.attempt',
         input: { challenge: spec.kind, changes: specToChanges(spec), level: { ...spec } },

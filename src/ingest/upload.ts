@@ -7,6 +7,7 @@
 // caller (#15 UX — a static spinner for 20-60s reads as "stuck"). Errors stay
 // distinguishable: transport failure ≠ parse failure ≠ timeout ≠ lost job.
 import { normalizeDocling, type IngestedDoc } from './doclingSchema'
+import { authHeaders } from './apiAuth'
 
 const POLL_INTERVAL_MS = 1000
 const POLL_TIMEOUT_MS = 10 * 60 * 1000
@@ -75,7 +76,7 @@ export async function ingestPdf(
   for (let i = 0; i < attempts; i++) {
     let jobId: string | null = null
     try {
-      const res = await fetch('/api/ingest', { method: 'POST', body })
+      const res = await fetch('/api/ingest', { method: 'POST', body, headers: authHeaders() })
       if (res.status === 202) {
         const j = (await res.json()) as { jobId: string }
         jobId = j.jobId
@@ -116,7 +117,7 @@ async function pollJob(jobId: string, onProgress?: (p: IngestProgress) => void):
   while (Date.now() < deadline) {
     let res: Response
     try {
-      res = await fetch(`/api/ingest/${encodeURIComponent(jobId)}`)
+      res = await fetch(`/api/ingest/${encodeURIComponent(jobId)}`, { headers: authHeaders() })
       consecutiveTransportFails = 0
     } catch {
       // backend gone mid-parse (restarted / reaped): a few grace retries for a

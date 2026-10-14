@@ -101,7 +101,6 @@ class TestOrchestration:
 
         async def fake_extract(pn, png, base_url, key, model, timeout):
             calls.append((pn, len(png)))
-            # route through the REAL normalizer so item shapes stay honest
             return pn, _parse_model_items(json.dumps({"items": FAKE_ITEMS}))
 
         monkeypatch.setattr(vlm_parse, "_extract_page", fake_extract)
@@ -112,7 +111,9 @@ class TestOrchestration:
         assert doc["engine"] == "vlm"
         assert doc["doclingVersion"] == "vision-model@fast-path"
         assert doc["_vlm"]["model"] == "vision-model"
-        assert doc["_vlm"]["pages"] == len(doc["pages"])
+        assert doc["_vlm"]["pagesRendered"] == len(doc["pages"])
+        # under the cap: NO truncation marker at all (the corpus is complete)
+        assert "truncatedAfterPage" not in doc
         # formulas keep latex; tables gain the structured form
         formulas = [i for i in doc["items"] if i["kind"] == "formula"]
         tables = [i for i in doc["items"] if i["kind"] == "table"]
@@ -157,6 +158,34 @@ class TestOrchestration:
         bad["base_url"] = "http://127.0.0.1/v1"
         with pytest.raises(RuntimeError, match="rejected"):
             await parse_pdf_with_vlm(REAL_PDF, bad)
+
+    @pytest.mark.asyncio
+    async def test_page_cap_truncation_is_explicit_not_silent(self, monkeypatch, tmp_path):
+        """a >_MAX_PAGES paper must carry truncation FACTS in the doc — the
+        router/agent/desk all consume a partial corpus and must be able to
+        see that (a silent cap would let experiments run on half a paper)"""
+        from pypdf import PdfReader, PdfWriter
+
+        reader = PdfReader(REAL_PDF)
+        writer = PdfWriter()
+        for _ in range(vlm_parse._MAX_PAGES + 2):  # over the cap by 2 pages
+            writer.add_page(reader.pages[0])
+        long_pdf = tmp_path / "26page.pdf"
+        with long_pdf.open("wb") as fh:
+            writer.write(fh)
+
+        rendered = []
+
+        async def fake_extract(pn, png, base_url, key, model, timeout):
+            rendered.append(pn)
+            return pn, [{"kind": "text", "text": f"page {pn}"}]
+
+        monkeypatch.setattr(vlm_parse, "_extract_page", fake_extract)
+        doc = await parse_pdf_with_vlm(str(long_pdf), _provider())
+        assert doc["truncatedAfterPage"] == vlm_parse._MAX_PAGES
+        assert doc["_vlm"]["pagesRendered"] == vlm_parse._MAX_PAGES
+        assert doc["_vlm"]["pagesTotal"] == vlm_parse._MAX_PAGES + 2
+        assert max(rendered) == vlm_parse._MAX_PAGES  # never asked past the cap
 
 
 class TestEndpointRouting:

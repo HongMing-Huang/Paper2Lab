@@ -1,0 +1,37 @@
+# Daily FULL acceptance (vs. the per-PR quick set): runs the entire pytest
+# suite INCLUDING the real_docling tests that per-PR CI excludes with
+# `-k "not real_docling"`. That exclusion is exactly how the PR #38
+# persist_doc deletion survived five days with a green CI — the only test
+# guarding it lived outside the quick set. This job is the backstop: real
+# parses of the real papers, once a day, failures visible on the repo.
+name: daily-full
+on:
+  schedule:
+    - cron: "30 19 * * *" # 03:30 Beijing, after the day's merges settle
+  workflow_dispatch: {}
+
+jobs:
+  full-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: server/requirements.txt
+      - name: python deps
+        run: pip install -r server/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: pre-warm docling models (real parses download them otherwise)
+        run: python scripts/download_docling_models.py
+      - name: full pytest (including real_docling)
+        run: python -m pytest server/tests -q
+      - name: vitest + typecheck + build
+        run: |
+          npx vitest run
+          npx tsc --noEmit
+          npx vite build

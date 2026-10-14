@@ -8,8 +8,8 @@ import {
   type IngestMode,
   type IngestProgress,
 } from '../ingest/upload'
-import { routeAdapterWithLlm } from '../skills/adapterRouter'
 import { runPdfFirstUpload, type UploadFlowState } from './uploadFlow'
+import type { AdapterDecision } from '../skills/adapterRouter'
 
 export function Home({
   onDesk,
@@ -17,7 +17,7 @@ export function Home({
   onPhysics,
   onChallenges,
 }: {
-  onDesk: (file: File, pdfUrl: string, doc: import('../ingest/doclingSchema').IngestedDoc, decision: Awaited<ReturnType<typeof routeAdapterWithLlm>>) => void
+  onDesk: (file: File, pdfUrl: string, doc: import('../ingest/doclingSchema').IngestedDoc, decision: AdapterDecision) => void
   onKakeya: () => void
   onPhysics: () => void
   onChallenges: () => void
@@ -95,10 +95,14 @@ export function Home({
   const settle = (out: UploadFlowState, file: File) => {
     if (out.phase === 'done' && out.doc && out.decision && out.decision.status === 'ok') {
       // deterministic routing succeeded — hand over (LLM refinement path only
-      // improves the deterministic choice, so routeAdapter is sufficient here)
-      void routeAdapterWithLlm(out.doc).then((decision) => {
-        onDesk(file, out.pdfUrl, out.doc!, decision)
-      })
+      // improves the deterministic choice, so routeAdapter is sufficient here).
+      // Dynamic import keeps the cortex engine OUT of the first-paint chunk:
+      // routing runs once per upload, seconds after the drop, never at paint.
+      void import('../skills/adapterRouter')
+        .then(({ routeAdapterWithLlm }) => routeAdapterWithLlm(out.doc!))
+        .then((decision) => {
+          onDesk(file, out.pdfUrl, out.doc!, decision)
+        })
       return
     }
     // failed (parse error / lost job / superseded) or routing refused:

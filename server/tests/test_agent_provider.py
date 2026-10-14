@@ -305,3 +305,44 @@ class TestTurnAndHealth:
         body = resp.json()
         assert body["enhanced"] is False
         assert body["reason"]  # why it did NOT use AI — in-band
+
+
+class TestRouteRefineRobustness:
+    @pytest.mark.asyncio
+    async def test_route_refine_survives_null_content_reasoning_model(self, monkeypatch):
+        """reasoning models can return message.content=null (answer in
+        reasoning_content) — refine is OPTIONAL and must degrade to the
+        deterministic choice, never a 500 (bit for real with qwen3.8-27b)"""
+        _clear_env(monkeypatch)
+        monkeypatch.setenv("PAPER2LAB_AGENT_PROVIDER", "openai")
+        monkeypatch.setenv("PAPER2LAB_AGENT_BASE_URL", "https://vendor.example/v1")
+        monkeypatch.setenv("PAPER2LAB_AGENT_API_KEY", "k")
+        monkeypatch.setenv("PAPER2LAB_AGENT_MODEL", "m")
+        import httpx
+
+        class _NullContentTransport(httpx.AsyncBaseTransport):
+            async def handle_async_request(self, request):
+                payload = {"choices": [{"message": {"content": None, "reasoning_content": "…thinking…"}}]}
+                return httpx.Response(200, json=payload, request=request)
+
+        orig_client = httpx.AsyncClient
+
+        def patched_client(*a, **kw):
+            kw["transport"] = _NullContentTransport()
+            return orig_client(*a, **kw)
+
+        # agent_route does `import httpx` INSIDE the function — patching the
+        # shared module attribute reaches it (same module object)
+        monkeypatch.setattr(httpx, "AsyncClient", patched_client)
+        from server.main import app
+
+        async with LifespanManager(app) as mgr:
+            async with AsyncClient(transport=ASGITransport(app=mgr.app), base_url="http://t") as client:
+                resp = await client.post(
+                    "/api/agent/route",
+                    json={"title": "t", "formulas": [{"i": 0, "latex": "y=x"}], "textHead": "x"},
+                )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["enhanced"] is False
+        assert "deterministic" in body["reason"]

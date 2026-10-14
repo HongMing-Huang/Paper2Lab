@@ -41,18 +41,22 @@ _EXTRACT_PROMPT = (
 )
 
 
-def render_pages(pdf_path: str, max_pages: int = _MAX_PAGES) -> list[tuple[int, bytes]]:
-    """render up to max_pages pages to PNG bytes (page numbers are 1-based)"""
+def render_pages(pdf_path: str, max_pages: int = _MAX_PAGES) -> tuple[list[tuple[int, bytes]], int]:
+    """render up to max_pages pages to PNG bytes (page numbers are 1-based).
+    Returns (rendered, total_pages) — the caller MUST surface truncation when
+    total exceeds the cap: silently parsing half a paper would let routing
+    and experiments run on an incomplete corpus."""
     import pypdfium2 as pdfium
 
     pdf = pdfium.PdfDocument(pdf_path)
+    total = len(pdf)
     out: list[tuple[int, bytes]] = []
-    for idx in range(min(len(pdf), max_pages)):
+    for idx in range(min(total, max_pages)):
         bitmap = pdf[idx].render(scale=_RENDER_SCALE)
         buf = io.BytesIO()
         bitmap.to_pil().save(buf, format="PNG", optimize=True)
         out.append((idx + 1, buf.getvalue()))
-    return out
+    return out, total
 
 
 def vlm_chat_url(base_url: str) -> str:
@@ -202,7 +206,7 @@ async def parse_pdf_with_vlm(
     base_url = str(provider["base_url"])
 
     t0 = time.time()
-    pages = await asyncio.to_thread(render_pages, pdf_path)
+    pages, total_pages = await asyncio.to_thread(render_pages, pdf_path)
     if not pages:
         raise RuntimeError("VLM 解析：PDF 没有可渲染的页面")
     if on_stage:
@@ -276,9 +280,14 @@ async def parse_pdf_with_vlm(
         "title": title or "Untitled paper",
         "pages": [{"page": pn, "width": 612, "height": 792} for pn, _ in pages],
         "items": items,
+        # truncation is FACTS, not a warning to bury: >_MAX_PAGES papers are
+        # only parsed up to the cap and every consumer (router, agent context,
+        # desk UI) must be able to see that the corpus is partial
+        **({"truncatedAfterPage": len(pages)} if len(pages) < total_pages else {}),
         "_vlm": {
             "model": model,
-            "pages": len(pages),
+            "pagesRendered": len(pages),
+            "pagesTotal": total_pages,
             "durationMs": int((time.time() - t0) * 1000),
         },
     }

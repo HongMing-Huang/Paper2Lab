@@ -9,6 +9,7 @@ import { getExperimentRun, listExperimentRuns, type ExperimentRun } from '../exp
 import { importRuns } from '../experiments/runRepository'
 import type { CurvePoint } from '../kakeya/metrics'
 import fallbackBundle from '../data/kakeya-precomputed-runs.json'
+import { authHeaders } from '../ingest/apiAuth'
 
 /** bump after an import to recompute the points cell */
 export const pPrecomputedNonce = kakeya.param<number>('kakeya.precomputed.nonce', 0)
@@ -27,7 +28,7 @@ function availableRows(): PrecomputedRun[] {
 /** fetch from the backend engine; fall back to the bundled dataset offline */
 async function fetchRuns(): Promise<unknown[]> {
   try {
-    const res = await fetch('/api/engine/kakeya/precomputed')
+    const res = await fetch('/api/engine/kakeya/precomputed', { headers: authHeaders() })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const body = (await res.json()) as { runs?: unknown[] }
     if (!Array.isArray(body.runs) || body.runs.length === 0) throw new Error('empty bundle')

@@ -4,8 +4,8 @@
 // failure NEVER blocks access: the view stays up with a retry entry. Only
 // success transitions to the desk (which then owns the URL).
 import { ingestPdf, type IngestMode, type IngestProgress } from '../ingest/upload'
-import { routeAdapter, type AdapterDecision } from '../skills/adapterRouter'
 import type { IngestedDoc } from '../ingest/doclingSchema'
+import type { AdapterDecision } from '../skills/adapterRouter'
 
 export type UploadPhase = 'parsing' | 'failed' | 'done'
 
@@ -41,6 +41,9 @@ export async function runPdfFirstUpload(
   const pdfUrl = opts.existingUrl ?? objectUrlFor(file)
   try {
     const doc = await ingestPdf(file, { onProgress: opts.onProgress, mode: opts.mode })
+    // dynamic import: routing pulls the cortex engine — only needed once the
+    // parse settles, never on the first-paint path
+    const { routeAdapter } = await import('../skills/adapterRouter')
     const decision = routeAdapter(doc)
     return { phase: 'done', pdfUrl, error: null, doc, decision }
   } catch (err) {

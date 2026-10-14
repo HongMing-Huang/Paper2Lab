@@ -118,6 +118,30 @@ async def _lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Paper2Lab backend", version="0.4", lifespan=_lifespan)
+
+
+@app.middleware("http")
+async def _optional_api_token(request, call_next):
+    """PAPER2LAB_API_TOKEN (env; unset = open local dev, current behavior):
+    when set, every /api/* call except health/ready must present it as
+    `Authorization: Bearer …` or `X-API-Token`. Self-hosted deployments and
+    gateway misconfigurations must not expose provider-burning VLM parses,
+    disk writes and engine execution to whoever finds the port. The SPA
+    attaches the same token (build-time VITE_ var or runtime paste)."""
+    token = os.environ.get("PAPER2LAB_API_TOKEN")
+    if token:
+        path = request.url.path
+        if path.startswith("/api/") and path not in ("/api/health", "/api/ready"):
+            auth = request.headers.get("authorization") or ""
+            supplied = (
+                auth[7:].strip() if auth.lower().startswith("bearer ")
+                else request.headers.get("x-api-token", "")
+            )
+            if supplied != token:
+                return JSONResponse({"detail": "unauthorized: missing or wrong API token"}, status_code=401)
+    return await call_next(request)
+
+
 app.include_router(agent_router)
 app.include_router(engine_router)
 
@@ -212,6 +236,10 @@ class IngestJob:
 # restart recovery: finished jobs/docs come back from disk; a job whose
 # process died mid-run stays in its last persisted state (queryable, honest)
 _jobs: dict[str, IngestJob] = {}
+# in-flight run() coroutines by job id — latest-wins CANCELS these instead of
+# merely relabeling (a superseded VLM parse would otherwise keep burning
+# provider tokens on every remaining page until it finished on its own)
+_running_tasks: dict[str, "asyncio.Task[None]"] = {}
 
 
 def _restore_jobs() -> None:
@@ -548,12 +576,19 @@ async def _supersede_client_jobs(client_id: str, new_job_id: str) -> None:
             j.persist()
         elif j.status == "running":
             # mark first (the run() coroutine must not overwrite this), then
-            # kill the warm worker — the blocked read unblocks and settles
+            # REALLY stop the work: cancel the coroutine (VLM page calls die
+            # mid-flight instead of burning provider tokens to completion);
+            # docling jobs additionally need the worker KILLED — their blocked
+            # subprocess read owns real CPU that a cancel alone won't free
             j.status = "superseded"
             j.error = "已被同一页面的新上传取代"
             j.finished_at = time.time()
             j.persist()
-            await _current_warm_worker().stop()
+            task = _running_tasks.get(j.job_id)
+            if task is not None and not task.done():
+                task.cancel()
+            if j.mode == "docling":
+                await _current_warm_worker().stop()
 
 
 async def _convert_vlm(pdf_path: str, job: "IngestJob") -> dict[str, Any]:
@@ -642,6 +677,12 @@ async def ingest(
             job.status = "error"
             job.error = str(exc)
             job.finished_at = time.time()
+        except asyncio.CancelledError:
+            # supersede (or shutdown) cancelled us mid-parse: the supersede
+            # path already wrote the truth — settle WITHOUT touching job
+            # state and swallow so the cancelled task doesn't surface as an
+            # unretrieved-exception warning
+            return
         except _IngestTimeout as exc:
             if job.status == "superseded":
                 return  # a newer upload already took over — keep that truth
@@ -658,6 +699,7 @@ async def ingest(
             job.error = f"{engine_label} failed: {exc}"
             job.finished_at = time.time()
         finally:
+            _running_tasks.pop(job_id, None)
             job.persist()
             # delete the upload only once no conversion can still be reading it.
             # process mode (default): a timeout KILLED the worker → the file is
@@ -670,7 +712,7 @@ async def ingest(
             else:
                 tmp_path.unlink(missing_ok=True)
 
-    asyncio.get_event_loop().create_task(run())
+    _running_tasks[job_id] = asyncio.get_event_loop().create_task(run())
     return {"jobId": job_id, "status": "running"}
 
 

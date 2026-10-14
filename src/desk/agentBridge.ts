@@ -5,6 +5,8 @@
 // scientific skills / canvas ops (the single source of CALCULATED numbers)
 // and posts the result back, resuming the agent. No prose-driven UI, ever.
 
+import { authHeaders } from '../ingest/apiAuth'
+
 export interface AgentSseEvent {
   type: string
   plan?: { planId: string; goal: string; skill: string; metrics: string[]; nonClaims: string[] }
@@ -82,7 +84,7 @@ export function newAgentSessionId(): string {
 async function* streamTurn(body: Record<string, unknown>): AsyncGenerator<AgentSseEvent> {
   const res = await fetch('/api/agent/turn', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(30000),
   })

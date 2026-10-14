@@ -274,6 +274,14 @@ v0.1 升级轮补充⑫（2026-10-13，VLM 快速理解：原生多模态解析�
 - [x] **VLM fixtures 入库**（真实模型输出 `src/ingest/fixtures/*.vlm.json`）：vitest 验收 VLM 提取走**同一条**路由→绑定→真算链（ok-ode 周期闭环 / ok-fit 5 数据点）；pytest 16 项（输出形状容差/管道表/SSRF 门/编排重试/端点 mode 路由/无 provider 显式报错）
 - 测试基线：pytest **127/127 全量**（快速集 125 + real_docling 2）· vitest **292/292** · tsc 0 错；VLM 登记常量入审计 G 节
 
+v0.1 升级轮补充⑬（2026-10-14，架构缺陷修正轮：五项按性价比落地）：
+
+- [x] **VLM 页数上限截断显式化**：>24 页论文原先静默只解析前 24 页（路由/Agent/实验跑在不完整语料上而用户不知情）——doc 现携带 `truncatedAfterPage`+`_vlm.pagesRendered/pagesTotal`，normalizeDocling 透传，桌面顶栏「⚠ 截断：仅解析前 N/M 页」；测试用 pypdf 造 26 页 PDF 断言标记与封顶
+- [x] **latest-wins 真取消 VLM 任务**：原 supersede 只杀 docling warm worker，运行中的 VLM gather 不受影响、继续烧 provider token 到自然结束——现 run() 协程登记进 `_running_tasks`，supersede 时 `task.cancel()`（CancelledError 分支静默落定不覆写真值），docling 路径额外保留杀 worker；测试证明 CancelledError 真正到达协程
+- [x] **可选 API token 鉴权**：`PAPER2LAB_API_TOKEN`（未设=本地开发全开放，行为不变）设置后所有 `/api/*`（health/ready 除外）要求 Bearer/X-API-Token——自托管与网关配置失误不再裸奔 provider 计费解析/磁盘写入/引擎执行；前端 `src/ingest/apiAuth.ts`（VITE_ 构建期或 localStorage 运行期粘贴）统一注入五个调用点（upload/agentBridge/adapterRouter/ChallengesLab/precomputedRuns）；测试覆盖 401/放行/X-API-Token/未设开放
+- [x] **每日全量 CI workflow**（`ci-daily.yml`，03:30 北京 + 手动触发）：跑**含 real_docling 的完整 pytest** + vitest + tsc + build——per-PR CI 的 `-k "not real_docling"` 排除正是 #38 persist_doc 误删存活 5 天的结构性原因，此 job 是守卫回归的后备
+- [x] **桌面级懒加载拆包**：App.tsx 四桌面 React.lazy + Suspense（Kakeya/Physics/Challenges/PaperDesk），Home 的路由器改动态 import（cortex 不在首屏路径）——首屏 chunk **9.7MB→1.9MB**（cortex 3.5M/tldraw 2.9M/executor 828K/三 Lab 全部按需）
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）

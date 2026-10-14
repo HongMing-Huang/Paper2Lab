@@ -923,7 +923,13 @@ async def agent_route(body: RouteBody) -> dict:
         if resp.status_code != 200:
             out["reason"] = f"HTTP {resp.status_code}: {resp.text[:160]}"
             return out
-        content = (resp.json().get("choices") or [{}])[0].get("message", {}).get("content", "")
+        # reasoning models can leave message.content null (the answer lives
+        # in reasoning_content) — refine is OPTIONAL: fall back to the
+        # deterministic choice instead of a 500
+        content = (resp.json().get("choices") or [{}])[0].get("message", {}).get("content") or ""
+        if not isinstance(content, str) or "{" not in content:
+            out["reason"] = "AI returned no parsable content — kept deterministic choice"
+            return out
         parsed = json.loads(content[content.find("{"): content.rfind("}") + 1] or "null")
         idx = parsed.get("keyFormulaIndex") if isinstance(parsed, dict) else None
         if isinstance(idx, int) and 0 <= idx < len(body.formulas):
