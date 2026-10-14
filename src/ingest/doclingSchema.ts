@@ -45,7 +45,10 @@ export interface IngestedPage {
 export interface IngestedDoc {
   docId: string
   title: string
-  engine: 'docling'
+  /** 'docling' (精读定位, char-precise bboxes) | 'vlm' (快速理解 — the
+   * provider's native multimodal model read rendered pages; page-scope
+   * anchors, AI-assisted extraction, engine label carries the model name) */
+  engine: 'docling' | 'vlm'
   doclingVersion: string
   pages: IngestedPage[]
   items: IngestedItem[]
@@ -109,7 +112,7 @@ export function normalizeDocling(raw: unknown): IngestedDoc {
   return {
     docId: r.docId,
     title: r.title ?? 'Untitled paper',
-    engine: 'docling',
+    engine: r.engine === 'vlm' ? 'vlm' : 'docling',
     doclingVersion: r.doclingVersion ?? 'unknown',
     pages: r.pages,
     items,

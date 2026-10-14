@@ -36,6 +36,7 @@ if os.environ.get("PAPER2LAB_DOCLING_OFFLINE", "0") == "1":
 
 from server.engine_bridge import bridge
 from server.ingest_core import convert_pdf
+from server.vlm_parse import parse_pdf_with_vlm
 
 
 async def _background_warmup(worker: "_WarmIngestWorker") -> None:
@@ -176,6 +177,8 @@ class IngestJob:
         self.status: str = "pending"  # pending | queued | running | done | timeout | error
         # #15 UX: stage refines "running" — warming (model load) | parsing
         self.stage: str | None = None
+        # parse engine for this job: docling (精读定位) | vlm (快速理解, #15 speed)
+        self.mode: str = "docling"
         # latest-wins (#15): same browser tab's newer upload supersedes this
         # job — queued ones cancel, a hung running one is killed for the slot
         self.client_id: str | None = None
@@ -190,6 +193,7 @@ class IngestJob:
             "filename": self.filename,
             "status": self.status,
             "stage": self.stage,
+            "mode": self.mode,
             "clientId": self.client_id,
             "createdAt": self.created_at,
             "finishedAt": self.finished_at,
@@ -218,6 +222,7 @@ def _restore_jobs() -> None:
         job = IngestJob(str(data.get("jobId") or path.stem.removeprefix("job-")), str(data.get("filename", "")))
         job.status = str(data.get("status", "error"))
         job.stage = data.get("stage")
+        job.mode = str(data.get("mode") or "docling")
         job.client_id = data.get("clientId")
         job.created_at = float(data.get("createdAt", 0))
         job.finished_at = data.get("finishedAt")
@@ -341,6 +346,12 @@ async def _read_bounded(file: UploadFile) -> bytes:
 
 class _IngestTimeout(Exception):
     """docling conversion exceeded the budget — the worker process was killed"""
+
+
+class _VLMUnavailable(Exception):
+    """mode=vlm requested but no usable vision provider is configured — surfaced
+    to the user as an explicit actionable error (never silently fall back to
+    docling: the user picked the fast path because docling is slow)"""
 
 
 class _WarmIngestWorker:
@@ -545,11 +556,45 @@ async def _supersede_client_jobs(client_id: str, new_job_id: str) -> None:
             await _current_warm_worker().stop()
 
 
+async def _convert_vlm(pdf_path: str, job: "IngestJob") -> dict[str, Any]:
+    """fast-path parse (#15 speed): render pages + the provider's NATIVE
+    multimodal model reads them concurrently. No docling slot is held —
+    VLM jobs don't compete with 精读 jobs for the single-process slot."""
+    from server.agent_provider import resolve_provider
+
+    status = resolve_provider()
+    # vision fast-path needs an OpenAI-compatible endpoint (base_url + key +
+    # model); a dashscope-only config has no base_url to render pages to
+    if not status.ok or status.provider != "openai" or not status.base_url:
+        raise _VLMUnavailable(
+            "快速理解模式需要已配置的 OpenAI 兼容视觉 provider"
+            "（PAPER2LAB_AGENT_BASE_URL / API_KEY / MODEL）"
+        )
+    provider = {
+        "base_url": status.base_url,
+        "api_key": os.environ.get("PAPER2LAB_AGENT_API_KEY") or "",
+        "model": status.model or "",
+        "timeout_s": status.timeout_s,
+    }
+
+    def on_stage(stage: str, _job: "IngestJob" = job) -> None:
+        _job.stage = stage
+        _job.persist()
+
+    return await asyncio.wait_for(
+        parse_pdf_with_vlm(pdf_path, provider, on_stage),
+        timeout=_ingest_timeout_s(),
+    )
+
+
 @app.post("/api/ingest", status_code=202)
 async def ingest(
     file: UploadFile = File(...),
     clientId: str | None = Form(default=None),
+    mode: str = Form(default="docling"),
 ) -> dict:
+    if mode not in ("docling", "vlm"):
+        raise HTTPException(status_code=422, detail=f"unknown parse mode: {mode}")
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=415, detail="only PDF is supported in 0.1")
     payload = await _read_bounded(file)
@@ -559,6 +604,7 @@ async def ingest(
     job_id = uuid.uuid4().hex[:12]
     job = IngestJob(job_id, file.filename or "upload.pdf")
     job.status = "queued"  # the docling slot may still be busy (#31)
+    job.mode = mode
     if clientId:
         job.client_id = clientId[:64]
         await _supersede_client_jobs(clientId, job_id)
@@ -569,14 +615,32 @@ async def ingest(
     tmp_path.write_bytes(payload)
 
     async def run() -> None:
+        engine_label = mode
         try:
             title_hint = os.path.splitext(job.filename)[0]
-            async with _ingest_guard():  # one docling conversion at a time (loop-safe)
-                job.status = "running"  # queued → running only INSIDE the slot
+            if mode == "vlm":
+                # VLM path: no docling lock — its own concurrency is bounded
+                # inside parse_pdf_with_vlm (4 pages in flight)
+                job.status = "running"
                 job.persist()
-                result = await _convert_isolated(str(tmp_path), title_hint, job)
+                result = await _convert_vlm(str(tmp_path), job)
+            else:
+                async with _ingest_guard():  # one docling conversion at a time (loop-safe)
+                    job.status = "running"  # queued → running only INSIDE the slot
+                    job.persist()
+                    result = await _convert_isolated(str(tmp_path), title_hint, job)
             job.result = result
             job.status = "done"
+            job.finished_at = time.time()
+            # persist the DOCUMENT (not just the job record) — dropped by
+            # mistake in #38, which made /api/document/{id} 404 and lost docs
+            # on restart; caught by the real_docling lifecycle test
+            job.persist_doc()
+        except _VLMUnavailable as exc:
+            if job.status == "superseded":
+                return
+            job.status = "error"
+            job.error = str(exc)
             job.finished_at = time.time()
         except _IngestTimeout as exc:
             if job.status == "superseded":
@@ -591,7 +655,7 @@ async def ingest(
             if job.status == "superseded":
                 return  # a newer upload already took over — keep that truth
             job.status = "error"
-            job.error = f"docling failed: {exc}"
+            job.error = f"{engine_label} failed: {exc}"
             job.finished_at = time.time()
         finally:
             job.persist()

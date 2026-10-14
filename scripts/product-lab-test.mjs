@@ -65,6 +65,9 @@ async function main() {
   try {
     await page.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' })
     await page.locator('button.home-drop').waitFor({ timeout: 30000 })
+    // this test asserts the 精读 (Docling) path — home defaults to the VLM
+    // fast path, which (correctly) errors in CI without a provider
+    await page.locator('[data-testid="parse-mode"] button').filter({ hasText: '精读定位' }).click()
     const chooserP = page.waitForEvent('filechooser')
     await page.locator('button.home-drop').click()
     const chooser = await chooserP
@@ -128,6 +131,7 @@ async function main() {
       try {
         await kPage.goto(`${ORIGIN}/`, { waitUntil: 'domcontentloaded' })
         await kPage.locator('button.home-drop').waitFor({ timeout: 30000 })
+        await kPage.locator('[data-testid="parse-mode"] button').filter({ hasText: '精读定位' }).click()
         const chooserP2 = kPage.waitForEvent('filechooser')
         await kPage.locator('button.home-drop').click()
         const chooser2 = await chooserP2

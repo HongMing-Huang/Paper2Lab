@@ -6,6 +6,9 @@ docling>=2.131,<3
 # rapidocr (docling OCR) defaults to the onnxruntime engine — without this
 # package scanned-PDF OCR silently yields 0 items on clean installs
 onnxruntime>=1.17,<2
+# VLM fast-path parse (#15 speed): render PDF pages to PNG (pure wheel, no
+# system deps) for the provider's native multimodal model to read
+pypdfium2>=4.30,<5
 agentscope>=2.0.9,<3
 apscheduler>=3.10,<4
 httpx[socks]>=0.27,<1

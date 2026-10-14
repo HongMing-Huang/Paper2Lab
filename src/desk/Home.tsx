@@ -5,6 +5,7 @@ import {
   clearLastJob,
   lastJob,
   pollIngestJob,
+  type IngestMode,
   type IngestProgress,
 } from '../ingest/upload'
 import { routeAdapterWithLlm } from '../skills/adapterRouter'
@@ -35,6 +36,12 @@ export function Home({
   const [preview, setPreview] = useState<{ file: File; url: string } | null>(null)
   const [retrying, setRetrying] = useState(false)
   const fileRef = useRef<File | null>(null)
+  // #15 speed: parse-engine choice. Default is the VLM fast path (the
+  // provider's native multimodal model reads rendered pages — seconds, not
+  // tens of seconds); 精读定位 (Docling) stays one click away for
+  // char-precise anchors. No silent fallback — a missing provider surfaces
+  // as an explicit, actionable error.
+  const [mode, setMode] = useState<IngestMode>('vlm')
   useEffect(() => {
     if (state !== 'parsing') return
     const t = window.setInterval(() => setTick((n) => n + 1), 1000)
@@ -79,7 +86,7 @@ export function Home({
     setState('parsing')
     setError(null)
     setProgress({ status: 'queued', stage: null, elapsedMs: 0, queueDepth: 0 })
-    const out = await runPdfFirstUpload(file, { onProgress: (p) => setProgress(p) })
+    const out = await runPdfFirstUpload(file, { onProgress: (p) => setProgress(p), mode })
     settle(out, file)
   }
 
@@ -113,6 +120,7 @@ export function Home({
     const out = await runPdfFirstUpload(file, {
       onProgress: (p) => setProgress(p),
       existingUrl: preview?.url,
+      mode,
     })
     setRetrying(false)
     settle(out, file)
@@ -138,6 +146,26 @@ export function Home({
         <div className="home-sub">
           把一篇数学 PDF 变成可以操作的论文 — 公式里的参数直接拖动，
           图与实验即时重算；每个数字都能追溯到它来自的那一行论文。
+        </div>
+        <div className="home-modes" data-testid="parse-mode">
+          <button
+            type="button"
+            className={`home-mode${mode === 'vlm' ? ' active' : ''}`}
+            onClick={() => setMode('vlm')}
+            disabled={state === 'parsing'}
+            title="AI 视觉模型直接阅读论文页面（秒级）；锚点为页面级，提取来源标注为 AI"
+          >
+            ⚡ 快速理解<span>AI 读图 · 秒级</span>
+          </button>
+          <button
+            type="button"
+            className={`home-mode${mode === 'docling' ? ' active' : ''}`}
+            onClick={() => setMode('docling')}
+            disabled={state === 'parsing'}
+            title="Docling 版面+公式+表格模型（较慢）；字符级精确锚点，可回溯到原文位置"
+          >
+            🔍 精读定位<span>Docling · 字符级锚点</span>
+          </button>
         </div>
         <button
           type="button"
@@ -165,6 +193,11 @@ export function Home({
         {error && (
           <div className="home-error">
             {error}
+            {error.includes('快速理解模式需要') && (
+              <div className="home-error-hint">
+                当前后端未配置 AI 视觉 provider — 可切换到「🔍 精读定位」后重试
+              </div>
+            )}
             {fileRef.current ? (
               <button type="button" className="desk-btn" data-testid="retry-parse" disabled={retrying} onClick={() => void retryParse()}>
                 {retrying ? '重新解析中…' : '重试解析'}
@@ -229,6 +262,13 @@ function ParseProgress({ p, name }: { p: IngestProgress | null; name?: string })
     return (
       <>
         <span className="home-spin">◌</span> {ctx}正在加载解析模型（首次较慢，约 30–60s）· {secs}s
+      </>
+    )
+  }
+  if (p.stage === 'vlm-reading') {
+    return (
+      <>
+        <span className="home-spin">◌</span> {ctx}AI 正在阅读页面图片（逐页并发）· {secs}s
       </>
     )
   }

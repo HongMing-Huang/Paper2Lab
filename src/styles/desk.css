@@ -32,11 +32,57 @@
   color: #2c2418;
 }
 .home-sub {
-  margin: 14px auto 30px;
+  margin: 14px auto 22px;
   font-size: 15px;
   line-height: 1.75;
   color: #6b5f4b;
   max-width: 480px;
+}
+/* parse-engine selector (#15 speed): 快速理解 (VLM reads rendered pages) vs
+   精读定位 (Docling, char-precise anchors) — an explicit choice, never a
+   silent fallback */
+.home-modes {
+  display: flex;
+  gap: 8px;
+  margin: 0 auto 14px;
+  width: fit-content;
+}
+.home-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #6b5f4b;
+  background: transparent;
+  border: 1px solid #d8cdb4;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.home-mode span {
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: #9c8f77;
+}
+.home-mode.active {
+  color: #2c2418;
+  border-color: #8a7a58;
+  background: #f6efdc;
+}
+.home-mode.active span {
+  color: #6b5f4b;
+}
+.home-mode:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.home-error-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #8a5a2b;
 }
 .home-drop {
   width: 100%;

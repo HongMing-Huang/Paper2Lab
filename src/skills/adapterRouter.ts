@@ -80,11 +80,15 @@ export function routeAdapter(doc: IngestedDoc): AdapterDecision {
   // ODE vs FIT ordering: explicit derivative patterns in the paper's own
   // LATEX mean the equations ARE ODEs → phase-plane. Dynamics words alone,
   // combined with data cues, mean the paper fits a model to measurements →
-  // fit (the goal-table class "波形/频率/衰减/函数拟合").
+  // fit (the goal-table class "波形/频率/衰减/函数拟合"). Words alone NEVER
+  // claim ODE: odeSystemOf only consumes derivative latex, so a keyword-only
+  // match would be a guaranteed needs-info dead end — and it stole genuinely
+  // formula papers (sample-harmonic: "oscillation" prose + y=a·sin(bx), no
+  // \dot, no table) into that dead end since #47's CI.
   const ode = detectOde(doc)
   const hasDerivative = ode.matched.includes('latex-derivative')
   const data = detectData(doc)
-  if (ode.isOde && (hasDerivative || !data)) {
+  if (hasDerivative) {
     const system = odeSystemOf(doc)
     if (!system) {
       return {

@@ -262,6 +262,18 @@ v0.1 升级轮补充⑪（2026-10-10，启动预热：首击引擎 23s→1s，PR
 - [x] **云端复验（部署后）**：首引擎请求 **1.07s**（此前 ~23s）；首解析直接进 parsing 无 warming（65s 完成含真实解析），第二张 **6s**/14 items
 - 测试基线：pytest 109/109（时长不变）
 
+v0.1 升级轮补充⑫（2026-10-13，VLM 快速理解：原生多模态解析路径，秒级替代慢 Docling）：
+
+- [x] **能力实测先行**：qwen3.8-27b 元数据 `input_modalities=[text,image]`，base64 PNG 视觉读取、视觉+tool_calls 组合全部实测通过——直接用原生模型读论文页面，绕开 CPU 版面+公式+OCR 管线
+- [x] **`server/vlm_parse.py` fast-path**：pypdfium2 渲染页→PNG（≈150dpi，0.05s/页，纯 wheel 无系统依赖）→ 4 并发逐页视觉提取（JSON prompt：text/formula LaTeX/table）→ 归一化 IngestedDoc（engine `vlm`、doclingVersion `<model>@fast-path`、页面级锚点 + AI 来源明示）；模型输出防御性解析（围栏/顶层数组/截断修复/逐对象兜底）+ 单页重试一次 + 双败带页号显式失败；管道表→结构化 `table{columns,rows}`（与 Docling 同构，fit 绑定走结构化路径）
+- [x] **`/api/ingest` mode 参数**（docling 精读定位 | vlm 快速理解）：VLM 分支不占 docling 单进程槽位；provider 仅 env 层解析（复用 agent_provider 单源 + validate_base_url SSRF 门 + follow_redirects=False），未配置→显式可操作错误（**绝不静默回退 docling**）；job 携带 mode/stage(vlm-reading)
+- [x] **前端模式选择**：Home 双卡片「⚡快速理解（AI 读图·秒级）/ 🔍精读定位（Docling·字符级锚点）」默认快速理解（用户核心痛点是慢）；vlm-reading 阶段文案；桌面顶栏「AI 视觉提取（页面级锚点）」来源标识；upload.ts/uploadFlow 透传 mode
+- [x] **顺带修两个真 bug**：① executor `compileExpr` 编译整条 `y=…`（Equal 节点）得恒 0 曲线——现在字符串先 parse、Equal 取 RHS（与 analyzeFormula 同语义；VLM 公式带 LHS 首次踩中）；② normalizeDocling 把后端 `engine:"vlm"` 覆写成 `'docling'`——改为透传（类型收窄为 `'docling'|'vlm'`）
+- [x] **全量跑暴露第三个潜伏 bug**：PR #38 误删 `job.persist_doc()`——文档自 #38 起从未落盘（`/api/document/{id}` 404、重启丢 result），CI 的 `-k "not real_docling"` 恰好把守着它的 lifecycle 测试排除在外；恢复调用后 real_docling lifecycle 复绿
+- [x] **真模型实测（本地）**：ode-lotka-volterra **2.6-5.8s**/13 items（`\dot{x}=x-xy`、初值 x(0)=2/y(0)=0.5 全对）· fit-sine-fit **2.9-3.3s**/14 items（`y=a\sin(bx)` + 5 行结构化数据表）——vs Docling 云端 10-65s
+- [x] **VLM fixtures 入库**（真实模型输出 `src/ingest/fixtures/*.vlm.json`）：vitest 验收 VLM 提取走**同一条**路由→绑定→真算链（ok-ode 周期闭环 / ok-fit 5 数据点）；pytest 16 项（输出形状容差/管道表/SSRF 门/编排重试/端点 mode 路由/无 provider 显式报错）
+- 测试基线：pytest **127/127 全量**（快速集 125 + real_docling 2）· vitest **292/292** · tsc 0 错；VLM 登记常量入审计 G 节
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）

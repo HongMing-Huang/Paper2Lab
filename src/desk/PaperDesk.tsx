@@ -628,7 +628,8 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           <div className="desk-topbar">
             <span className="desk-topbar-title">{payload.fileName}</span>
             <span className="desk-topbar-meta">
-              {payload.doc.engine} v{payload.doc.doclingVersion} · {payload.doc.items.length} items ·{' '}
+              {payload.doc.engine === 'vlm' ? 'AI 视觉提取' : 'docling'} v{payload.doc.doclingVersion}
+              {payload.doc.engine === 'vlm' ? '（页面级锚点）' : ''} · {payload.doc.items.length} items ·{' '}
               {payload.doc.pages.length} pages
             </span>
             {payload.decision.status === 'ok' && payload.decision.adapter === 'kakeya' && (

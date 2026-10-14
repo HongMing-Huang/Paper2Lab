@@ -14,6 +14,7 @@ import { computeVoxelCoverage, type VoxelResult } from '../kakeya/voxels3d'
 import { perronTree } from '../kakeya/perron'
 import { isWorkerAvailable, measureVoxelCover } from '../workers/voxelClient'
 import { analyzeFormula } from '../formula/analyze'
+import { getEngine } from '../formula/engine'
 import { getPlan, planCoversSkill } from './playPlan'
 import { compileFormula } from '../formula/compile'
 
@@ -48,7 +49,17 @@ type Input = Record<string, unknown>
 // ---- formula runtime (Cortex → JS) ----------------------------------------
 
 function compileExpr(expression: MathJsonExpression) {
-  const compiled = compile(expression, { to: 'javascript' })
+  // paper latex often arrives as `y = …` (an Equal node): plotting means the
+  // RIGHT-HAND SIDE — compiling the whole Equal yields a constant-0 curve
+  // (first bit with VLM extraction, whose formulas keep the LHS)
+  let expr = expression
+  if (typeof expr === 'string') {
+    expr = getEngine().parse(expr).json
+  }
+  if (Array.isArray(expr) && expr[0] === 'Equal' && expr.length >= 3) {
+    expr = expr[2] as MathJsonExpression
+  }
+  const compiled = compile(expr, { to: 'javascript' })
   if (!compiled || typeof compiled.run !== 'function') {
     throw new Error('Cortex could not compile the expression to JavaScript')
   }

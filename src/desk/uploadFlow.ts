@@ -3,7 +3,7 @@
 // the raw PDF renders in an embedded viewer while Docling runs, and a parse
 // failure NEVER blocks access: the view stays up with a retry entry. Only
 // success transitions to the desk (which then owns the URL).
-import { ingestPdf, type IngestProgress } from '../ingest/upload'
+import { ingestPdf, type IngestMode, type IngestProgress } from '../ingest/upload'
 import { routeAdapter, type AdapterDecision } from '../skills/adapterRouter'
 import type { IngestedDoc } from '../ingest/doclingSchema'
 
@@ -35,11 +35,12 @@ export async function runPdfFirstUpload(
   opts: {
     onProgress?: (p: IngestProgress) => void
     existingUrl?: string
+    mode?: IngestMode
   } = {},
 ): Promise<UploadFlowState> {
   const pdfUrl = opts.existingUrl ?? objectUrlFor(file)
   try {
-    const doc = await ingestPdf(file, { onProgress: opts.onProgress })
+    const doc = await ingestPdf(file, { onProgress: opts.onProgress, mode: opts.mode })
     const decision = routeAdapter(doc)
     return { phase: 'done', pdfUrl, error: null, doc, decision }
   } catch (err) {

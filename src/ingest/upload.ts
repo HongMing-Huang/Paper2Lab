@@ -50,20 +50,26 @@ export function lastJob(): { jobId: string; filename: string } | null {
 
 export interface IngestProgress {
   status: string
-  /** warming (model load) | parsing | null (not yet running) */
+  /** warming (model load) | parsing | vlm-reading | null (not yet running) */
   stage: string | null
   elapsedMs: number
   queueDepth: number
 }
 
+/** parse engine: 'docling' 精读定位 (char-precise anchors) | 'vlm' 快速理解
+ * (the provider's native multimodal model reads rendered pages — seconds
+ * instead of tens of seconds; page-scope anchors, AI-assisted extraction) */
+export type IngestMode = 'docling' | 'vlm'
+
 export async function ingestPdf(
   file: File,
-  opts: { onProgress?: (p: IngestProgress) => void; attempts?: number } = {},
+  opts: { onProgress?: (p: IngestProgress) => void; attempts?: number; mode?: IngestMode } = {},
 ): Promise<IngestedDoc> {
   const attempts = opts.attempts ?? 3
   const body = new FormData()
   body.append('file', file, file.name)
   body.append('clientId', ingestClientId())
+  body.append('mode', opts.mode ?? 'docling')
   let lastErr: unknown = null
 
   for (let i = 0; i < attempts; i++) {
