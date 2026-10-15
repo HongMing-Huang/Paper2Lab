@@ -19,6 +19,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: "pnpm (the engine bridge + once-runner import from node_modules —
+          pytest's engine tests fail with ERR_MODULE_NOT_FOUND without it)"
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.2 --activate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -29,6 +39,8 @@ jobs:
       - name: pre-warm docling models (real parses download them otherwise)
         run: python scripts/download_docling_models.py
       - name: full pytest (including real_docling)
+        env:
+          PAPER2LAB_DATA_DIR: /tmp/p2l-ci-daily-data
         run: python -m pytest server/tests -q
       - name: vitest + typecheck + build
         run: |
