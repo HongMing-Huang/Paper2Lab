@@ -197,9 +197,11 @@ export function Home({
         {error && (
           <div className="home-error">
             {error}
-            {error.includes('快速理解模式需要') && (
+            {(error.includes('快速理解模式需要') || error.includes('请改用「精读定位」')) && (
               <div className="home-error-hint">
-                当前后端未配置 AI 视觉 provider — 可切换到「🔍 精读定位」后重试
+                {error.includes('请改用「精读定位」')
+                  ? '这篇论文超出快速理解页数上限 — 请切换到「🔍 精读定位」后重试'
+                  : '当前后端未配置 AI 视觉 provider — 可切换到「🔍 精读定位」后重试'}
               </div>
             )}
             {fileRef.current ? (

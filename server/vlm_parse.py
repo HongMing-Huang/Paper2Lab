@@ -21,6 +21,7 @@ import io
 import json
 import re
 import time
+import uuid
 from typing import Any
 from urllib.parse import urlparse
 
@@ -29,7 +30,14 @@ from server.agent_provider import validate_base_url
 # render scale ≈150dpi — enough for OCR-grade reading, keeps payloads small
 _RENDER_SCALE = 2.0
 _MAX_CONCURRENT_PAGES = 4
-_MAX_PAGES = 24  # guard: beyond this the fast path degrades; Docling is better
+# hard page cap: over this the fast path REFUSES (reviewer consensus — a
+# partial corpus would let routing/experiments run on half a paper; Docling
+# 精读定位 has no cap and is the right tool for long PDFs)
+_MAX_PAGES = 24
+
+
+class VLMLimitError(RuntimeError):
+    """paper exceeds the fast-path page cap — actionable: use 精读定位"""
 
 _EXTRACT_PROMPT = (
     "你是科学论文解析器。仔细阅读这页论文图片，提取全部内容并以 JSON 返回：\n"
@@ -43,9 +51,8 @@ _EXTRACT_PROMPT = (
 
 def render_pages(pdf_path: str, max_pages: int = _MAX_PAGES) -> tuple[list[tuple[int, bytes]], int]:
     """render up to max_pages pages to PNG bytes (page numbers are 1-based).
-    Returns (rendered, total_pages) — the caller MUST surface truncation when
-    total exceeds the cap: silently parsing half a paper would let routing
-    and experiments run on an incomplete corpus."""
+    Returns (rendered, total_pages) — the caller enforces the cap (over-limit
+    papers are REJECTED, never silently half-parsed)."""
     import pypdfium2 as pdfium
 
     pdf = pdfium.PdfDocument(pdf_path)
@@ -209,6 +216,14 @@ async def parse_pdf_with_vlm(
     pages, total_pages = await asyncio.to_thread(render_pages, pdf_path)
     if not pages:
         raise RuntimeError("VLM 解析：PDF 没有可渲染的页面")
+    if total_pages > _MAX_PAGES:
+        # reviewer consensus (Copilot+Codex): never hand back a partial
+        # corpus as success — the router/agent/experiments would reason over
+        # half a paper. Refuse with the actionable alternative.
+        raise VLMLimitError(
+            f"论文共 {total_pages} 页，超过快速理解上限 {_MAX_PAGES} 页——"
+            "请改用「精读定位」模式解析完整论文"
+        )
     if on_stage:
         on_stage("vlm-reading")
 
@@ -274,20 +289,17 @@ async def parse_pdf_with_vlm(
         raise RuntimeError("VLM 解析产出 0 个条目——模型未从页面图片读到内容")
 
     return {
-        "docId": f"vlm-{int(t0 * 1000):x}",
+        # uuid suffix: concurrent jobs may start in the same millisecond — a
+        # timestamp-only id made two docs collide in persist_doc (review P1)
+        "docId": f"vlm-{uuid.uuid4().hex[:12]}",
         "engine": "vlm",
         "doclingVersion": f"{model}@fast-path",
         "title": title or "Untitled paper",
         "pages": [{"page": pn, "width": 612, "height": 792} for pn, _ in pages],
         "items": items,
-        # truncation is FACTS, not a warning to bury: >_MAX_PAGES papers are
-        # only parsed up to the cap and every consumer (router, agent context,
-        # desk UI) must be able to see that the corpus is partial
-        **({"truncatedAfterPage": len(pages)} if len(pages) < total_pages else {}),
         "_vlm": {
             "model": model,
-            "pagesRendered": len(pages),
-            "pagesTotal": total_pages,
+            "pages": len(pages),
             "durationMs": int((time.time() - t0) * 1000),
         },
     }

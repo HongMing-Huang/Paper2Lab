@@ -412,7 +412,9 @@ var ENGINES = {
 };
 var runSeq = 0;
 function nextRunId(prefix) {
-  return `${prefix}-${Date.now().toString(36)}-${(runSeq++).toString(36)}`;
+  const ms = Date.now().toString(36);
+  const rnd = Math.random().toString(36).slice(2, 7);
+  return `${prefix}-${ms}-${rnd}-${runSeq++}`;
 }
 var history = /* @__PURE__ */ new Map();
 function getExperimentRun(runId) {
@@ -1123,7 +1125,14 @@ function compileFormula(rhs) {
 var KAKEYA_SEED = 20250224;
 var VIS_RES = 16;
 function compileExpr(expression) {
-  const compiled = compile2(expression, { to: "javascript" });
+  let expr = expression;
+  if (typeof expr === "string") {
+    expr = getEngine().parse(expr).json;
+  }
+  if (Array.isArray(expr) && expr[0] === "Equal" && expr.length >= 3) {
+    expr = expr[2];
+  }
+  const compiled = compile2(expr, { to: "javascript" });
   if (!compiled || typeof compiled.run !== "function") {
     throw new Error("Cortex could not compile the expression to JavaScript");
   }

@@ -276,11 +276,21 @@ v0.1 升级轮补充⑫（2026-10-13，VLM 快速理解：原生多模态解析�
 
 v0.1 升级轮补充⑬（2026-10-14，架构缺陷修正轮：五项按性价比落地）：
 
-- [x] **VLM 页数上限截断显式化**：>24 页论文原先静默只解析前 24 页（路由/Agent/实验跑在不完整语料上而用户不知情）——doc 现携带 `truncatedAfterPage`+`_vlm.pagesRendered/pagesTotal`，normalizeDocling 透传，桌面顶栏「⚠ 截断：仅解析前 N/M 页」；测试用 pypdf 造 26 页 PDF 断言标记与封顶
+- [x] **VLM 页数上限截断显式化 → 审阅后改判拒绝**：>24 页论文最初改为静默截断+显式标记（truncatedAfterPage + 桌面徽章），Copilot/Codex 审阅一致指出「部分语料当成功交付」本质不变——**最终方案：超限直接拒绝**（`VLMLimitError`，错误消息引导「精读定位」，零 provider 调用；pypdf 造 26 页 PDF 断言拒绝+引导）；Home 错误面板对超限/无 provider 两类错误都给一键切换提示
 - [x] **latest-wins 真取消 VLM 任务**：原 supersede 只杀 docling warm worker，运行中的 VLM gather 不受影响、继续烧 provider token 到自然结束——现 run() 协程登记进 `_running_tasks`，supersede 时 `task.cancel()`（CancelledError 分支静默落定不覆写真值），docling 路径额外保留杀 worker；测试证明 CancelledError 真正到达协程
 - [x] **可选 API token 鉴权**：`PAPER2LAB_API_TOKEN`（未设=本地开发全开放，行为不变）设置后所有 `/api/*`（health/ready 除外）要求 Bearer/X-API-Token——自托管与网关配置失误不再裸奔 provider 计费解析/磁盘写入/引擎执行；前端 `src/ingest/apiAuth.ts`（VITE_ 构建期或 localStorage 运行期粘贴）统一注入五个调用点（upload/agentBridge/adapterRouter/ChallengesLab/precomputedRuns）；测试覆盖 401/放行/X-API-Token/未设开放
 - [x] **每日全量 CI workflow**（`ci-daily.yml`，03:30 北京 + 手动触发）：跑**含 real_docling 的完整 pytest** + vitest + tsc + build——per-PR CI 的 `-k "not real_docling"` 排除正是 #38 persist_doc 误删存活 5 天的结构性原因，此 job 是守卫回归的后备
 - [x] **桌面级懒加载拆包**：App.tsx 四桌面 React.lazy + Suspense（Kakeya/Physics/Challenges/PaperDesk），Home 的路由器改动态 import（cortex 不在首屏路径）——首屏 chunk **9.7MB→1.9MB**（cortex 3.5M/tldraw 2.9M/executor 828K/三 Lab 全部按需）
+
+v0.1 升级轮补充⑮（2026-10-15②，审阅修复轮：Copilot+Codex 对 PR #50 的 findings 逐条处置）：
+
+- [x] **引擎 bundle 未随 compileExpr 修复重建（Codex P1，生产级）**：`engine_once.mjs`/`engine_server.bundle.mjs` 是 esbuild 产物（engine_api/bridge 优先使用），10-08 构建早于 Equal-RHS 修复——生产引擎对 `y = …` latex 仍恒 0 曲线；按 Dockerfile 同命令重建两个 bundle，once-runner 真跑 Equal-latex 验证 peak≈2
+- [x] **docId 毫秒碰撞 → uuid**（两机器人一致 P1）：并发同毫秒 VLM 任务会写同一 `doc-{id}.json` 互覆——改 `vlm-{uuid4[:12]}` + 唯一性断言
+- [x] **进程级 VLM 准入闸**（review P2）：per-job Semaphore(4) 不管全进程——N 并发上传曾可同时发 4N 路 provider 调用；新增共享 `_vlm_jobs_guard`（`PAPER2LAB_MAX_VLM_JOBS` 默认 2，循环亲和同 _ingest_guard），超出的 VLM 任务排队（queued）等槽位
+- [x] **queued-supersede 复活 bug（连带修复，docling 路径同形存量）**：排队中被取代的任务稍后获得槽位会把状态覆写回 running 并照做工作——queued 分支也 `task.cancel()`
+- [x] **vlmPdfs.test 硬断言 adapter**（Copilot Medium）：早退守卫令路由回归时空过——改 `expect(d.adapter).toBe('formula')`
+- [x] **已在 754e76c 修复、审阅时已过时的 findings**（审的是合并前旧提交）：supersede 真取消（task.cancel + CancelledError 静默落定）、VLM 任务不再误杀无关 docling worker（mode 隔离）——PR 线程回复处置结论
+- 测试基线：pytest 快速集 **133**（+3：准入闸/排队取消/超限拒绝引导）· vitest 292
 
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 

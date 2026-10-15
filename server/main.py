@@ -240,6 +240,29 @@ _jobs: dict[str, IngestJob] = {}
 # merely relabeling (a superseded VLM parse would otherwise keep burning
 # provider tokens on every remaining page until it finished on its own)
 _running_tasks: dict[str, "asyncio.Task[None]"] = {}
+# process-wide VLM admission (review finding): the 4-page semaphore inside
+# parse_pdf_with_vlm is PER JOB — N concurrent uploads used to issue 4×N
+# provider calls at once. This shared gate caps concurrent VLM JOBS.
+_vlm_jobs_sem: asyncio.Semaphore | None = None
+_vlm_jobs_sem_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _max_concurrent_vlm_jobs() -> int:
+    try:
+        return max(1, int(os.environ.get("PAPER2LAB_MAX_VLM_JOBS", "2")))
+    except ValueError:
+        return 2
+
+
+def _vlm_jobs_guard() -> asyncio.Semaphore:
+    """same loop-affinity pattern as _ingest_guard — a Semaphore binds to its
+    first event loop and pytest gives every test a fresh one."""
+    global _vlm_jobs_sem, _vlm_jobs_sem_loop
+    loop = asyncio.get_running_loop()
+    if _vlm_jobs_sem_loop is not loop:
+        _vlm_jobs_sem = asyncio.Semaphore(_max_concurrent_vlm_jobs())
+        _vlm_jobs_sem_loop = loop
+    return _vlm_jobs_sem
 
 
 def _restore_jobs() -> None:
@@ -574,6 +597,12 @@ async def _supersede_client_jobs(client_id: str, new_job_id: str) -> None:
             j.error = "已被同一页面的新上传取代"
             j.finished_at = time.time()
             j.persist()
+            # the queued coroutine is parked on a slot acquire — cancel it or
+            # it would LATER acquire, overwrite status back to running and
+            # do the work anyway (same-tab retry would pay for both)
+            task = _running_tasks.get(j.job_id)
+            if task is not None and not task.done():
+                task.cancel()
         elif j.status == "running":
             # mark first (the run() coroutine must not overwrite this), then
             # REALLY stop the work: cancel the coroutine (VLM page calls die
@@ -654,11 +683,13 @@ async def ingest(
         try:
             title_hint = os.path.splitext(job.filename)[0]
             if mode == "vlm":
-                # VLM path: no docling lock — its own concurrency is bounded
-                # inside parse_pdf_with_vlm (4 pages in flight)
-                job.status = "running"
-                job.persist()
-                result = await _convert_vlm(str(tmp_path), job)
+                # process-wide admission: at most N VLM jobs in flight (each
+                # with its own 4-page concurrency) — stays "queued" until a
+                # slot frees, mirroring the docling slot semantics
+                async with _vlm_jobs_guard():
+                    job.status = "running"
+                    job.persist()
+                    result = await _convert_vlm(str(tmp_path), job)
             else:
                 async with _ingest_guard():  # one docling conversion at a time (loop-safe)
                     job.status = "running"  # queued → running only INSIDE the slot

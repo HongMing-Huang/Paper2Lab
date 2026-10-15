@@ -1115,7 +1115,14 @@ function compileFormula(rhs) {
 var KAKEYA_SEED = 20250224;
 var VIS_RES = 16;
 function compileExpr(expression) {
-  const compiled = compile2(expression, { to: "javascript" });
+  let expr = expression;
+  if (typeof expr === "string") {
+    expr = getEngine().parse(expr).json;
+  }
+  if (Array.isArray(expr) && expr[0] === "Equal" && expr.length >= 3) {
+    expr = expr[2];
+  }
+  const compiled = compile2(expr, { to: "javascript" });
   if (!compiled || typeof compiled.run !== "function") {
     throw new Error("Cortex could not compile the expression to JavaScript");
   }

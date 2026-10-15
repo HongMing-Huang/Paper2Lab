@@ -631,9 +631,6 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
               {payload.doc.engine === 'vlm' ? 'AI 视觉提取' : 'docling'} v{payload.doc.doclingVersion}
               {payload.doc.engine === 'vlm' ? '（页面级锚点）' : ''} · {payload.doc.items.length} items ·{' '}
               {payload.doc.pages.length} pages
-              {payload.doc.truncatedAfterPage ? (
-                <span className="desk-truncated">⚠ 截断：仅解析前 {payload.doc.truncatedAfterPage}/{payload.doc.pagesTotal} 页（快速理解页数上限）</span>
-              ) : null}
             </span>
             {payload.decision.status === 'ok' && payload.decision.adapter === 'kakeya' && (
               <button type="button" className="desk-btn desk-btn-play" onClick={() => deskBus.emit({ kind: 'goto-kakeya' })}>

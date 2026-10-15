@@ -111,9 +111,11 @@ class TestOrchestration:
         assert doc["engine"] == "vlm"
         assert doc["doclingVersion"] == "vision-model@fast-path"
         assert doc["_vlm"]["model"] == "vision-model"
-        assert doc["_vlm"]["pagesRendered"] == len(doc["pages"])
-        # under the cap: NO truncation marker at all (the corpus is complete)
-        assert "truncatedAfterPage" not in doc
+        assert doc["_vlm"]["pages"] == len(doc["pages"])
+        # docId is uuid-based: concurrent same-millisecond jobs must never
+        # collide in persist_doc (review finding)
+        doc2 = await parse_pdf_with_vlm(REAL_PDF, _provider())
+        assert doc["docId"] != doc2["docId"]
         # formulas keep latex; tables gain the structured form
         formulas = [i for i in doc["items"] if i["kind"] == "formula"]
         tables = [i for i in doc["items"] if i["kind"] == "table"]
@@ -160,32 +162,27 @@ class TestOrchestration:
             await parse_pdf_with_vlm(REAL_PDF, bad)
 
     @pytest.mark.asyncio
-    async def test_page_cap_truncation_is_explicit_not_silent(self, monkeypatch, tmp_path):
-        """a >_MAX_PAGES paper must carry truncation FACTS in the doc — the
-        router/agent/desk all consume a partial corpus and must be able to
-        see that (a silent cap would let experiments run on half a paper)"""
+    async def test_over_limit_paper_is_rejected_not_half_parsed(self, monkeypatch, tmp_path):
+        """reviewer consensus (Copilot+Codex): a >_MAX_PAGES paper must be
+        REFUSED with actionable guidance — never handed back as success with
+        pages silently missing (routing/experiments would reason over half a
+        paper)"""
         from pypdf import PdfReader, PdfWriter
 
         reader = PdfReader(REAL_PDF)
         writer = PdfWriter()
-        for _ in range(vlm_parse._MAX_PAGES + 2):  # over the cap by 2 pages
+        for _ in range(vlm_parse._MAX_PAGES + 2):
             writer.add_page(reader.pages[0])
         long_pdf = tmp_path / "26page.pdf"
         with long_pdf.open("wb") as fh:
             writer.write(fh)
 
-        rendered = []
+        async def must_not_extract(*args, **kwargs):
+            raise AssertionError("no provider call may happen for an over-limit paper")
 
-        async def fake_extract(pn, png, base_url, key, model, timeout):
-            rendered.append(pn)
-            return pn, [{"kind": "text", "text": f"page {pn}"}]
-
-        monkeypatch.setattr(vlm_parse, "_extract_page", fake_extract)
-        doc = await parse_pdf_with_vlm(str(long_pdf), _provider())
-        assert doc["truncatedAfterPage"] == vlm_parse._MAX_PAGES
-        assert doc["_vlm"]["pagesRendered"] == vlm_parse._MAX_PAGES
-        assert doc["_vlm"]["pagesTotal"] == vlm_parse._MAX_PAGES + 2
-        assert max(rendered) == vlm_parse._MAX_PAGES  # never asked past the cap
+        monkeypatch.setattr(vlm_parse, "_extract_page", must_not_extract)
+        with pytest.raises(vlm_parse.VLMLimitError, match="精读定位"):
+            await parse_pdf_with_vlm(str(long_pdf), _provider())
 
 
 class TestEndpointRouting:

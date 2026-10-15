@@ -51,7 +51,10 @@ describe('VLM fast-path fixtures → same route/binding/execution chain', () => 
     const doc = vlmDoc('fit-sine-fit')
     const d = routeAdapter(doc)
     expect(d.status).toBe('ok')
-    if (d.status !== 'ok' || d.adapter !== 'formula') return
+    // HARD assert before narrowing — an early return would let the test pass
+    // vacuously if routing ever regressed to another adapter (review finding)
+    expect(d.adapter, 'VLM fit fixture must route to the formula adapter').toBe('formula')
+    if (d.adapter !== 'formula') return
     expect(d.binding.kind).toBe('fit')
     // the STRUCTURED path parsed the table (not the text heuristic): header
     // row skipped, exactly the paper's 5 measurement pairs survive
