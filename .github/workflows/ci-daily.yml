@@ -38,12 +38,14 @@ jobs:
         run: pip install -r server/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
       - name: pre-warm docling models (real parses download them otherwise)
         run: python scripts/download_docling_models.py
-      - name: full pytest (including real_docling)
-        env:
-          PAPER2LAB_DATA_DIR: /tmp/p2l-ci-daily-data
-        run: python -m pytest server/tests -q
-      - name: vitest + typecheck + build
+      - name: vitest + typecheck + build (BEFORE pytest: test_static_traversal
+          needs dist/ — with pytest first it silently skipped in every CI run
+          since the file landed)
         run: |
           npx vitest run
           npx tsc --noEmit
           npx vite build
+      - name: full pytest (including real_docling)
+        env:
+          PAPER2LAB_DATA_DIR: /tmp/p2l-ci-daily-data
+        run: python -m pytest server/tests -q
