@@ -12,6 +12,7 @@ import {
 } from '@tldraw/tldraw'
 import '@tldraw/tldraw/tldraw.css'
 import { DeskContext, type DeskPayload } from './context'
+import { SpecPanel } from './SpecPanel'
 import { deskShapeUtils, deskBindingUtils, type PaperShape, type FormulaShape } from './shapes'
 import { applyLabLayout } from './labFrame'
 import { runAgentAction, type AgentHelpers } from './agentActions'
@@ -79,6 +80,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
   const [asking, setAsking] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [ask, setAsk] = useState('')
+  const [showSpec, setShowSpec] = useState(false)
   const size = usePdfPageSize(payload.pdfUrl, 1)
 
   const message = useCallback((m: string) => {
@@ -632,6 +634,14 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
               {payload.doc.engine === 'vlm' ? '（页面级锚点）' : ''} · {payload.doc.items.length} items ·{' '}
               {payload.doc.pages.length} pages
             </span>
+            <button
+              type="button"
+              className={`desk-btn${showSpec ? ' desk-btn-play' : ''}`}
+              data-testid="toggle-spec"
+              onClick={() => setShowSpec((v) => !v)}
+            >
+              🧠 理解卡
+            </button>
             {payload.decision.status === 'ok' && payload.decision.adapter === 'kakeya' && (
               <button type="button" className="desk-btn desk-btn-play" onClick={() => deskBus.emit({ kind: 'goto-kakeya' })}>
                 → 打开 3D Kakeya Lab
@@ -748,6 +758,9 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
                 {Object.entries((payload.decision.binding.conditions.find((c) => c.kind === 'initial') as { values: Record<string, number> } | undefined)?.values ?? {}).map(([k, v]) => `${k}(0)=${v}`).join('、') || '待定'}）。
               </div>
             </>
+          )}
+          {showSpec && (
+            <SpecPanel doc={payload.doc} decision={payload.decision} onClose={() => setShowSpec(false)} />
           )}
           <AgentPhaseStrip />
         </Tldraw>

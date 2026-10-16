@@ -292,6 +292,17 @@ v0.1 升级轮补充⑮（2026-10-15②，审阅修复轮：Copilot+Codex 对 PR
 - [x] **已在 754e76c 修复、审阅时已过时的 findings**（审的是合并前旧提交）：supersede 真取消（task.cancel + CancelledError 静默落定）、VLM 任务不再误杀无关 docling worker（mode 隔离）——PR 线程回复处置结论
 - 测试基线：pytest 快速集 **133**（+3：准入闸/排队取消/超限拒绝引导）· vitest 292
 
+v0.1 升级轮补充⑯（2026-10-15③，paper→model Slice A+B：论文理解 → 引擎构建数学模型）：
+
+- [x] **调研落盘 `docs/research/paper-to-model-survey.md`**：四仓实读（Paper2Code 三段式/SciCode 证明 LLM 直写科学代码仅 10.8%/marimo reactive/PhET 机制）+ 数据流四断层诊断（无理解对象/四抽屉建模/参数脱钩/状态散落）+ 四层方案（Comprehension→Construction→Live Params→Understanding）
+- [x] **L1 理解层 `src/skills/paperSpec.ts`**：`PaperModelSpec`（问题/量分类 state·parameter·observable·independent/方程分类 governing·initial·definition/命题 claims）确定性提取——初值与名义参数全部 PAPER 原文数字（`x(0)=2`、`β = 0.4` Unicode 希腊映射回宏名），每项带锚点；`governingSystem`/`initialsOf`/`nominalParams` 供下游消费
+- [x] **L2 物化层 `model.build`/`model.solve` 技能**（registry+executor）：任意 **N 态** RK4（ode.phase 的 2 态上限突破）——论文 latex 右端逐条编译（初值处有限性验证；发散显式报错）；`model.solved` Run 携带全态 series/min-max/首态周期；fork 只改参数不改论文初值（applyForkChanges 白名单门）
+- [x] **两个 Cortex 真坑修复**：① greek 宏常数折叠——`\gamma` 在表达式中解析为欧拉常数 0.5772×（β 疫情模型 γ 被静默换成常数！）→ 声明符号宏统一改写 `\mathrm{}` 形式；② 单字母常数碰撞（e/i/phi…）→ MathJSON 树统一 v 重命名（sanitizeSymbols）+ sanitizedEnv 绑定
+- [x] **第三篇真论文验收 `ode-sir-three-state.pdf`**（tectonic 3 态 SIR）：真 Docling fixture（3 公式/初值/名义参数句）→ vitest 全链**零手写数字**（routing ok-ode → spec 3 态 → nominalParams{β:0.4,γ:0.1} → build 空闲参数为零 → solve **S+I+R 守恒 <1e-9** / I 峰 0.406=Kermack–McKendrick / 燃尽 S 终 2% → fork β↓0.05 阈值下无爆发 + parentRunId 血缘）
+- [x] **理解卡面板 `src/desk/SpecPanel.tsx`**：顶栏「🧠 理解卡」→ 问题/方程（分类标签）/量表（论文给定值）/命题（PAPER）→「⚙ 构建模型并求解」走统一 executeSkill → CALCULATED 徽章（engine·ms·runId）+ 每态 min/max/终值表 + FINITE-SCALE 声明；缺初值时诚实拒绝（「模型不猜造」）；`scripts/spec-panel-test.mjs` 真浏览器全链 PASS（6 方程/3 态行/0 console 错误）
+- [x] ExperimentKind 增 `model.compiled`/`model.solved`；COMPUTE_BY_KIND/inputFromSpec/FORMAL_SKILLS 全接
+- 测试基线：vitest **299/299**（+7：paperSpec 4 + SIR 3）· tsc 0 · build ✓；`MODEL_SOLVE_STEPS=2400` 登记入审计
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）

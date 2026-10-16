@@ -16,6 +16,7 @@ BASE = "http://127.0.0.1:8790"
 PAPERS = [
     "ode-lotka-volterra.pdf",
     "ode-damped-oscillator.pdf",
+    "ode-sir-three-state.pdf",
     "fit-exponential-decay.pdf",
     "fit-sine-fit.pdf",
 ]

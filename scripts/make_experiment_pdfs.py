@@ -123,6 +123,44 @@ by its residual pattern; a systematic residual indicates a non-exponential
 loss channel.
 \end{document}
 """,
+    "ode-sir-three-state": r"""\documentclass[11pt]{article}
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath}
+\title{Threshold Behaviour of a Three-Compartment\\ Epidemic Model}
+\author{A.~Outbreak}
+\date{October 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+We study the classical three-compartment epidemic in fractions: susceptible
+$S$, infectious $I$, and removed $R$. The total population is conserved,
+the outbreak grows only above the threshold $\beta/\gamma > 1$, and the
+infectious fraction peaks when the susceptible pool has crossed below the
+threshold value.
+\end{abstract}
+\section{The model}
+With contact rate $\beta$ and removal rate $\gamma$ the dynamics read
+\begin{equation}
+\dot{S} = -\beta S I,
+\end{equation}
+\begin{equation}
+\dot{I} = \beta S I - \gamma I,
+\end{equation}
+\begin{equation}
+\dot{R} = \gamma I.
+\end{equation}
+\section{Initial state and parameters}
+The cohort starts almost fully susceptible, with the field-recorded initial
+state $S(0) = 0.99$, $I(0) = 0.01$ and $R(0) = 0$. The nominal parameters
+are $\beta = 0.4$ and $\gamma = 0.1$; at these values the threshold
+quantity $\beta/\gamma$ exceeds one and an outbreak follows.
+\section{Discussion}
+Because removal never returns to the susceptible pool, the sum $S + I + R$
+stays constant along every trajectory; the outbreak burns out by depleting
+the susceptible pool, leaving a final susceptible fraction well below its
+initial value.
+\end{document}
+""",
     "fit-sine-fit": r"""\documentclass[11pt]{article}
 \usepackage[margin=1.1in]{geometry}
 \usepackage{amsmath}

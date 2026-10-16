@@ -166,6 +166,69 @@ export const SKILL_REGISTRY: ScientificSkill[] = [
     implemented: true,
   },
   {
+    name: 'model.build',
+    description:
+      "Compile an N-state model from the PAPER'S OWN LaTeX equations (paper→model L2): every state's right-hand side is parsed and compiled to JS by the same Cortex kernel the executor uses, then verified to evaluate FINITELY at the paper's stated initial state. Produces a model.compiled run; no numbers are invented — initials must be the paper's own.",
+    inputSchema: {
+      type: 'object',
+      required: ['states', 'rhs', 'initialState'],
+      properties: {
+        states: { type: 'array', items: { type: 'string' }, minItems: 1, description: 'state variable names' },
+        rhs: { type: 'object', description: 'state name → LaTeX right-hand side (paper verbatim)' },
+        params: { type: 'object', description: 'constant symbol → nominal value (paper-stated)' },
+        initialState: { type: 'object', description: 'state name → value at t0 (PAPER evidence)' },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        nStates: { type: 'number' },
+        verifiedAt: { type: 'array', description: 'rhs values at the initial state (finite check)' },
+        freeParams: { type: 'array', items: { type: 'string' }, description: 'free symbols needing values at solve time' },
+      },
+    },
+    runtime: 'cortex-js',
+    renderer: 'none',
+    deterministic: true,
+    version: 'model-build@0.1',
+    evidence: 'CALCULATED',
+    runKind: 'model.compiled',
+    implemented: true,
+  },
+  {
+    name: 'model.solve',
+    description:
+      "Integrate the compiled N-state model with fixed-step RK4 (any number of states — beyond ode.phase's 2). Series/min-max/period for every state come from the ONE run; divergence is an explicit failure, never a silent NaN.",
+    inputSchema: {
+      type: 'object',
+      required: ['states', 'rhs', 'initialState', 'tSpan'],
+      properties: {
+        states: { type: 'array', items: { type: 'string' }, minItems: 1 },
+        rhs: { type: 'object', description: 'state name → LaTeX right-hand side' },
+        params: { type: 'object', description: 'constant symbol → value bindings' },
+        initialState: { type: 'object' },
+        tSpan: range,
+        steps: { type: 'number', description: 'RK4 steps (default 2400)' },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        t: { type: 'array' },
+        series: { type: 'array', description: 'per-state { state, values }' },
+        perState: { type: 'array', description: 'per-state { state, min, max }' },
+        period0: { type: 'number', description: 'first-state midline period (null if not periodic)' },
+      },
+    },
+    runtime: 'cortex-js',
+    renderer: 'jsxgraph',
+    deterministic: true,
+    version: 'model-rk4@0.1',
+    evidence: 'CALCULATED',
+    runKind: 'model.solved',
+    implemented: true,
+  },
+  {
     name: 'kakeya.generate',
     aliases: ['simulate_geometry'],
     description: 'Generate the δ-tube family geometry (directions, packing, radius) as a kakeya.geometry run.',

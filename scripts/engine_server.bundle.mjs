@@ -671,6 +671,67 @@ var SKILL_REGISTRY = [
     implemented: true
   },
   {
+    name: "model.build",
+    description: "Compile an N-state model from the PAPER'S OWN LaTeX equations (paper\u2192model L2): every state's right-hand side is parsed and compiled to JS by the same Cortex kernel the executor uses, then verified to evaluate FINITELY at the paper's stated initial state. Produces a model.compiled run; no numbers are invented \u2014 initials must be the paper's own.",
+    inputSchema: {
+      type: "object",
+      required: ["states", "rhs", "initialState"],
+      properties: {
+        states: { type: "array", items: { type: "string" }, minItems: 1, description: "state variable names" },
+        rhs: { type: "object", description: "state name \u2192 LaTeX right-hand side (paper verbatim)" },
+        params: { type: "object", description: "constant symbol \u2192 nominal value (paper-stated)" },
+        initialState: { type: "object", description: "state name \u2192 value at t0 (PAPER evidence)" }
+      }
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        nStates: { type: "number" },
+        verifiedAt: { type: "array", description: "rhs values at the initial state (finite check)" },
+        freeParams: { type: "array", items: { type: "string" }, description: "free symbols needing values at solve time" }
+      }
+    },
+    runtime: "cortex-js",
+    renderer: "none",
+    deterministic: true,
+    version: "model-build@0.1",
+    evidence: "CALCULATED",
+    runKind: "model.compiled",
+    implemented: true
+  },
+  {
+    name: "model.solve",
+    description: "Integrate the compiled N-state model with fixed-step RK4 (any number of states \u2014 beyond ode.phase's 2). Series/min-max/period for every state come from the ONE run; divergence is an explicit failure, never a silent NaN.",
+    inputSchema: {
+      type: "object",
+      required: ["states", "rhs", "initialState", "tSpan"],
+      properties: {
+        states: { type: "array", items: { type: "string" }, minItems: 1 },
+        rhs: { type: "object", description: "state name \u2192 LaTeX right-hand side" },
+        params: { type: "object", description: "constant symbol \u2192 value bindings" },
+        initialState: { type: "object" },
+        tSpan: range,
+        steps: { type: "number", description: "RK4 steps (default 2400)" }
+      }
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        t: { type: "array" },
+        series: { type: "array", description: "per-state { state, values }" },
+        perState: { type: "array", description: "per-state { state, min, max }" },
+        period0: { type: "number", description: "first-state midline period (null if not periodic)" }
+      }
+    },
+    runtime: "cortex-js",
+    renderer: "jsxgraph",
+    deterministic: true,
+    version: "model-rk4@0.1",
+    evidence: "CALCULATED",
+    runKind: "model.solved",
+    implemented: true
+  },
+  {
     name: "kakeya.generate",
     aliases: ["simulate_geometry"],
     description: "Generate the \u03B4-tube family geometry (directions, packing, radius) as a kakeya.geometry run.",
@@ -1511,9 +1572,204 @@ async function runOdePhase(input, opts) {
     { parentRunId: opts.parentRunId }
   );
 }
+var MODEL_SOLVE_STEPS = 2400;
+function sanitizeSymbols(expr, map) {
+  if (typeof expr === "string") {
+    return map.get(expr) ?? expr;
+  }
+  if (Array.isArray(expr)) {
+    return expr.map(
+      (e, i) => i === 0 && typeof e === "string" ? e : sanitizeSymbols(e, map)
+    );
+  }
+  if (expr && typeof expr === "object" && "fn" in expr) {
+    const wrapped = expr;
+    const inner = sanitizeSymbols(wrapped.fn ?? wrapped.sym, map);
+    return "sym" in wrapped ? { sym: inner } : { fn: inner };
+  }
+  return expr;
+}
+function safeLatexSymbols(latex, names) {
+  let out = latex;
+  for (const n of names) {
+    out = out.replace(new RegExp(`\\\\${n}(?![a-zA-Z])`, "g"), `\\mathrm{${n}}`);
+  }
+  return out;
+}
+function compileModelRhs(states, rhsIn, paramNames = []) {
+  if (!Array.isArray(states) || states.length < 1) {
+    throw new Error(`model: states must be a non-empty array, got ${JSON.stringify(states)}`);
+  }
+  if (new Set(states).size !== states.length) {
+    throw new Error(`model: duplicate state names: ${JSON.stringify(states)}`);
+  }
+  const map = /* @__PURE__ */ new Map();
+  [...states, ...paramNames].forEach((name, i) => map.set(name, `v${i}`));
+  const allNames = [...states, ...paramNames];
+  const fns = {};
+  for (const s of states) {
+    const latex = String(rhsIn?.[s] ?? "");
+    let box;
+    try {
+      box = getEngine().parse(safeLatexSymbols(latex, allNames));
+    } catch {
+      throw new Error(`model: right-hand side of state '${s}' failed to parse: ${latex}`);
+    }
+    if (box.errors.length > 0 || !box.isValid) {
+      throw new Error(`model: right-hand side of state '${s}' is invalid LaTeX: ${latex}`);
+    }
+    let expr = box.json;
+    if (Array.isArray(expr) && expr[0] === "Equal" && expr.length >= 3) expr = expr[2];
+    const compiled = compileFormula(sanitizeSymbols(expr, map));
+    if (!compiled) throw new Error(`model: right-hand side of state '${s}' failed to compile to JS: ${latex}`);
+    fns[s] = compiled;
+  }
+  return { fns, map };
+}
+function sanitizedEnv(map, values) {
+  const env = {};
+  for (const [name, safe] of map) {
+    const v = values[name];
+    if (Number.isFinite(v)) env[safe] = v;
+  }
+  return env;
+}
+async function runModelBuild(input, opts) {
+  const states = input.states ?? [];
+  const rhsIn = input.rhs ?? {};
+  const params = input.params ?? {};
+  const initial = input.initialState ?? {};
+  const { fns, map } = compileModelRhs(states, rhsIn, Object.keys(params));
+  for (const s of states) {
+    const v = Number(initial[s]);
+    if (!Number.isFinite(v)) {
+      throw new Error(`model.build: initialState must provide a finite value for state '${s}' \u2014 the paper's own initials drive the model, nothing is invented`);
+    }
+  }
+  const env = sanitizedEnv(map, { ...params, ...initial });
+  const verifiedAt = states.map((s) => {
+    const raw = fns[s].run(env);
+    const v = typeof raw === "number" ? raw : Number(raw);
+    if (!Number.isFinite(v)) throw new Error(`model.build: rhs of '${s}' is non-finite at the initial state \u2014 check the paper's equations`);
+    return v;
+  });
+  const known = new Set(map.values());
+  const free = /* @__PURE__ */ new Set();
+  for (const s of states) for (const sym of fns[s].freeSymbols) if (!known.has(sym)) free.add(sym);
+  return executeSpec(
+    {
+      kind: "model.compiled",
+      params: { ...params, ...Object.fromEntries(states.map((s) => [s, Number(initial[s])])) },
+      seed: 0,
+      model: { states, rhs: rhsIn, params, initialState: initial },
+      source: opts.source
+    },
+    { engine: "ts-cortex", version: "model-build@0.1" },
+    () => ({
+      nStates: states.length,
+      verifiedAt: states.map((s, i) => ({ state: s, value: verifiedAt[i] })),
+      freeParams: [...free].sort()
+    }),
+    { parentRunId: opts.parentRunId }
+  );
+}
+async function runModelSolve(input, opts) {
+  const states = input.states ?? [];
+  const rhsIn = input.rhs ?? {};
+  const params = input.params ?? {};
+  const initial = input.initialState ?? {};
+  const tSpan = input.tSpan;
+  const steps = typeof input.steps === "number" && Number.isInteger(input.steps) && input.steps >= 2 ? input.steps : MODEL_SOLVE_STEPS;
+  const { fns, map } = compileModelRhs(states, rhsIn, Object.keys(params));
+  const [t02, t1] = tSpan ?? [];
+  if (!(t1 > t02) || !Number.isFinite(t02) || !Number.isFinite(t1)) {
+    throw new Error("model.solve: tSpan must be [t0,t1] with t1>t0");
+  }
+  let y0 = states.map((s) => {
+    const v = Number(initial[s]);
+    if (!Number.isFinite(v)) throw new Error(`model.solve: initialState must provide a finite value for state '${s}'`);
+    return v;
+  });
+  return executeSpec(
+    {
+      kind: "model.solved",
+      params: { ...params, ...Object.fromEntries(states.map((s, i) => [s, y0[i]])) },
+      seed: 0,
+      model: { states, rhs: rhsIn, params, initialState: initial, tSpan, steps },
+      source: opts.source
+    },
+    { engine: "ts-rk4", version: "model-rk4@0.1" },
+    () => {
+      const h = (t1 - t02) / steps;
+      const f = (y2) => {
+        const env = sanitizedEnv(
+          map,
+          { ...params, ...Object.fromEntries(states.map((s, i) => [s, y2[i]])) }
+        );
+        return states.map((s) => {
+          const raw = fns[s].run(env);
+          return typeof raw === "number" ? raw : Number(raw);
+        });
+      };
+      const emitEvery = Math.max(1, Math.round(steps / 240));
+      const ts = [t02];
+      const series = states.map((_, i) => [y0[i]]);
+      const perState = states.map((s, i) => ({ state: s, min: y0[i], max: y0[i] }));
+      let y = y0.slice();
+      for (let i = 1; i <= steps; i++) {
+        const k1 = f(y);
+        const k2 = f(y.map((v, j) => v + h / 2 * k1[j]));
+        const k3 = f(y.map((v, j) => v + h / 2 * k2[j]));
+        const k4 = f(y.map((v, j) => v + h * k3[j]));
+        y = y.map((v, j) => v + h / 6 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
+        for (let j = 0; j < y.length; j++) {
+          if (!Number.isFinite(y[j]) || Math.abs(y[j]) > 1e8) {
+            throw new Error(`model.solve: state '${states[j]}' diverged at t=${(t02 + i * h).toFixed(3)} \u2014 check the paper's equations/parameters`);
+          }
+          perState[j].min = Math.min(perState[j].min, y[j]);
+          perState[j].max = Math.max(perState[j].max, y[j]);
+        }
+        if (i % emitEvery === 0 || i === steps) {
+          ts.push(t02 + i * h);
+          states.forEach((_, j) => series[j].push(y[j]));
+        }
+      }
+      const s0 = series[0];
+      let min = Infinity;
+      let max = -Infinity;
+      for (const v of s0) {
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      const mid = (min + max) / 2;
+      const crossings = [];
+      for (let i = 1; i < s0.length; i++) {
+        if (s0[i - 1] < mid && s0[i] >= mid) {
+          const frac = (mid - s0[i - 1]) / (s0[i] - s0[i - 1] || 1e-12);
+          crossings.push(ts[i - 1] + frac * (ts[i] - ts[i - 1]));
+        }
+      }
+      let period0 = null;
+      if (crossings.length >= 2) {
+        const gaps = crossings.slice(1).map((c, i) => c - crossings[i]);
+        period0 = gaps.slice().sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+      }
+      return {
+        t: ts,
+        series: states.map((s, j) => ({ state: s, values: series[j] })),
+        perState,
+        period0,
+        steps
+      };
+    },
+    { parentRunId: opts.parentRunId }
+  );
+}
 var COMPUTE_BY_KIND = {
   "formula.curve": "formula.plot",
   "formula.value": "formula.evaluate",
+  "model.compiled": "model.build",
+  "model.solved": "model.solve",
   "kakeya.voxel": "kakeya.measure",
   "kakeya.geometry": "kakeya.generate",
   "kakeya.sweep": "kakeya.sweep",
@@ -1564,6 +1820,18 @@ function applyForkChanges(skillName, forkInput, changes) {
       }
       forkInput.system = { ...sys, params };
       forkInput.initialValues = init;
+      return;
+    }
+    case "model.build":
+    case "model.solve": {
+      const params = { ...forkInput.params ?? {} };
+      for (const [k, v] of Object.entries(changes)) {
+        if (!(k in params)) {
+          throw new Error(`fork(${skillName}): unknown parameter '${k}' \u2014 known: ${JSON.stringify(Object.keys(params))}`);
+        }
+        params[k] = v;
+      }
+      forkInput.params = params;
       return;
     }
     case "geometry.2d": {
@@ -1658,9 +1926,27 @@ function inputFromSpec(skillName, run) {
       tSpan: model.tSpan
     };
   }
+  if (skillName === "model.build") {
+    return {
+      states: model?.states ?? [],
+      rhs: model?.rhs ?? {},
+      params: model?.params ?? {},
+      initialState: model?.initialState ?? {}
+    };
+  }
+  if (skillName === "model.solve") {
+    return {
+      states: model?.states ?? [],
+      rhs: model?.rhs ?? {},
+      params: model?.params ?? {},
+      initialState: model?.initialState ?? {},
+      tSpan: model?.tSpan ?? [0, 20],
+      steps: model?.steps
+    };
+  }
   return null;
 }
-var FORMAL_SKILLS = /* @__PURE__ */ new Set(["formula.plot", "formula.evaluate", "kakeya.generate", "kakeya.measure", "kakeya.sweep", "geometry.2d", "ode.solve", "mujoco.simulate", "challenge.attempt"]);
+var FORMAL_SKILLS = /* @__PURE__ */ new Set(["formula.plot", "formula.evaluate", "kakeya.generate", "kakeya.measure", "kakeya.sweep", "geometry.2d", "ode.solve", "model.build", "model.solve", "mujoco.simulate", "challenge.attempt"]);
 async function executeSkill(name, input, opts = {}) {
   const skill = getSkill(name);
   if (!skill) return { status: "error", code: "unknown_skill", message: `Unknown skill: ${name}` };
@@ -1712,6 +1998,8 @@ async function executeSkill(name, input, opts = {}) {
     if (name === "geometry.2d") return { status: "ok", run: await runGeometry2D(input, opts) };
     if (name === "ode.solve") return { status: "ok", run: await runOdeSolve(input, opts) };
     if (name === "ode.phase") return { status: "ok", run: await runOdePhase(input, opts) };
+    if (name === "model.build") return { status: "ok", run: await runModelBuild(input, opts) };
+    if (name === "model.solve") return { status: "ok", run: await runModelSolve(input, opts) };
     if (name === "experiment.fork") {
       const { sourceRunId, parameterChanges = {} } = input;
       const source = getExperimentRun(sourceRunId);

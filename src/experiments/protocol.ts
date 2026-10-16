@@ -16,6 +16,8 @@ export type ExperimentKind =
   | 'formula.value' // single-point formula evaluation (Cortex→JS)
   | 'mujoco.sim' // MuJoCo WASM headless simulation (vendored demo scenes)
   | 'challenge.attempt' // playable-challenge attempt (code-built model, real compute)
+  | 'model.compiled' // paper→model L2: N-state paper equations compiled & verified (paper-to-model)
+  | 'model.solved' // paper→model L2: N-state RK4 integration, one run = all series
 
 export interface ExperimentSpec {
   kind: ExperimentKind

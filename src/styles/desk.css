@@ -97,6 +97,127 @@
   color: #6b5f4b;
   background: #faf6ee;
 }
+/* 理解卡 (paper→model comprehension panel) */
+.spec-panel {
+  position: absolute;
+  top: 96px;
+  right: 24px;
+  z-index: 40;
+  width: 420px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  background: #fffdf7;
+  border: 1px solid #d8cdb4;
+  border-radius: 3px;
+  box-shadow: 0 14px 40px rgba(90, 74, 45, 0.18);
+  padding: 16px 18px;
+  font-size: 13px;
+  color: #3b3222;
+}
+.spec-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.spec-panel-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.spec-panel-prov {
+  flex: 1;
+  font-size: 11px;
+  color: #9c8f77;
+}
+.spec-section {
+  margin: 12px 0;
+}
+.spec-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #9c8f77;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.spec-question {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #3b3222;
+}
+.spec-eqs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.spec-eq {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.spec-eq code {
+  font-size: 12.5px;
+  background: #f6efdc;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.spec-eq-role {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #8a7a58;
+  min-width: 84px;
+}
+.spec-eq.role-governing .spec-eq-role {
+  color: #1d5fa8;
+  font-weight: 600;
+}
+.spec-quantities {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.spec-quantities th {
+  text-align: left;
+  font-weight: 500;
+  color: #9c8f77;
+  border-bottom: 1px solid #e2d9c6;
+  padding: 3px 6px;
+}
+.spec-quantities td {
+  padding: 3px 6px;
+  border-bottom: 1px dashed #ece4d2;
+}
+.spec-claims {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+.spec-note {
+  font-size: 12px;
+  color: #8a7a58;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.spec-error {
+  margin-top: 8px;
+  color: #a33d2a;
+  font-size: 12.5px;
+}
+.spec-solved {
+  margin-top: 10px;
+}
+.spec-run-badge {
+  display: inline-block;
+  font-size: 11px;
+  color: #1d5fa8;
+  border: 1px solid #b9d3ec;
+  background: #eef5fc;
+  border-radius: 3px;
+  padding: 2px 8px;
+  margin-bottom: 8px;
+}
 .home-drop {
   width: 100%;
   padding: 34px 20px;

@@ -1,0 +1,183 @@
+{
+ "docId": "doc-1d96f7b0ee",
+ "engine": "docling",
+ "doclingVersion": "2.131.0",
+ "title": "ode-sir-three-state",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612.0,
+   "height": 792.0
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.23649,
+    "y": 0.15156,
+    "w": 0.52704,
+    "h": 0.04941
+   },
+   "text": "Threshold Behaviour of a Three-Compartment Epidemic Model"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44739,
+    "y": 0.22284,
+    "w": 0.10521,
+    "h": 0.01509
+   },
+   "text": "A. Outbreak"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44393,
+    "y": 0.25372,
+    "w": 0.11215,
+    "h": 0.01509
+   },
+   "text": "October 2026"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.46419,
+    "y": 0.3066,
+    "w": 0.07163,
+    "h": 0.01258
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i4",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.17398,
+    "y": 0.3305,
+    "w": 0.65205,
+    "h": 0.05786
+   },
+   "text": "We study the classical three-compartment epidemic in fractions: susceptible S, infectious I, and removed R. The total population is conserved, the outbreak grows only above the threshold β/γ > 1, and the infectious fraction peaks when the susceptible pool has crossed below the threshold value."
+  },
+  {
+   "id": "p1-i5",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.41474,
+    "w": 0.16036,
+    "h": 0.01811
+   },
+   "text": "1 The model"
+  },
+  {
+   "id": "p1-i6",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.449,
+    "w": 0.45971,
+    "h": 0.01377
+   },
+   "text": "With contact rate β and removal rate γ the dynamics read"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.45662,
+    "y": 0.47816,
+    "w": 0.41397,
+    "h": 0.01556
+   },
+   "latex": "\\dot { S } = - \\beta S I ,"
+  },
+  {
+   "id": "p1-i8",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.4443,
+    "y": 0.50911,
+    "w": 0.42629,
+    "h": 0.01556
+   },
+   "latex": "\\dot { I } = \\beta S I - \\gamma I ,"
+  },
+  {
+   "id": "p1-i9",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.46908,
+    "y": 0.53439,
+    "w": 0.40151,
+    "h": 0.01556
+   },
+   "latex": "\\dot { R } = \\gamma I ."
+  },
+  {
+   "id": "p1-i10",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.5761,
+    "w": 0.35908,
+    "h": 0.01811
+   },
+   "text": "2 Initial state and parameters"
+  },
+  {
+   "id": "p1-i11",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.61036,
+    "w": 0.74119,
+    "h": 0.04799
+   },
+   "text": "The cohort starts almost fully susceptible, with the field-recorded initial state S(0) = 0.99, I(0) = 0.01 and R(0) = 0. The nominal parameters are β = 0.4 and γ = 0.1; at these values the threshold quantity β/γ exceeds one and an outbreak follows."
+  },
+  {
+   "id": "p1-i12",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.6845,
+    "w": 0.15696,
+    "h": 0.01811
+   },
+   "text": "3 Discussion"
+  },
+  {
+   "id": "p1-i13",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.71876,
+    "w": 0.74117,
+    "h": 0.04799
+   },
+   "text": "Because removal never returns to the susceptible pool, the sum S + I +R stays constant along every trajectory; the outbreak burns out by depleting the susceptible pool, leaving a final susceptible fraction well below its initial value."
+  }
+ ]
+}

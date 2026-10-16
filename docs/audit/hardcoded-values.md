@@ -62,3 +62,9 @@
 - `server/vlm_parse.py`：`_RENDER_SCALE = 2.0`（pypdfium2 渲染倍率 ≈150dpi——OCR 级可读性/负载大小的折中）、`_MAX_CONCURRENT_PAGES = 4`（单任务内逐页并发视觉调用上限）、`_MAX_PAGES = 24`（快速路径页数硬上限——**超限直接拒绝**（`VLMLimitError` 引导精读定位），不做部分解析；审阅修正：曾为「截断+显式标记」，Copilot/Codex 一致判定部分语料当成功不可接受）、`max_tokens = 8000`（单页提取响应上限）、页面级锚点 `x=0.08/w=0.84/h=0.04` + 纵向堆叠（AI 提取的锚点是页面级，非 Docling 字符级——引擎标签 `vlm` + `doclingVersion "<model>@fast-path"` 明示来源）。
 - `server/main.py`：`PAPER2LAB_MAX_VLM_JOBS`（进程级并发 VLM 任务上限，默认 2——per-job 页闸不管全进程；循环亲和 semaphore）。
 - 允许理由：均为渲染/并发/护栏配置；提取出的公式与表格数值仍须经公式编译/实验执行才成为用户可见 CALCULATED 数字（AI 只搬运会读到的论文内容，不产生计算结果）。
+
+## H. paper→model 层登记常量（模型管线配置类，非证据）
+
+- `src/skills/executor.ts`：`MODEL_SOLVE_STEPS = 2400`（model.solve N 态 RK4 定步长积分步数，与 ode.phase 的 ODE_PHASE_STEPS 同级；发散阈值 1e8）；`sanitizeSymbols` 的 v 重命名前缀（纯符号卫生，不改数学）。
+- `src/desk/SpecPanel.tsx`：构建模型默认积分窗 `tSpan = [0, 80]`（呈现层求解窗口；初值/参数全部来自论文原文，非手写）。
+- 允许理由：均为采样密度/护栏/呈现窗口配置；轨迹、守恒量、周期、min/max 等用户可见数值 100% 来自 model.solved Run（CALCULATED）。

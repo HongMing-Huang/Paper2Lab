@@ -76,6 +76,8 @@ describe('unified executor — gates', () => {
         'kakeya.sweep',
         'ode.phase',
         'ode.solve',
+        'model.build',
+        'model.solve',
         'paper.trace-source',
       ].sort(),
     )
