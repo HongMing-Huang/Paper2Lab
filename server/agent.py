@@ -920,11 +920,30 @@ async def _server_run_tool_call(call: Any, args: dict, intent: str, context: dic
     tool = str(getattr(call, "name", "") or args.get("tool") or "scientific_execute")
     if tool == "canvas_apply":
         return False, "canvas_apply has no headless surface in 0.1 — answer from the run results"
-    desk = str(args.get("deskKind") or context.get("deskKind") or "formula")
-    steps = args.get("steps") if isinstance(args.get("steps"), list) else []
+    # #51/P0-C: the LLM may NOT pick its own desk — the base input belongs to
+    # the experiment the user is looking at (context.deskKind). A model-chosen
+    # mismatched desk ran the WRONG kernel against the base ("ode.solve:
+    # missing field system" ×6 blind rounds, bit for real on the cloud). When
+    # they disagree, pin the context desk and translate the op prefix — one
+    # instructive retry beat six failing rounds.
+    ctx_desk = str(context.get("deskKind") or "formula")
+    desk = str(args.get("deskKind") or ctx_desk)
+    if desk != ctx_desk:
+        # rewrite step op prefixes to the ACTUAL desk's vocabulary (the shapes
+        # set/scale/terminal are identical across desks; only the prefix differs)
+        fixed_steps = []
+        for s in steps_raw(args):
+            op = str(s.get("op", ""))
+            rest = op.split(".", 1)[1] if "." in op else op
+            fixed_steps.append({**s, "op": f"{ctx_desk}.{rest}"} if rest else s)
+        steps = fixed_steps
+        desk = ctx_desk
+    else:
+        steps = args.get("steps") if isinstance(args.get("steps"), list) else []
     meta = {
         "kakeya": "kakeya.measure", "ode": "ode.solve", "geometry": "geometry.2d",
         "mujoco": "mujoco.simulate", "challenge": "challenge.attempt",
+        "model": "model.solve",
     }.get(desk, "formula.plot")
     plan = {
         "planId": f"plan-agent-{uuid.uuid4().hex[:8]}",
@@ -957,6 +976,10 @@ async def _server_run_tool_call(call: Any, args: dict, intent: str, context: dic
 # --------------------------------------------------------------------------
 # HTTP surface
 # --------------------------------------------------------------------------
+
+
+def steps_raw(args: dict) -> list:
+    return args.get("steps") if isinstance(args.get("steps"), list) else []
 
 
 class TurnBody(BaseModel):
