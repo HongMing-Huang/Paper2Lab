@@ -312,6 +312,15 @@ v0.3 首切片（2026-10-28，#51 推荐首个实现 Slice 全项落地）：
 - [x] **P0-A Slice 4：锚点精度分级**——`anchorPrecision: 'region'|'page'` 全链（vlm_parse 服务端打 page 标、doclingSchema 透传、docling 默认 region）；claims 绑定源句 item（`source`+精度），未绑定⇒`ambiguous`（红色虚线标签），VLM 页级锚点永不冒充 region bbox；µ(U+00B5)/ϕ/ϰ 等 docling 变体字形映射修复
 - [x] 测试基线：vitest **307/307**（+8）· pytest VLM 面 22/22 · tsc 0 · build ✓ · product-lab（per-experiment 拖拽写回+0 错误）与 spec-panel（6 方程/3 态/CALCULATED）双产品脚本 PASS；Chromium `--no-proxy-server`（系统代理故障不再污染产品证据）
 
+v0.3 第二切片（2026-10-29，#51 P0-C 基础：Agent 科学闭环构件）：
+
+- [x] **agentSteps 第七桌面 `model`**（terminal model.solve；set/scale 只作用于 params——`readParam` 不读 initialState，fork 白名单门兜底「初值=论文证据不可改」）；metrics 提取 per-state 终值 + 首态 maxAbs + period0；vitest 3 项（MM μ×2→final_S<0.7/比较在/SIR 设初值被拒）
+- [x] **`_parse_model_intent`**：设为/加倍/减半/比较；**greek 别名解析**（`\bmu\b` 或 μ/µ 均命中 spec 参数名 mu——`_GREEK_ALIAS` 表覆盖 μµ κϰ β γ α λ ω δ σ θ τ φϕ ρ εϵ；坑：别名须做 alternation 而非字符序列拼接，`\k` 是非法正则转义）
+- [x] **结构化科学上下文**（`_build_context_message` 增 spec 段）：claims（带 anchorPrecision 标签 region/page/ambiguous）+ quantities（角色+名义值，「only PARAMS are tunable」明示）+ states 清单——按字段独立注入，替代此前 paper 段 400 字符截断丢 claims 的问题；pytest 断言四段结构
+- [x] **execution receipt**（`execution_receipt` 事件）：goal/desk/steps/runIds/targetRunId/checks{allRunsReal,registryGated,comparison}/failureReason——成功与失败路径都发（失败批次可审不盲重试）；pytest 真回合断言 receipt 内容
+- [x] server 模式 model 桌面全回合 pytest 真跑（μ 加倍：model-solved- Run、final_S∈(0,0.75)、final_P>0.25、比较双 run、receipt 在场）；`_DESK_PREFIXES` +model
+- 测试基线：vitest **309/309** · pytest 快集 8+（server-mode 全过）· tsc 0 · build ✓；**bundle 已随 src 重建**（本轮又踩预编译 bundle 陈旧坑——agent_steps 旧 bundle 无 model 桌面，回合静默无 runs）
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）

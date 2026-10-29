@@ -14,6 +14,7 @@ const planIds = {
   ode: buildPlan({ skill: 'ode.solve', goal: 'agentsteps test: ode' }).planId,
   geometry: buildPlan({ skill: 'geometry.2d', goal: 'agentsteps test: geometry' }).planId,
   mujoco: buildPlan({ skill: 'mujoco.simulate', goal: 'agentsteps test: mujoco' }).planId,
+  model: buildPlan({ skill: 'model.solve', goal: 'agentsteps test: model' }).planId,
 }
 
 describe('agentSteps: every desk completes through the registry', () => {
@@ -67,6 +68,48 @@ describe('agentSteps: every desk completes through the registry', () => {
     expect(out.runs[0].runId).toMatch(/^lv-ode-/)
     expect(out.runs[0].metrics.conservedDrift).toBeLessThan(1e-3)
     expect(out.runs[0].metrics.finalPrey).toBeGreaterThan(0)
+  })
+
+  it('model desk (#51 P0-C): mu ×2 + solve + compare — paper initials untouched, conservation holds', async () => {
+    // the MM paper's own base: 4 states, greek rates, paper-stated initials
+    const base = {
+      states: ['S', 'C', 'E', 'P'],
+      rhs: { S: '-\\kappa S E + \\lambda C', C: '\\kappa S E - \\lambda C - \\mu C', E: '-\\kappa S E + \\lambda C + \\mu C', P: '\\mu C' },
+      params: { kappa: 1, lambda: 0.2, mu: 0.4 },
+      initialState: { S: 1, C: 0, E: 0.1, P: 0 },
+      tSpan: [0, 30],
+    }
+    const out = await runAgentSteps('model', [
+      { op: 'experiment.fork' },
+      { op: 'model.scale', param: 'mu', value: 2 }, // catalytic rate doubled
+      { op: 'model.solve' },
+      { op: 'experiment.compare' },
+    ], base, planIds.model)
+    expect(out.status).toBe('ok')
+    expect(out.runs[0].runId).toMatch(/^model-solved-/)
+    // per-state finals present for all 4 states
+    for (const s of ['S', 'C', 'E', 'P']) {
+      expect(Number.isFinite(out.runs[0].metrics[`final_${s}`])).toBe(true)
+    }
+    // μ×2 ⇒ faster reaction ⇒ less substrate remaining at t=30
+    expect(out.runs[0].metrics.final_S!).toBeLessThan(0.7)
+    expect(out.comparison).toBeTruthy()
+  })
+
+  it('model desk: setting an INITIAL state is rejected (paper evidence is frozen)', async () => {
+    const base = {
+      states: ['S', 'I', 'R'],
+      rhs: { S: '-\\beta S I', I: '\\beta S I - \\gamma I', R: '\\gamma I' },
+      params: { beta: 0.4, gamma: 0.1 },
+      initialState: { S: 0.99, I: 0.01, R: 0 },
+      tSpan: [0, 20],
+    }
+    const out = await runAgentSteps('model', [
+      { op: 'model.set', param: 'S', value: 0.5 }, // S is a STATE, not a param
+      { op: 'model.solve' },
+    ], base, planIds.model)
+    expect(out.status).toBe('error')
+    expect(out.message).toContain('S')
   })
 
   it('geometry desk: set alpha + plot + compare', async () => {

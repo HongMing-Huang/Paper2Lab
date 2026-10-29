@@ -12,7 +12,7 @@
 import { executeSkill } from './executor'
 import type { ExperimentRun } from '../experiments/protocol'
 
-export type DeskKind = 'formula' | 'kakeya' | 'ode' | 'geometry' | 'mujoco' | 'challenge'
+export type DeskKind = 'formula' | 'kakeya' | 'ode' | 'geometry' | 'mujoco' | 'challenge' | 'model'
 
 export interface StepOp {
   op: string
@@ -36,6 +36,10 @@ const TERMINAL_BY_DESK: Record<DeskKind, { skill: string; op: string }> = {
   geometry: { skill: 'geometry.2d', op: 'geometry.plot' },
   mujoco: { skill: 'mujoco.simulate', op: 'mujoco.simulate' },
   challenge: { skill: 'challenge.attempt', op: 'challenge.attempt' },
+  // paper→model N-state desk (#51 P0-C): base = a model.solve input
+  // { states, rhs, params, initialState, tSpan } — params are tunable,
+  // initialState is the PAPER's own evidence and is never agent-set
+  model: { skill: 'model.solve', op: 'model.solve' },
 }
 
 /** where a parameter lives inside each skill's input (mirrors applyForkChanges) */
@@ -48,6 +52,11 @@ function readParam(desk: DeskKind, base: Record<string, unknown>, param: string)
     const sys = base.system as { params?: Record<string, number>; kind?: string } | undefined
     const init = base.initialValues as Record<string, number> | undefined
     return sys?.params?.[param] ?? init?.[param]
+  }
+  if (desk === 'model') {
+    // params only — the paper's initialState is evidence, never agent-tuned
+    const params = (base.params as Record<string, number>) ?? {}
+    return params[param]
   }
   if (desk === 'geometry') {
     const params = (base.params as Record<string, number>) ?? {}
@@ -87,6 +96,22 @@ function metricsOf(desk: DeskKind, result: unknown): Record<string, number> {
     if (Array.isArray(predator) && predator.length > 0) {
       out.finalPredator = predator[predator.length - 1]
       out.maxPredator = Math.max(...predator)
+    }
+    return out
+  }
+  if (desk === 'model') {
+    // result shape: { t, series: [{state, values}], perState, period0 }
+    const out: Record<string, number> = {}
+    if (num(r.period0) !== undefined) out.period0 = num(r.period0)!
+    const series = (r.series as Array<{ state: string; values: number[] }> | undefined) ?? []
+    for (const s of series.slice(0, 4)) {
+      if (Array.isArray(s.values) && s.values.length > 0) {
+        out[`final_${s.state}`] = s.values[s.values.length - 1]
+      }
+    }
+    const s0 = series[0]
+    if (s0 && Array.isArray(s0.values) && s0.values.length > 0) {
+      out[`max_${s0.state}`] = Math.max(...s0.values.map(Math.abs))
     }
     return out
   }

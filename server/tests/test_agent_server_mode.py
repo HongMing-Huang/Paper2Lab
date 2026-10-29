@@ -129,8 +129,88 @@ async def test_mujoco_turn_completes_server_side() -> None:
             assert cmp_evt["comparison"]["runA"] != cmp_evt["comparison"]["runB"]
 
 
+MODEL_BASE = {
+    # the MM paper's own model (ode-michaelis-menten fixture): 4 states,
+    # greek rates, PAPER-stated initials — the agent may tune rates only
+    "states": ["S", "C", "E", "P"],
+    "rhs": {
+        "S": "-\\kappa S E + \\lambda C",
+        "C": "\\kappa S E - \\lambda C - \\mu C",
+        "E": "-\\kappa S E + \\lambda C + \\mu C",
+        "P": "\\mu C",
+    },
+    "params": {"kappa": 1, "lambda": 0.2, "mu": 0.4},
+    "initialState": {"S": 1, "C": 0, "E": 0.1, "P": 0},
+    "tSpan": [0, 30],
+}
+
+
 @pytest.mark.asyncio
-async def test_server_mode_guards() -> None:
+async def test_model_turn_completes_server_side() -> None:
+    """#51 P0-C model desk: μ doubling runs the N-state RK4 in the engine,
+    forks keep the paper's initials, and the turn emits an execution receipt."""
+    async with LifespanManager(app) as mgr:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
+            events = await _turn(client, "把 μ 加倍试试", {"deskKind": "model", "execution": "server", "params": ["kappa", "lambda", "mu"], "base": MODEL_BASE})
+            types = [e["type"] for e in events]
+            assert types[-1] == "done" and events[-1]["reason"] == "completed"
+            assert "require_execution" not in types
+            run = next(e for e in events if e["type"] == "experiment_completed")
+            assert run["runId"].startswith("model-solved-")
+            # μ×2 ⇒ faster catalysis ⇒ less substrate left at t=30
+            assert 0 < run["metrics"]["final_S"] < 0.75
+            assert run["metrics"]["final_P"] > 0.25
+            # #51 P0-C: the execution receipt is present and auditable
+            receipt = next(e for e in events if e["type"] == "execution_receipt")
+            r = receipt["receipt"]
+            assert r["desk"] == "model"
+            assert r["runIds"], "receipt must list the real run ids"
+            assert r["checks"]["allRunsReal"] is True
+            assert "加倍" in r["goal"] or r["goal"]  # goal carries the intent
+            assert any(s.get("param") == "mu" for s in r["steps"] if isinstance(s, dict))
+            cmp_evt = next(e for e in events if e["type"] == "comparison_created")
+            assert cmp_evt["comparison"]["runA"] != cmp_evt["comparison"]["runB"]
+
+
+@pytest.mark.asyncio
+async def test_structured_context_carries_claims_and_quantities() -> None:
+    """#51 P0-C: the agent context is STRUCTURED — claims with anchor
+    precision and quantity roles enter as labeled fields, not one truncated
+    string; the model sees which quantities are tunable parameters."""
+    from server.agent import _build_context_message
+
+    ctx = {
+        "paper": {"title": "SIR", "question": "threshold behaviour"},
+        "spec": {
+            "claims": [
+                {"statement": "the sum S+I+R stays constant", "anchorPrecision": "region"},
+                {"statement": "the outbreak burns out", "anchorPrecision": "ambiguous"},
+            ],
+            "quantities": [
+                {"name": "S", "role": "state", "nominal": 0.99},
+                {"name": "beta", "role": "parameter", "nominal": 0.4},
+            ],
+            "states": ["S", "I", "R"],
+        },
+    }
+    msg = _build_context_message("如果 β 增大？", ctx)
+    assert "Paper claims" in msg and "stays constant" in msg
+    assert "[region]" in msg and "[ambiguous]" in msg  # precision is labeled
+    assert "Paper quantities" in msg
+    assert "beta (parameter) = 0.4" in msg  # roles + nominals, machine-shaped
+    assert "Model states: S, I, R" in msg
+    assert "only PARAMS are tunable" in msg
+
+
+@pytest.mark.asyncio
+async def test_model_intent_uses_greek_alias_target() -> None:
+    """μ (or µ) in the user text resolves to the spec param 'mu'."""
+    from server.agent import _parse_model_intent
+
+    steps = _parse_model_intent("把 μ 减半", ["kappa", "lambda", "mu"])
+    assert steps and steps[1]["param"] == "mu" and steps[1]["value"] == 0.5
+    steps2 = _parse_model_intent("把 mu 设为 0.9", ["kappa", "lambda", "mu"])
+    assert steps2 and steps2[1]["param"] == "mu" and steps2[1]["value"] == 0.9
     async with LifespanManager(app) as mgr:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=mgr.app), base_url="http://t") as client:
             # no base experiment → explicit failure, not a silent nothing

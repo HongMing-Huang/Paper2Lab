@@ -2067,7 +2067,11 @@ var TERMINAL_BY_DESK = {
   ode: { skill: "ode.solve", op: "ode.solve" },
   geometry: { skill: "geometry.2d", op: "geometry.plot" },
   mujoco: { skill: "mujoco.simulate", op: "mujoco.simulate" },
-  challenge: { skill: "challenge.attempt", op: "challenge.attempt" }
+  challenge: { skill: "challenge.attempt", op: "challenge.attempt" },
+  // paper→model N-state desk (#51 P0-C): base = a model.solve input
+  // { states, rhs, params, initialState, tSpan } — params are tunable,
+  // initialState is the PAPER's own evidence and is never agent-set
+  model: { skill: "model.solve", op: "model.solve" }
 };
 function readParam(desk, base, param) {
   if (desk === "formula") {
@@ -2078,6 +2082,10 @@ function readParam(desk, base, param) {
     const sys = base.system;
     const init = base.initialValues;
     return sys?.params?.[param] ?? init?.[param];
+  }
+  if (desk === "model") {
+    const params = base.params ?? {};
+    return params[param];
   }
   if (desk === "geometry") {
     const params = base.params ?? {};
@@ -2115,6 +2123,21 @@ function metricsOf(desk, result) {
     if (Array.isArray(predator) && predator.length > 0) {
       out.finalPredator = predator[predator.length - 1];
       out.maxPredator = Math.max(...predator);
+    }
+    return out;
+  }
+  if (desk === "model") {
+    const out = {};
+    if (num2(r.period0) !== void 0) out.period0 = num2(r.period0);
+    const series = r.series ?? [];
+    for (const s of series.slice(0, 4)) {
+      if (Array.isArray(s.values) && s.values.length > 0) {
+        out[`final_${s.state}`] = s.values[s.values.length - 1];
+      }
+    }
+    const s0 = series[0];
+    if (s0 && Array.isArray(s0.values) && s0.values.length > 0) {
+      out[`max_${s0.state}`] = Math.max(...s0.values.map(Math.abs));
     }
     return out;
   }

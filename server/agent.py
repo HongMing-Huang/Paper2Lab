@@ -43,6 +43,14 @@ router = APIRouter(prefix="/api/agent")
 
 _NUM = r"(-?\d+(?:\.\d+)?)"
 
+# spec param names are macro forms (mu/kappa/beta…); users type the greek
+# letter or the latin name — accept both when matching an intent target
+_GREEK_ALIAS = {
+    "mu": "μµ", "kappa": "κϰ", "beta": "β", "gamma": "γ", "alpha": "α",
+    "lambda": "λ", "omega": "ω", "delta": "δ", "sigma": "σ", "theta": "θ",
+    "tau": "τ", "phi": "φϕ", "rho": "ρ", "epsilon": "εϵ",
+}
+
 
 def _env(name: str) -> str | None:
     return os.environ.get(name) or None
@@ -236,6 +244,48 @@ def _parse_ode_intent(q: str, params: list[str]) -> list[dict] | None:
     return None
 
 
+def _parse_model_intent(q: str, params: list[str]) -> list[dict] | None:
+    """paper→model desk (#51 P0-C): N-state paper model parameter tasks.
+    Same op vocabulary as the formula desk; executed via model.solve. Params
+    may be named with greek macros or their unicode forms (μ/mu, β/beta…) —
+    the caller passes the spec's param names, we match either spelling.
+    initialState is PAPER evidence: never settable here (fork gate enforces)."""
+    if not params:
+        return None
+
+    def named(p: str) -> str:
+        alias = _GREEK_ALIAS.get(p, "")
+        alts = "|".join(re.escape(c) for c in alias)
+        return rf"\b{re.escape(p)}\b" + (rf"|\b(?:{alts})\b" if alts else "")
+
+    target = next((p for p in params if re.search(named(p), q)), params[0])
+    m = re.search(rf"(设为|改为|置为|调整为|set(?:\s+to)?)\s*{_NUM}", q)
+    if m:
+        return [
+            {"op": "experiment.fork"},
+            {"op": "model.set", "param": target, "value": float(m.group(2))},
+            {"op": "model.solve"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(rf"(增大|增加|放大|加倍|翻倍)(一倍|1倍|两倍|2倍)?|double", q):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "model.scale", "param": target, "value": 2.0},
+            {"op": "model.solve"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(减少一半|减半|减到一半|缩小一半|halve)", q):
+        return [
+            {"op": "experiment.fork"},
+            {"op": "model.scale", "param": target, "value": 0.5},
+            {"op": "model.solve"},
+            {"op": "experiment.compare"},
+        ]
+    if re.search(r"(对比|比较|compare)", q):
+        return [{"op": "experiment.compare"}]
+    return None
+
+
 def _parse_geometry_intent(q: str) -> list[dict] | None:
     """geometry desk: Perron-tree tasks over k (subdivision) and α (overlap)."""
     m_alpha = re.search(rf"(?:α|alpha|重叠比).{{0,6}}?(设为|改为|置为|调整为)\s*{_NUM}", q)
@@ -338,6 +388,8 @@ def sop_plan(intent: str, context: dict) -> dict | None:
         steps = _parse_kakeya_intent(intent)
     elif desk == "ode":
         steps = _parse_ode_intent(intent, list(context.get("params", ["alpha", "beta", "gamma", "delta"])))
+    elif desk == "model":
+        steps = _parse_model_intent(intent, list(context.get("params", [])))
     elif desk == "geometry":
         steps = _parse_geometry_intent(intent)
     elif desk == "mujoco":
@@ -351,6 +403,7 @@ def sop_plan(intent: str, context: dict) -> dict | None:
     meta = {
         "kakeya": ("kakeya.measure", "ts-kakeya-worker@v3", "r3f", ["unionVolume", "multiplicity"]),
         "ode": ("ode.solve", "ts-rk4@ode-rk4-0.1", "plot", ["finalPrey", "finalPredator", "conservedDrift"]),
+        "model": ("model.solve", "ts-rk4@model-rk4-0.1", "plot", ["final_S", "final_I", "period0"]),
         "geometry": ("geometry.2d", "perron-kernel@0.1", "svg", ["computedArea", "boundArea"]),
         "mujoco": ("mujoco.simulate", "mujoco-wasm@3.12.0", "r3f", ["finalTime", "qposNormFinal", "comZFinal"]),
         "challenge": ("challenge.attempt", "challenge-kernel@0.1", "r3f", ["score", "error", "hit"]),
@@ -456,6 +509,19 @@ async def sop_turn_server(session: SopSession, intent: str, context: dict) -> As
             toolCallId=call_id,
             error=str(resp.get("error", "engine execution failed")),
         )
+        # failure receipt (#51 P0-C): what was attempted and WHY it failed —
+        # a batch that dies half-way is reviewable, never retried blind
+        yield ev(
+            "execution_receipt",
+            receipt={
+                "goal": plan["goal"],
+                "desk": desk,
+                "steps": plan["steps"],
+                "runIds": [],
+                "checks": {"allRunsReal": False, "registryGated": True, "comparison": False},
+                "failureReason": str(resp.get("error", "engine execution failed")),
+            },
+        )
         yield ev("done", reason="execution_failed")
         return
     result = resp.get("result", {})
@@ -471,6 +537,24 @@ async def sop_turn_server(session: SopSession, intent: str, context: dict) -> As
         )
     if result.get("comparison"):
         yield ev("comparison_created", comparison=result["comparison"])
+    # #51 P0-C execution receipt: the audit trail of THIS tool batch — goal,
+    # inputs, engine identity, runIds, checks. Same-run numbers are only ever
+    # read from the executor; the receipt makes the batch reviewable as a unit.
+    receipt = {
+        "goal": plan["goal"],
+        "desk": desk,
+        "steps": plan["steps"],
+        "engine": resp.get("engine", plan.get("meta", {}).get("engine", "")),
+        "runIds": [row.get("runId") for row in result.get("runs", [])],
+        "targetRunId": result.get("targetRunId"),
+        "checks": {
+            "allRunsReal": bool(result.get("runs")),
+            "registryGated": True,  # agent_steps goes through executeSkill (PlayPlan gate)
+            "comparison": bool(result.get("comparison")),
+        },
+        "failureReason": None,
+    }
+    yield ev("execution_receipt", receipt=receipt)
     yield ev(
         "observation_ready",
         text=result.get("summary") or "实验完成——数字全部来自后端引擎（与浏览器同一执行器）的真实 ExperimentRun。",
@@ -531,7 +615,7 @@ _SYSTEM_PROMPT = (
 # hardcoded formula/kakeya-only schema silently hid ode/geometry/mujoco/
 # challenge from the model.
 
-_DESK_PREFIXES = ("formula", "kakeya", "ode", "geometry", "mujoco", "challenge")
+_DESK_PREFIXES = ("formula", "kakeya", "ode", "geometry", "mujoco", "challenge", "model")
 _surface_cache: dict[str, Any] = {"at": 0.0, "surface": None}
 
 
@@ -631,12 +715,35 @@ _CONTEXT_BUDGETS = {"paper": 400, "formulas": 500, "current": 300, "history": 50
 
 
 def _build_context_message(intent: str, context: dict) -> str:
+    """#51 P0-C: STRUCTURED, on-demand science context — claims/equations/
+    quantities enter as labeled FIELDS (each individually bounded), not as
+    one string truncated at 400/500/300/500 chars. The LLM sees the paper's
+    testable claims so experiments can be compared back to them."""
     sections: list[str] = [f"User question: {intent}"]
     paper = context.get("paper")
     if isinstance(paper, dict):
         title = str(paper.get("title", ""))[:120]
         question = str(paper.get("question", ""))[:200]
         sections.append(f"Paper: {title} — research question: {question}"[: _CONTEXT_BUDGETS["paper"]])
+    # structured comprehension (spec digest) — claims are what verify_result
+    # compares against; quantities carry roles so the model tunes PARAMS only
+    spec = context.get("spec")
+    if isinstance(spec, dict):
+        claims = spec.get("claims")
+        if isinstance(claims, list) and claims:
+            rows = [f"- {str(c.get('statement', ''))[:160]} [{c.get('anchorPrecision', '?')}]" for c in claims[:4]]
+            sections.append("Paper claims (testable, anchored — compare your results to these):\n" + "\n".join(rows))
+        quantities = spec.get("quantities")
+        if isinstance(quantities, list) and quantities:
+            rows = [
+                f"- {str(q.get('name', ''))} ({q.get('role', '?')})"
+                + (f" = {q.get('nominal')}" if q.get("nominal") is not None else "")
+                for q in quantities[:10]
+            ]
+            sections.append("Paper quantities (roles: state/parameter/observable — only PARAMS are tunable):\n" + "\n".join(rows))
+        states = spec.get("states")
+        if isinstance(states, list) and states:
+            sections.append(f"Model states: {', '.join(str(s) for s in states[:8])}")
     formulas = context.get("formulas")
     if isinstance(formulas, list) and formulas:
         lines = [
