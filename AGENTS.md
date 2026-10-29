@@ -303,6 +303,15 @@ v0.1 升级轮补充⑯（2026-10-15③，paper→model Slice A+B：论文理解
 - [x] ExperimentKind 增 `model.compiled`/`model.solved`；COMPUTE_BY_KIND/inputFromSpec/FORMAL_SKILLS 全接
 - 测试基线：vitest **299/299**（+7：paperSpec 4 + SIR 3）· tsc 0 · build ✓；`MODEL_SOLVE_STEPS=2400` 登记入审计
 
+v0.3 首切片（2026-10-28，#51 推荐首个实现 Slice 全项落地）：
+
+- [x] **issue #51 七条断言逐条核实**（全部属实）：有限 Adapter 路由✓ / claims.source 缺失✓ / odeSystemOf 只取前 2 态✓ / RunView3D 双处订阅全局 tubesRunCell+pPacking✓ / VLM 页级锚点✓ / `_CONTEXT_BUDGETS` 400/500/300/500✓ / 历史时间差以 §10 补充⑯为最新现状✓
+- [x] **P0-D Slice 1+2：3D per-experiment 状态**——新增 `src/desk/run3dStore.ts`（每张 p2l-3d 实验纸独立 params/kakeya.generate+measure 双 run/preview/错误态）；`RunView3D` 双处全局订阅全部改为按 shapeId 读各自实验；拖拽预览为 presentation-only（向心仿射插值，同 challenge offsets 语义）、释放 commit 才经统一 executeSkill 产**该实验自己的**双 run；`grow-3d` 每次点击长出**新独立实验纸**（seed 自当前全局快照，不再限制单张）；回归测试 5 项（两纸不同 packing→不同 runId+不同几何/预览不改已提交 run/commit 不碰全局 Runtime/失败诚实 error 不造假 run/PlayPlan 门）钉死旧混淆不再回归
+- [x] **P0-B/E Slice 3：两篇非同模板 ODE 真论文**——`ode-michaelis-menten.pdf`（4 态酶动力学、κ/λ/μ 希腊速率、可逆反应）与 `ode-spring-params.pdf`（2 态、符号系数 k/c 论文原文给定）；tectonic 排版+真 Docling fixture；全链零手写数字：路由→spec（4/2 态、初值、名义参数）→build→solve→**论文自述守恒律**（MM：E+C 与 S+C+P 双守恒 <1e-9、P 单调上升；弹簧：幅值衰减 <0.45×、衰减信号 period0=null 为诚实行为）；ODE 语料扩至 5 篇（2/2/3/4 态 × 0/内联/希腊/拉丁参数互不同模板）
+- [x] **理解卡 plotted Run**：SpecPanel 内嵌 SVG 时间序列（每点即 model.solved Run 数据，无第二计算路径）+ 命题锚点精度标签
+- [x] **P0-A Slice 4：锚点精度分级**——`anchorPrecision: 'region'|'page'` 全链（vlm_parse 服务端打 page 标、doclingSchema 透传、docling 默认 region）；claims 绑定源句 item（`source`+精度），未绑定⇒`ambiguous`（红色虚线标签），VLM 页级锚点永不冒充 region bbox；µ(U+00B5)/ϕ/ϰ 等 docling 变体字形映射修复
+- [x] 测试基线：vitest **307/307**（+8）· pytest VLM 面 22/22 · tsc 0 · build ✓ · product-lab（per-experiment 拖拽写回+0 错误）与 spec-panel（6 方程/3 态/CALCULATED）双产品脚本 PASS；Chromium `--no-proxy-server`（系统代理故障不再污染产品证据）
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）

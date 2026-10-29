@@ -116,7 +116,14 @@ export function SpecPanel({ doc, decision, onClose }: {
         <div className="spec-section">
           <div className="spec-label">论文命题（PAPER）</div>
           <ul className="spec-claims">
-            {spec.claims.map((c, i) => <li key={i}>{c.statement}</li>)}
+            {spec.claims.map((c, i) => (
+              <li key={i}>
+                {c.statement}
+                <span className={`spec-anchor-tag ${c.anchorPrecision}`}>
+                  {c.anchorPrecision === 'region' ? '锚点·区域' : c.anchorPrecision === 'page' ? '锚点·页级' : '锚点·未绑定'}
+                </span>
+              </li>
+            ))}
           </ul>
         </div>
       )}
@@ -139,6 +146,7 @@ export function SpecPanel({ doc, decision, onClose }: {
             <div className="spec-run-badge">
               CALCULATED · {solved.run.engine}@{solved.run.engineVersion} · {solved.run.durationMs}ms · run …{solved.run.runId.slice(-6)}
             </div>
+            <ModelTimeSeries result={solved.result} />
             <table className="spec-quantities">
               <thead><tr><th>状态</th><th>min</th><th>max</th><th>终值 t={solved.result.t[solved.result.t.length - 1]}</th></tr></thead>
               <tbody>
@@ -166,5 +174,44 @@ export function SpecPanel({ doc, decision, onClose }: {
         <div className="spec-note">2 态论文也可用相平面实验纸（顶栏「长出 ODE 相平面」）拖初值交互。</div>
       )}
     </div>
+  )
+}
+
+/** embedded time-series plot of the solved model — every point IS a Run
+ * datapoint (t, state values from model.solved; no second compute path).
+ * Lightweight SVG: the panel needs a plotted Run, not a full chart module. */
+const SERIES_COLORS = ['#1d5fa8', '#b3541e', '#3e7d4f', '#7b4fa8', '#a89a2f']
+function ModelTimeSeries({ result }: { result: SolveResult }) {
+  const { t, series } = result
+  if (t.length < 2 || series.length === 0) return null
+  const W = 384
+  const H = 150
+  const PAD = 26
+  let min = Infinity
+  let max = -Infinity
+  for (const s of series) for (const v of s.values) { if (v < min) min = v; if (v > max) max = v }
+  if (min === max) { min -= 1; max += 1 }
+  const x = (i: number) => PAD + (i / (t.length - 1)) * (W - PAD - 4)
+  const y = (v: number) => H - PAD - ((v - min) / (max - min)) * (H - PAD - 8)
+  return (
+    <svg className="spec-plot" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="model.solved 时间序列">
+      <line x1={PAD} y1={H - PAD} x2={W - 4} y2={H - PAD} stroke="#d8cdb4" strokeWidth="1" />
+      <line x1={PAD} y1={y(0) > 0 && y(0) < H - PAD ? y(0) : H - PAD} x2={W - 4} y2={y(0) > 0 && y(0) < H - PAD ? y(0) : H - PAD} stroke="#ece4d2" strokeDasharray="3 3" />
+      {series.map((s, si) => (
+        <polyline
+          key={s.state}
+          fill="none"
+          stroke={SERIES_COLORS[si % SERIES_COLORS.length]}
+          strokeWidth="1.6"
+          points={s.values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}
+        />
+      ))}
+      {series.map((s, si) => (
+        <text key={`l-${s.state}`} x={PAD + si * 42} y={11} fontSize="10" fill={SERIES_COLORS[si % SERIES_COLORS.length]}>
+          {s.state}
+        </text>
+      ))}
+      <text x={W - 4} y={H - PAD + 11} fontSize="9" textAnchor="end" fill="#9c8f77">t={t[t.length - 1]!.toFixed(0)}</text>
+    </svg>
   )
 }

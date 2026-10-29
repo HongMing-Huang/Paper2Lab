@@ -17,6 +17,8 @@ PAPERS = [
     "ode-lotka-volterra.pdf",
     "ode-damped-oscillator.pdf",
     "ode-sir-three-state.pdf",
+    "ode-michaelis-menten.pdf",
+    "ode-spring-params.pdf",
     "fit-exponential-decay.pdf",
     "fit-sine-fit.pdf",
 ]

@@ -31,7 +31,12 @@ export interface SpecEquation {
 
 export interface SpecClaim {
   statement: string
-  source?: string // anchorId of the sentence
+  /** the text item the sentence was read from (evidence anchor) */
+  source?: string
+  /** #51 P0-A anchor honesty: 'region' = docling sentence bbox, 'page' =
+   * VLM page-level anchor, 'ambiguous' = the sentence could not be bound to
+   * a source item (claimed fact, unanchored — never pseudo-precise) */
+  anchorPrecision: 'region' | 'page' | 'ambiguous'
 }
 
 export interface PaperModelSpec {
@@ -186,16 +191,21 @@ const freeOf = (latex: string): string[] => {
     }
   }
 
-  // claims: sentences with a result hint (max 4, verbatim, PAPER evidence)
+  // claims: sentences with a result hint (max 4, verbatim, PAPER evidence),
+  // each bound to the text ITEM it was read from — unbound ⇒ ambiguous
   const claims: SpecClaim[] = []
   for (const raw of text.split(/(?<=[.。!?])\s+/)) {
     const sentence = raw.trim()
     if (sentence.length < 12 || sentence.length > 220) continue
     const low = sentence.toLowerCase()
-    if (CLAIM_HINTS.some((h) => low.includes(h))) {
-      claims.push({ statement: sentence })
-      if (claims.length >= 4) break
-    }
+    if (!CLAIM_HINTS.some((h) => low.includes(h))) continue
+    const host = doc.items.find((i) => (i.text ?? '').includes(sentence.slice(0, 40)))
+    claims.push(
+      host
+        ? { statement: sentence, source: host.id, anchorPrecision: host.anchorPrecision ?? 'region' }
+        : { statement: sentence, anchorPrecision: 'ambiguous' },
+    )
+    if (claims.length >= 4) break
   }
 
   // question: title + first substantive text sentence
@@ -238,11 +248,13 @@ export function observableTable(doc: IngestedDoc): IngestedItem | null {
   return doc.items.find((i) => i.kind === 'table' && i.table) ?? null
 }
 
-/** unicode greek (docling renders `\beta` as β) → macro symbol name */
+/** unicode greek (docling renders `\beta` as β) → macro symbol name.
+ * NOTE: LaTeX `\mu` frequently comes back as the MICRO SIGN µ (U+00B5), not
+ * the greek letter μ (U+03BC) — both are mapped. */
 const GREEK_TO_NAME: Record<string, string> = {
   β: 'beta', γ: 'gamma', α: 'alpha', δ: 'delta', ω: 'omega', λ: 'lambda', μ: 'mu',
-  σ: 'sigma', ρ: 'rho', κ: 'kappa', ε: 'epsilon', θ: 'theta', τ: 'tau', φ: 'phi',
-  ψ: 'psi', π: 'pi',
+  µ: 'mu', σ: 'sigma', ρ: 'rho', κ: 'kappa', ε: 'epsilon', θ: 'theta', τ: 'tau',
+  φ: 'phi', ψ: 'psi', π: 'pi', ϕ: 'phi', ϰ: 'kappa', ϵ: 'epsilon',
 }
 
 /**
@@ -254,7 +266,7 @@ const GREEK_TO_NAME: Record<string, string> = {
 export function nominalParams(doc: IngestedDoc, paramNames: string[]): Record<string, number> {
   const text = docText(doc)
   const out: Record<string, number> = {}
-  for (const m of text.matchAll(/([a-zA-Zα-ωΑ-Ω])\s*=\s*(-?\d+(?:\.\d+)?)/g)) {
+  for (const m of text.matchAll(/([a-zA-Zα-ωΑ-Ωµϵϕϰ])\s*=\s*(-?\d+(?:\.\d+)?)/g)) {
     const key = GREEK_TO_NAME[m[1]] ?? m[1]
     if (paramNames.includes(key) && !(key in out)) out[key] = Number(m[2])
   }

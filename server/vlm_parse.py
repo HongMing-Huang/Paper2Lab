@@ -266,6 +266,10 @@ async def parse_pdf_with_vlm(
                         "page": pn,
                         "bbox": {"x": 0.08, "y": round(y, 4), "w": 0.84, "h": 0.04},
                         "latex": it["latex"],
+                        # #51 P0-A: honest precision — the VLM path knows the
+                        # PAGE, not a real region bbox (the stacked y is a
+                        # display layout, never char-precise provenance)
+                        "anchorPrecision": "page",
                     }
                 )
             else:
@@ -275,6 +279,7 @@ async def parse_pdf_with_vlm(
                     "page": pn,
                     "bbox": {"x": 0.08, "y": round(y, 4), "w": 0.84, "h": 0.04},
                     "text": it.get("text") or "",
+                    "anchorPrecision": "page",
                 }
                 if it["kind"] == "table":
                     structured = _pipe_table_to_structured(it.get("text") or "")

@@ -17,6 +17,8 @@ import { deskShapeUtils, deskBindingUtils, type PaperShape, type FormulaShape } 
 import { applyLabLayout } from './labFrame'
 import { runAgentAction, type AgentHelpers } from './agentActions'
 import { Desk3DOverlay } from './RunView3D'
+import { initRun3D } from './run3dStore'
+import { kakeya, tubesRunCell, pDeltaExp, pNTubes, pPacking } from '../paper/kakeyaGraph'
 import { deskBus } from './deskBus'
 import { usePdfPageSize } from './PdfCanvas'
 import { analyzeFormula } from '../formula/analyze'
@@ -655,20 +657,28 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
                 onClick={() => {
                   const editor = editorRef.current
                   if (!editor) return
-                  if (editor.getShape(ids.current.run3d)) {
-                    message('3D 实验纸已在桌面上')
-                    return
+                  // #51 P0-D: every click grows a NEW independent 3D
+                  // experiment paper, seeded from the hero demo's CURRENT
+                  // params+run — each paper then keeps its OWN packing/runs;
+                  // forks no longer share the global tubes run
+                  const params = {
+                    deltaExp: Number(kakeya.get(pDeltaExp.id).value) || 4,
+                    nTubes: Number(kakeya.get(pNTubes.id).value) || 96,
+                    packing: Number(kakeya.get(pPacking.id).value) || 0,
                   }
+                  const seedRun = kakeya.get(tubesRunCell.id).value as { runId?: string } | undefined
+                  const shapeId = createShapeId('run3d')
                   editor.createShape({
-                    id: ids.current.run3d,
+                    id: shapeId,
                     type: 'p2l-3d',
                     x: PAPER_X + PAPER_W + 60,
                     y: PAPER_Y + 40,
                     parentId: ids.current.lab,
-                    props: { title: 'Kakeya 3D（Run 驱动 · 拖管族反写 packing）', w: 380, h: 320 },
+                    props: { title: 'Kakeya 3D（本实验纸独立 Run · 拖管族反写 packing）', w: 380, h: 320 },
                   })
+                  initRun3D(String(shapeId), { params, runId: seedRun?.runId ?? null })
                   applyLabLayout(editor, ids.current.lab)
-                  message('3D 实验纸已长出 — 画面由 kakeya.geometry Run 驱动，拖动管族反写参数')
+                  message('3D 实验纸已长出 — 本纸有独立实验状态，拖动反写的是它自己的 packing')
                 }}
               >
                 ◈ 长出 3D 实验纸

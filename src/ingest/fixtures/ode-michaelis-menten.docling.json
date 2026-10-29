@@ -1,0 +1,195 @@
+{
+ "docId": "doc-7fc69168a7",
+ "engine": "docling",
+ "doclingVersion": "2.131.0",
+ "title": "ode-michaelis-menten",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612.0,
+   "height": 792.0
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.31341,
+    "y": 0.15156,
+    "w": 0.3732,
+    "h": 0.04941
+   },
+   "text": "Conserved Totals in a Four-State Enzyme Kinetics Model"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.45361,
+    "y": 0.22284,
+    "w": 0.09279,
+    "h": 0.01509
+   },
+   "text": "E. Kinetics"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44393,
+    "y": 0.25372,
+    "w": 0.11215,
+    "h": 0.01509
+   },
+   "text": "October 2026"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.46419,
+    "y": 0.3066,
+    "w": 0.07163,
+    "h": 0.01258
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i4",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.17398,
+    "y": 0.3305,
+    "w": 0.65206,
+    "h": 0.05786
+   },
+   "text": "We track a single-substrate enzyme reaction through its four state variables: substrate S, complex C, free enzyme E and product P. Two totals are conserved along every trajectory - the enzyme total and the substrate total - and the product rises monotonically toward the initial substrate level."
+  },
+  {
+   "id": "p1-i5",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.41474,
+    "w": 0.27415,
+    "h": 0.01811
+   },
+   "text": "1 The reaction scheme"
+  },
+  {
+   "id": "p1-i6",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.449,
+    "w": 0.74117,
+    "h": 0.01377
+   },
+   "text": "With association rate κ, dissociation rate λ and catalytic rate µ, the mass-action dynamics read"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.43192,
+    "y": 0.47816,
+    "w": 0.43867,
+    "h": 0.01556
+   },
+   "latex": "\\dot { S } = - \\kappa S E + \\lambda C ,"
+  },
+  {
+   "id": "p1-i8",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.41455,
+    "y": 0.50911,
+    "w": 0.45604,
+    "h": 0.01556
+   },
+   "latex": "\\dot { C } = \\kappa S E - \\lambda C - \\mu C ,"
+  },
+  {
+   "id": "p1-i9",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.40753,
+    "y": 0.53439,
+    "w": 0.46305,
+    "h": 0.01556
+   },
+   "latex": "\\dot { E } = - \\kappa S E + \\lambda C + \\mu C ,"
+  },
+  {
+   "id": "p1-i10",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.4668,
+    "y": 0.55967,
+    "w": 0.40379,
+    "h": 0.01556
+   },
+   "latex": "\\dot { P } = \\mu C ."
+  },
+  {
+   "id": "p1-i11",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.60138,
+    "w": 0.28681,
+    "h": 0.01811
+   },
+   "text": "2 Initial state and rates"
+  },
+  {
+   "id": "p1-i12",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.63564,
+    "w": 0.74118,
+    "h": 0.03088
+   },
+   "text": "The assay starts with substrate and enzyme only, at the recorded initial state S(0) = 1, C(0) = 0, E(0) = 0.1 and P(0) = 0. The nominal rates are κ = 1.0, λ = 0.2 and µ = 0.4."
+  },
+  {
+   "id": "p1-i13",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.69267,
+    "w": 0.15696,
+    "h": 0.01811
+   },
+   "text": "3 Discussion"
+  },
+  {
+   "id": "p1-i14",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.72693,
+    "w": 0.74116,
+    "h": 0.04799
+   },
+   "text": "Because the enzyme is either free or bound, the total E+C stays constant; similarly S+C+P never changes. The conservation of both totals is the internal check used for every reported trajectory."
+  }
+ ]
+}

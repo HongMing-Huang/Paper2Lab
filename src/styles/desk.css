@@ -218,6 +218,38 @@
   padding: 2px 8px;
   margin-bottom: 8px;
 }
+.spec-plot {
+  display: block;
+  width: 100%;
+  background: #fffdf7;
+  border: 1px solid #ece4d2;
+  border-radius: 2px;
+  margin-bottom: 8px;
+}
+/* anchor precision tags (#51 P0-A): docling = region bbox; VLM = page-only.
+ * Claims without a bound source sentence are AMBIGUOUS, never pseudo-exact. */
+.spec-anchor-tag {
+  display: inline-block;
+  font-size: 10px;
+  border-radius: 3px;
+  padding: 0 5px;
+  margin-left: 6px;
+}
+.spec-anchor-tag.region {
+  color: #3e7d4f;
+  border: 1px solid #bcd3c0;
+  background: #eef6ef;
+}
+.spec-anchor-tag.page {
+  color: #8a5a2b;
+  border: 1px solid #d9c39a;
+  background: #fdf3e7;
+}
+.spec-anchor-tag.ambiguous {
+  color: #a33d2a;
+  border: 1px dashed #d3a39a;
+  background: #fdefec;
+}
 .home-drop {
   width: 100%;
   padding: 34px 20px;

@@ -40,7 +40,7 @@ async function main() {
   }
   const browser = await chromium.launch({
     channel: 'chrome', headless: true,
-    args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--disable-gpu-sandbox'],
+    args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--disable-gpu-sandbox', '--no-proxy-server'],
   })
   const page = await browser.newPage({ viewport: { width: 1500, height: 950 } })
   const failures = []

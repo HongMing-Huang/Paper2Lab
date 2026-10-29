@@ -1,0 +1,171 @@
+{
+ "docId": "doc-acb410fdaa",
+ "engine": "docling",
+ "doclingVersion": "2.131.0",
+ "title": "ode-spring-params",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612.0,
+   "height": 792.0
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.23873,
+    "y": 0.15156,
+    "w": 0.52254,
+    "h": 0.04941
+   },
+   "text": "Amplitude Decay of a Spring-Damper System with Symbolic Coefficients"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.45975,
+    "y": 0.22284,
+    "w": 0.0805,
+    "h": 0.01509
+   },
+   "text": "D. Spring"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44393,
+    "y": 0.25372,
+    "w": 0.11215,
+    "h": 0.01509
+   },
+   "text": "October 2026"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.46419,
+    "y": 0.3066,
+    "w": 0.07163,
+    "h": 0.01258
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i4",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.17398,
+    "y": 0.3305,
+    "w": 0.65205,
+    "h": 0.05786
+   },
+   "text": "We write the free vibration of a unit mass on a spring with stiffness k and damping coefficient c as a two-state system. The oscillation is periodic with slowly decaying amplitude, and increasing the damping coefficient increases the decay rate while leaving the period nearly unchanged."
+  },
+  {
+   "id": "p1-i5",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.41474,
+    "w": 0.16946,
+    "h": 0.01811
+   },
+   "text": "1 The system"
+  },
+  {
+   "id": "p1-i6",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.449,
+    "w": 0.54933,
+    "h": 0.01377
+   },
+   "text": "In state variables x (displacement) and y (velocity) the dynamics read"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.47586,
+    "y": 0.47995,
+    "w": 0.39473,
+    "h": 0.01377
+   },
+   "latex": "\\dot { x } = y ,"
+  },
+  {
+   "id": "p1-i8",
+   "kind": "formula",
+   "page": 1,
+   "bbox": {
+    "x": 0.44457,
+    "y": 0.51089,
+    "w": 0.42602,
+    "h": 0.01377
+   },
+   "latex": "\\dot { y } = - k x - c y ."
+  },
+  {
+   "id": "p1-i9",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.55082,
+    "w": 0.35587,
+    "h": 0.01811
+   },
+   "text": "2 Initial state and coefficients"
+  },
+  {
+   "id": "p1-i10",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.58508,
+    "w": 0.74118,
+    "h": 0.03088
+   },
+   "text": "The mass is released from rest at unit displacement, with the recorded initial state x(0) = 1 and y(0) = 0. The nominal coefficients are k = 2 and c = 0.5."
+  },
+  {
+   "id": "p1-i11",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.64211,
+    "w": 0.15696,
+    "h": 0.01811
+   },
+   "text": "3 Discussion"
+  },
+  {
+   "id": "p1-i12",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.67637,
+    "w": 0.74118,
+    "h": 0.04799
+   },
+   "text": "The amplitude decays by a fixed factor per cycle set by the damping coefficient, while the oscillation period stays close to the undamped value; small perturbations of the coefficients preserve this picture."
+  }
+ ]
+}

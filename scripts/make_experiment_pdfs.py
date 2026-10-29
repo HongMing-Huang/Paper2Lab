@@ -161,6 +161,79 @@ the susceptible pool, leaving a final susceptible fraction well below its
 initial value.
 \end{document}
 """,
+    "ode-michaelis-menten": r"""\documentclass[11pt]{article}
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath}
+\title{Conserved Totals in a Four-State\\ Enzyme Kinetics Model}
+\author{E.~Kinetics}
+\date{October 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+We track a single-substrate enzyme reaction through its four state
+variables: substrate $S$, complex $C$, free enzyme $E$ and product $P$.
+Two totals are conserved along every trajectory — the enzyme total and the
+substrate total — and the product rises monotonically toward the initial
+substrate level.
+\end{abstract}
+\section{The reaction scheme}
+With association rate $\kappa$, dissociation rate $\lambda$ and catalytic
+rate $\mu$, the mass-action dynamics read
+\begin{equation}
+\dot{S} = -\kappa S E + \lambda C,
+\end{equation}
+\begin{equation}
+\dot{C} = \kappa S E - \lambda C - \mu C,
+\end{equation}
+\begin{equation}
+\dot{E} = -\kappa S E + \lambda C + \mu C,
+\end{equation}
+\begin{equation}
+\dot{P} = \mu C.
+\end{equation}
+\section{Initial state and rates}
+The assay starts with substrate and enzyme only, at the recorded initial
+state $S(0) = 1$, $C(0) = 0$, $E(0) = 0.1$ and $P(0) = 0$. The nominal
+rates are $\kappa = 1.0$, $\lambda = 0.2$ and $\mu = 0.4$.
+\section{Discussion}
+Because the enzyme is either free or bound, the total $E + C$ stays
+constant; similarly $S + C + P$ never changes. The conservation of both
+totals is the internal check used for every reported trajectory.
+\end{document}
+""",
+    "ode-spring-params": r"""\documentclass[11pt]{article}
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath}
+\title{Amplitude Decay of a Spring--Damper System\\ with Symbolic Coefficients}
+\author{D.~Spring}
+\date{October 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+We write the free vibration of a unit mass on a spring with stiffness $k$
+and damping coefficient $c$ as a two-state system. The oscillation is
+periodic with slowly decaying amplitude, and increasing the damping
+coefficient increases the decay rate while leaving the period nearly
+unchanged.
+\end{abstract}
+\section{The system}
+In state variables $x$ (displacement) and $y$ (velocity) the dynamics read
+\begin{equation}
+\dot{x} = y,
+\end{equation}
+\begin{equation}
+\dot{y} = -k x - c y.
+\end{equation}
+\section{Initial state and coefficients}
+The mass is released from rest at unit displacement, with the recorded
+initial state $x(0) = 1$ and $y(0) = 0$. The nominal coefficients are
+$k = 2$ and $c = 0.5$.
+\section{Discussion}
+The amplitude decays by a fixed factor per cycle set by the damping
+coefficient, while the oscillation period stays close to the undamped
+value; small perturbations of the coefficients preserve this picture.
+\end{document}
+""",
     "fit-sine-fit": r"""\documentclass[11pt]{article}
 \usepackage[margin=1.1in]{geometry}
 \usepackage{amsmath}

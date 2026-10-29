@@ -34,6 +34,11 @@ export interface IngestedItem {
   /** structured table content (table kind) — real Docling emits
    *  { columns, rows }; measurement tables feed the fit binding */
   table?: { columns?: string[]; rows?: string[][] }
+  /** #51 P0-A anchor honesty: 'region' = layout-model bbox (docling),
+   *  'page' = the fast path only knows the page (VLM; the stacked y is a
+   *  display layout, never char-precise provenance). Defaults to region for
+   *  docling docs; VLM items carry 'page' server-side. */
+  anchorPrecision?: 'region' | 'page'
 }
 
 export interface IngestedPage {
@@ -58,6 +63,7 @@ export interface IngestedDoc {
 
 interface RawItem {
   id?: string
+  anchorPrecision?: string
   kind?: string
   page?: number
   bbox?: { x?: number; y?: number; w?: number; h?: number }
@@ -107,6 +113,9 @@ export function normalizeDocling(raw: unknown): IngestedDoc {
       },
       text: text ?? latex,
       latex,
+      // #51 P0-A: docling bboxes are layout-model REGIONS; the VLM fast path
+      // tags its items 'page' server-side — pseudo-precision is forbidden
+      anchorPrecision: it.anchorPrecision === 'page' ? 'page' : 'region',
       ...(table ? { table } : {}),
     })
     n++
