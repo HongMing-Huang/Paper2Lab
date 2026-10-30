@@ -234,6 +234,40 @@ coefficient, while the oscillation period stays close to the undamped
 value; small perturbations of the coefficients preserve this picture.
 \end{document}
 """,
+    "geo-kakeya-tubes": r"""\documentclass[11pt]{article}
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath}
+\title{Finite-Scale Notes on the Kakeya\\ Needle Problem and the Besicovitch Set}
+\author{K.~Geometry}
+\date{October 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+We record finite-scale measurements for the Kakeya problem: a family of
+thin tubes around line segments pointing in every direction, inside the
+unit cube. As the tube radius $\delta$ decreases and the number of
+directions $N$ increases, the volume of the union stays bounded well below
+the trivial sum, while the maximal overlap (multiplicity) grows with $N$.
+These are finite-scale observations only, not a proof of any theorem.
+\end{abstract}
+\section{The construction}
+Let $\delta = 2^{-d}$ and take $N$ directions distributed evenly on the
+upper hemisphere. Each tube has radius $\delta$ around a unit segment.
+A packing parameter $p \in [0,1]$ slides the tubes toward the cube centre:
+$p = 0$ keeps them separated, $p = 1$ makes them sticky.
+\section{Measured quantities}
+For each configuration we measure the volume of the union $|{\bigcup} T|$
+and the maximal multiplicity $m$ by voxel counting at a finite resolution.
+The key observation is that doubling $N$ increases the multiplicity while
+the union volume grows only slowly — consistent with the Besicovitch
+intuition that a measure-zero set can contain a unit segment in every
+direction.
+\section{Discussion}
+All numbers are finite-scale voxel measurements; the limit statements of
+the Kakeya--Besicovitch theory are not proved here. Increasing the packing
+parameter decreases the union volume toward the sticky-cluster limit.
+\end{document}
+""",
     "fit-sine-fit": r"""\documentclass[11pt]{article}
 \usepackage[margin=1.1in]{geometry}
 \usepackage{amsmath}

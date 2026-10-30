@@ -321,6 +321,15 @@ v0.3 第二切片（2026-10-29，#51 P0-C 基础：Agent 科学闭环构件）�
 - [x] server 模式 model 桌面全回合 pytest 真跑（μ 加倍：model-solved- Run、final_S∈(0,0.75)、final_P>0.25、比较双 run、receipt 在场）；`_DESK_PREFIXES` +model
 - 测试基线：vitest **309/309** · pytest 快集 8+（server-mode 全过）· tsc 0 · build ✓；**bundle 已随 src 重建**（本轮又踩预编译 bundle 陈旧坑——agent_steps 旧 bundle 无 model 桌面，回合静默无 runs）
 
+v0.3 第三切片（2026-10-29②，#51 P0-C 完整循环 + P0-E 第三类论文）：
+
+- [x] **`sop_research_loop`**（#51 P0-C 完整科研循环）：`inspect_model → propose_hypothesis → plan_experiment → execute_skill(引擎真算) → verify_result → compare_to_claim → choose_next_experiment` 七段词汇全部成事件流；确定性假设生成器（参数×因子阶梯 ×2/÷2/×4/÷4/×1.5/÷1.5，tried 集合不重复失败组合）；失败轮记录 receipt 后继续下一轮（experiment_failed + failureReason，不盲重试）
+- [x] **重启/重放安全**：循环完成标记存 session（desk + base 内容 sha256 digest + baseRunId 三元组匹配——对象 id() 跨请求永不匹配）；同会话同实验重发 → `loop_replay` 返回已有 runIds，零新 Run
+- [x] **agent_steps 错误状态穿透**：引擎把步骤错误包成 result.status=error（外层 ok=true）——循环现按失败轮处理（曾静默当成功、receipt 无 failureReason）
+- [x] **P0-E 第三类论文 `geo-kakeya-tubes.pdf`**（tectonic 真排版 Kakeya/Besicovitch 有限尺度笔记 + 真 Docling fixture）：路由 ok-kakeya（论文自身 Besicovitch 文本命中）；论文方向命题真算验收（N 翻倍→multiplicity 增长、union 有界<1）；FINITE-SCALE 诚实性断言（论文文本含 finite-scale/not proved here）；语料扩至 6 篇（2/2/3/4 态 ODE + Kakeya 几何 + fit）
+- [x] pytest 3 项：10 轮真回合（七段词汇计数/血缘全在场/runId 全异/factor 阶梯）、重放零重复、坏参数轮记录后继续
+- 测试基线：vitest **312/312**（+3 kakeya 论文链）· pytest 快集 137（+3 循环）· tsc 0
+
 v0.4（2026-10-07②，真实可玩闭环轮：#21–#24，PR #25/#26/#27/#28）：
 
 - [x] **#21 管束评分科学漏洞修复**：出单位立方体不再可能降分——操纵语义改为"每簇向立方体中心凸插值"（构造性合法，凸组合保管段在 [0,1]³），`violations>0 ⇒ 0 分不达标`（防御层）；实测复现：全 1 由假通关 0.031467 改为 0.290509 未达标；预算按实测诚实地形重定 0.28（非单调——半收拢 0.2704 优于全粘 0.2905，真谜题）

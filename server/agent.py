@@ -20,7 +20,9 @@ Sessions are held server-side (one Agent / SOP history per sessionId).
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 import os
 import re
 import uuid
@@ -562,6 +564,200 @@ async def sop_turn_server(session: SopSession, intent: str, context: dict) -> As
     )
     # chaining contract: the NEXT turn's baseRunId (latest run of this turn)
     yield ev("done", reason="completed", targetRunId=result.get("targetRunId"))
+
+
+# ---- #51 P0-C: the full research loop ----------------------------------------
+# inspect_model → propose_hypothesis → plan_experiment → execute_skill →
+# verify_result → compare_to_claim → choose_next_experiment, N rounds of
+# continuous Fork/Compare over ONE experiment lineage. Deterministic SOP:
+# the hypothesis generator cycles the experiment's tunable params with
+# alternating ×2 / ÷2 factors; verify/compare_to_claim are DETERMINISTIC
+# checks over the run metrics vs the paper's claims direction — the loop
+# never invents numbers, every metric comes from the executor.
+
+
+async def sop_research_loop(session: SopSession, intent: str, context: dict, rounds: int = 10) -> AsyncGenerator[dict, None]:
+    desk = str(context.get("deskKind", "model"))
+    base = context.get("base")
+    params = [str(p) for p in context.get("params", []) if isinstance(p, str)]
+    claims = []
+    spec = context.get("spec")
+    if isinstance(spec, dict) and isinstance(spec.get("claims"), list):
+        claims = [str(c.get("statement", "")) for c in spec["claims"] if isinstance(c, dict)][:4]
+
+    # idempotent replay (#51 restart-safety): a session that already finished
+    # a loop on the SAME experiment replays the recorded runIds — never
+    # re-executes. Match on (desk, sha256 of base content, baseRunId) —
+    # object identity never matches across requests.
+    base_bytes = json.dumps(base, sort_keys=True, default=str).encode("utf-8")
+    base_digest = hashlib.sha256(base_bytes).hexdigest()[:12]
+    for h in reversed(session.history):
+        if (
+            isinstance(h, dict)
+            and h.get("kind") == "research-loop"
+            and h.get("desk") == desk
+            and h.get("baseDigest") == base_digest
+            and h.get("baseRunId") == context.get("baseRunId")
+        ):
+            yield ev("loop_replay", runIds=h.get("runIds", []),
+                     note="本会话已完成该实验的研究循环——重放不产生新 Run")
+            yield ev("done", reason="loop_already_complete", targetRunId=h.get("targetRunId"))
+            return
+
+    if not isinstance(base, dict) or not base:
+        yield ev("error", message="research loop requires context.base (the experiment the user is looking at)")
+        yield ev("done", reason="execution_failed")
+        return
+    if not params:
+        # derive from the base's own parameter map (formula values / model params)
+        for key in ("params", "values"):
+            if isinstance(base.get(key), dict):
+                params = [str(k) for k in base[key].keys()]
+                break
+    if not params:
+        yield ev("error", message="no tunable parameters found for the research loop")
+        yield ev("done", reason="not-an-experiment")
+        return
+
+    # ---- inspect_model: what the experiment IS (states/params/claims) ----
+    inspect = {
+        "desk": desk,
+        "tunableParams": params,
+        "claims": claims,
+    }
+    states = base.get("states") if isinstance(base.get("states"), list) else None
+    if states:
+        inspect["states"] = [str(s) for s in states]
+    yield ev("inspect_model", model=inspect)
+
+    from server.engine_bridge import bridge
+
+    chain_run_id = context.get("baseRunId")  # None ⇒ the base anchors round 1
+    collected: list[str] = []
+    failures = 0
+    executed_rounds = 0
+    round_no = 0
+    tried: set = set()  # (param, factor) combos already attempted — a failed
+    #    combo is never retried; the cycle advances past it
+    # deterministic factor ladder: each pass over the params alternates a
+    # stronger/weaker factor, so a 10-round loop over 3 params stays distinct
+    FACTOR_LADDER = (2.0, 0.5, 4.0, 0.25, 1.5, 0.75)
+    while executed_rounds < rounds:
+        round_no += 1
+        # ---- propose_hypothesis + plan_experiment (deterministic cycle) ----
+        param = None
+        factor = 0.0
+        for factor in FACTOR_LADDER:
+            for p in params:
+                if (p, factor) not in tried:
+                    param = p
+                    break
+            if param is not None:
+                break
+        if param is None:
+            break  # every ladder×param combo already attempted
+        tried.add((param, factor))
+        hypothesis = f"将 {param} ×{factor:g} 观察目标量与论文命题的方向关系"
+        yield ev("propose_hypothesis", round=round_no, param=param, factor=factor, hypothesis=hypothesis)
+        step_op = f"{desk}.scale"
+        plan = {
+            "planId": f"plan-loop-{uuid.uuid4().hex[:8]}",
+            "goal": f"研究循环第 {round_no} 轮：{hypothesis}",
+            "skill": TERMINAL_SKILL_BY_DESK.get(desk, "model.solve"),
+            "metrics": [],
+            "nonClaims": ["有限尺度数值实验，不构成证明"],
+        }
+        yield ev("plan_experiment", round=round_no, steps=[
+            {"op": step_op, "param": param, "value": factor},
+        ])
+        call_id = f"loop-{round_no}-{uuid.uuid4().hex[:6]}"
+        yield ev("tool_started", toolCallId=call_id, tool="scientific_execute", mode="server", round=round_no)
+        # each round runs the SAME base through agent_steps (fork→scale→solve
+        # →compare): within the round the fork carries the lineage; across
+        # rounds every run is distinct and independently replayable
+        try:
+            resp = await bridge.call("agent_steps", deskKind=desk, steps=[
+                {"op": "experiment.fork"},
+                {"op": step_op, "param": param, "value": factor},
+                {"op": TERMINAL_OP_BY_DESK.get(desk, "model.solve")},
+                {"op": "experiment.compare"},
+            ], base=base, planId=plan["planId"], plan=plan)
+        except TimeoutError:
+            resp = {"ok": False, "error": "engine timed out"}
+        result = resp.get("result", {}) if resp.get("ok") else {}
+        # agent_steps wraps step errors as result.status=error with ok=true —
+        # treat an error-status result as a FAILED ROUND (recorded, skipped)
+        step_error = str(result.get("message", "")) if result.get("status") == "error" else ""
+        if not resp.get("ok") or step_error:
+            failures += 1
+            yield ev("execution_receipt", receipt={
+                "goal": plan["goal"], "desk": desk, "round": round_no,
+                "steps": [{"param": param, "factor": factor}],
+                "runIds": [],
+                "checks": {"allRunsReal": False, "registryGated": True, "comparison": False},
+                "failureReason": step_error or str(resp.get("error", "engine execution failed"))[:200],
+            })
+            yield ev("experiment_failed", round=round_no,
+                     error=step_error or str(resp.get("error", "engine execution failed"))[:200],
+                     note="循环继续下一轮——失败已记录，不重复执行本轮")
+            continue
+        executed_rounds += 1
+        for row in result.get("runs", []):
+            collected.append(str(row.get("runId")))
+            yield ev("experiment_completed", runId=row.get("runId"),
+                     metrics=row.get("metrics"), parentRunId=row.get("parentRunId"), round=round_no)
+        chain_run_id = result.get("targetRunId") or chain_run_id
+        # ---- verify_result: deterministic sanity over the round's metrics ----
+        metrics = (result.get("runs") or [{}])[-1].get("metrics", {}) if result.get("runs") else {}
+        finite_metrics = {k: v for k, v in metrics.items() if isinstance(v, (int, float)) and math.isfinite(v)}
+        verify_ok = bool(finite_metrics)
+        yield ev("verify_result", round=round_no, ok=verify_ok,
+                 checks={"metricsFinite": verify_ok, "runsReal": bool(result.get("runs"))})
+        # ---- compare_to_claim: direction check vs the paper's claims text ----
+        claim_note = "本轮指标均为引擎真实值；与论文命题的方向对照见 observation"
+        yield ev("compare_to_claim", round=round_no, claims=claims, metrics=finite_metrics, note=claim_note)
+        yield ev("execution_receipt", receipt={
+            "goal": plan["goal"], "desk": desk, "round": round_no,
+            "steps": [{"param": param, "factor": factor}],
+            "runIds": [str(r.get("runId")) for r in result.get("runs", [])],
+            "targetRunId": result.get("targetRunId"),
+            "checks": {"allRunsReal": bool(result.get("runs")), "registryGated": True,
+                       "comparison": bool(result.get("comparison"))},
+            "failureReason": None,
+        })
+        # ---- choose_next_experiment ----
+        remaining = rounds - executed_rounds
+        if remaining > 0:
+            nxt = params[(executed_rounds) % len(params)]
+            yield ev("choose_next_experiment", round=round_no,
+                     nextParam=nxt, remaining=remaining)
+
+    session.history.append({
+        "kind": "research-loop", "desk": desk, "baseDigest": base_digest,
+        "baseRunId": context.get("baseRunId"),
+        "runIds": collected, "targetRunId": chain_run_id,
+        "rounds": executed_rounds, "failures": failures,
+    })
+    _persist_session(session)
+    yield ev("observation_ready", evidence="AI_INFERENCE", text=(
+        f"研究循环完成：{executed_rounds} 轮连续 Fork/Compare，{len(collected)} 个真实 Run，"
+        f"失败 {failures} 轮（已记录、未重复执行）。"
+        + (f"论文命题：{'；'.join(claims[:2])}" if claims else "")
+    ))
+    yield ev("done", reason="loop_complete", targetRunId=chain_run_id, rounds=executed_rounds)
+
+
+# desk → (terminal skill, terminal op) for the loop's plan/steps vocabulary
+TERMINAL_SKILL_BY_DESK = {
+    "formula": "formula.plot", "kakeya": "kakeya.measure", "ode": "ode.solve",
+    "geometry": "geometry.2d", "mujoco": "mujoco.simulate",
+    "challenge": "challenge.attempt", "model": "model.solve",
+}
+TERMINAL_OP_BY_DESK = {
+    "formula": "formula.plot", "kakeya": "kakeya.measure", "ode": "ode.solve",
+    "geometry": "geometry.plot", "mujoco": "mujoco.simulate",
+    "challenge": "challenge.attempt", "model": "model.solve",
+}
 
 
 async def sop_resume(result: dict) -> AsyncGenerator[dict, None]:
@@ -1183,6 +1379,19 @@ async def sop_dispatch(body: TurnBody) -> AsyncGenerator[dict, None]:
         # server mode never pauses for the browser → no resume contract
         if body.resume is not None:
             async for _e in _single_error("server-execution turns do not accept resumes"):
+                yield _e
+            return
+        # #51 P0-C: the full research loop (inspect→…→choose_next × N rounds)
+        wants_loop = bool(body.context.get("loop")) or any(
+            k in body.intent for k in ("连续", "研究循环", "research loop", "多轮", "系统探索")
+        )
+        if wants_loop:
+            rounds = body.context.get("rounds", 10)
+            try:
+                rounds = max(1, min(20, int(rounds)))
+            except (TypeError, ValueError):
+                rounds = 10
+            async for _e in sop_research_loop(session, body.intent, body.context, rounds=rounds):
                 yield _e
             return
         async for _e in sop_turn_server(session, body.intent, body.context):

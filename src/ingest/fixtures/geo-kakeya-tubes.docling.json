@@ -1,0 +1,135 @@
+{
+ "docId": "doc-718204736b",
+ "engine": "docling",
+ "doclingVersion": "2.131.0",
+ "title": "geo-kakeya-tubes",
+ "pages": [
+  {
+   "page": 1,
+   "width": 612.0,
+   "height": 792.0
+  }
+ ],
+ "items": [
+  {
+   "id": "p1-i0",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.27393,
+    "y": 0.15156,
+    "w": 0.45213,
+    "h": 0.04941
+   },
+   "text": "Finite-Scale Notes on the Kakeya Needle Problem and the Besicovitch Set"
+  },
+  {
+   "id": "p1-i1",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.44393,
+    "y": 0.22284,
+    "w": 0.11215,
+    "h": 0.04598
+   },
+   "text": "K. Geometry October 2026"
+  },
+  {
+   "id": "p1-i2",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.46419,
+    "y": 0.3066,
+    "w": 0.07163,
+    "h": 0.01258
+   },
+   "text": "Abstract"
+  },
+  {
+   "id": "p1-i3",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.17398,
+    "y": 0.3305,
+    "w": 0.65205,
+    "h": 0.07296
+   },
+   "text": "We record finite-scale measurements for the Kakeya problem: a family of thin tubes around line segments pointing in every direction, inside the unit cube. As the tube radius δ decreases and the number of directions N increases, the volume of the union stays bounded well below the trivial sum, while the maximal overlap (multiplicity) grows with N. These are finite-scale observations only, not a proof of any theorem."
+  },
+  {
+   "id": "p1-i4",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.42984,
+    "w": 0.23329,
+    "h": 0.01811
+   },
+   "text": "1 The construction"
+  },
+  {
+   "id": "p1-i5",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.46333,
+    "w": 0.74117,
+    "h": 0.04876
+   },
+   "text": "Let δ = 2-d and take N directions distributed evenly on the upper hemisphere. Each tube has radius δ around a unit segment. A packing parameter p ∈ [0, 1] slides the tubes toward the cube centre: p = 0 keeps them separated, p = 1 makes them sticky."
+  },
+  {
+   "id": "p1-i6",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.53824,
+    "w": 0.2708,
+    "h": 0.01811
+   },
+   "text": "2 Measured quantities"
+  },
+  {
+   "id": "p1-i7",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.5725,
+    "w": 0.74118,
+    "h": 0.0651
+   },
+   "text": "For each configuration we measure the volume of the union |∪T| and the maximal multiplicity m by voxel counting at a finite resolution. The key observation is that doubling N increases the multiplicity while the union volume grows only slowly - consistent with the Besicovitch intuition that a measure-zero set can contain a unit segment in every direction."
+  },
+  {
+   "id": "p1-i8",
+   "kind": "section_header",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.66374,
+    "w": 0.15696,
+    "h": 0.01811
+   },
+   "text": "3 Discussion"
+  },
+  {
+   "id": "p1-i9",
+   "kind": "text",
+   "page": 1,
+   "bbox": {
+    "x": 0.12941,
+    "y": 0.698,
+    "w": 0.74118,
+    "h": 0.04799
+   },
+   "text": "All numbers are finite-scale voxel measurements; the limit statements of the Kakeya-Besicovitch theory are not proved here. Increasing the packing parameter decreases the union volume toward the sticky-cluster limit."
+  }
+ ]
+}
