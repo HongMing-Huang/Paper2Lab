@@ -1327,6 +1327,20 @@ async def orchestrator_stream(body: "TurnBody", status: Any) -> AsyncGenerator[d
     in-band — a mid-stream failure stays a failure; partial turns are never
     silently re-run on the fallback."""
     yield ev("backend", **status.describe(), aiVerified=ai_verified())
+    # #51 P0-C: the research loop is a DETERMINISTIC instrument — when the
+    # caller asks for it (context.loop or loop phrasing), run the loop even
+    # on the AI backend (the LLM would invent step ops; the loop is exact)
+    if body.context.get("execution") == "server" and (
+        body.context.get("loop") or any(k in body.intent for k in ("连续", "研究循环", "research loop", "多轮", "系统探索"))
+    ):
+        session = _sop_sessions.setdefault(body.sessionId, SopSession(id=body.sessionId))
+        try:
+            rounds = int(body.context.get("rounds", 10))
+        except (TypeError, ValueError):
+            rounds = 10
+        async for e in sop_research_loop(session, body.intent, body.context, rounds=max(1, min(20, rounds))):
+            yield e
+        return
     try:
         agent_input = _agentscope_input(body)
     except ValueError as exc:
