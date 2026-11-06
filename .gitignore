@@ -27,3 +27,6 @@ server/data/
 
 # compiled precompute binary
 scripts/precompute_kakeya
+
+# Local research materials: retain on disk, exclude from Git uploads
+/docs/research/
