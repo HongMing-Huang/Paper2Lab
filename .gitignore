@@ -30,3 +30,6 @@ scripts/precompute_kakeya
 
 # Local research materials: retain on disk, exclude from Git uploads
 /docs/research/
+
+# preview-page build artifacts (rebuilt by their own build script)
+public/assets/mathworld-library/preview/bundle.js
