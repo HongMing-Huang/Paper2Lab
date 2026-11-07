@@ -1,0 +1,5 @@
+.                                                                        [100%]
+============================= slowest 2 durations ==============================
+55.12s call     test_jobs_j11.py::TestRealParse::test_real_docling_paper_is_parsed_by_the_queue_worker
+0.09s setup    test_jobs_j11.py::TestRealParse::test_real_docling_paper_is_parsed_by_the_queue_worker
+1 passed, 10 deselected in 59.44s

@@ -1,0 +1,127 @@
+
+ RUN  v3.2.7 /private/tmp/p2l-s11-red
+
+ ❯ src/skills/redCheck.test.ts (8 tests | 5 failed) 134ms
+   ✓ perron tree: base run ok 7ms
+   × perron tree: run records source 4ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × perron tree: fork keeps source and parent 5ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × perron tree: replay keeps source 3ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   ✓ phase ode: base run ok 89ms
+   ✓ phase ode: run records source 9ms
+   × phase ode: fork keeps source and parent 9ms
+     → expected 'error' to be 'ok' // Object.is equality
+   × phase ode: replay keeps source 7ms
+     → expected 'error' to be 'ok' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/skills/redCheck.test.ts > perron tree: run records source
+AssertionError: expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+
+- Expected: 
+{
+  "anchorId": "anchor-1",
+  "docId": "provenance-test",
+  "title": "Declared test anchor, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/redCheck.test.ts:21:57
+     19|   it(`${c.label}: run records source`, async () => {
+     20|     const out = await executeSkill(c.skill, c.input, { planId: buildPl…
+     21|     expect(out.status === 'ok' && out.run?.spec.source).toEqual(anchor)
+       |                                                         ^
+     22|   })
+     23|   it(`${c.label}: fork keeps source and parent`, async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/skills/redCheck.test.ts > perron tree: fork keeps source and parent
+AssertionError: expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+
+- Expected: 
+{
+  "anchorId": "anchor-1",
+  "docId": "provenance-test",
+  "title": "Declared test anchor, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/redCheck.test.ts:29:59
+     27|     expect(fork.status).toBe('ok')
+     28|     expect(fork.status === 'ok' && fork.run?.parentRunId).toBe(base.ru…
+     29|     expect(fork.status === 'ok' && fork.run?.spec.source).toEqual(anch…
+       |                                                           ^
+     30|   })
+     31|   it(`${c.label}: replay keeps source`, async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/skills/redCheck.test.ts > perron tree: replay keeps source
+AssertionError: expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+
+- Expected: 
+{
+  "anchorId": "anchor-1",
+  "docId": "provenance-test",
+  "title": "Declared test anchor, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/redCheck.test.ts:36:63
+     34|     const replay = await replayRun(base.run.runId)
+     35|     expect(replay.status).toBe('ok')
+     36|     expect(replay.status === 'ok' && replay.run?.spec.source).toEqual(…
+       |                                                               ^
+     37|   })
+     38| }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  src/skills/redCheck.test.ts > phase ode: fork keeps source and parent
+AssertionError: expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ src/skills/redCheck.test.ts:27:25
+     25|     if (base.status !== 'ok' || !base.run) throw new Error('no base')
+     26|     const fork = await executeSkill('experiment.fork', { sourceRunId: …
+     27|     expect(fork.status).toBe('ok')
+       |                         ^
+     28|     expect(fork.status === 'ok' && fork.run?.parentRunId).toBe(base.ru…
+     29|     expect(fork.status === 'ok' && fork.run?.spec.source).toEqual(anch…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  src/skills/redCheck.test.ts > phase ode: replay keeps source
+AssertionError: expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ src/skills/redCheck.test.ts:35:27
+     33|     if (base.status !== 'ok' || !base.run) throw new Error('no base')
+     34|     const replay = await replayRun(base.run.runId)
+     35|     expect(replay.status).toBe('ok')
+       |                           ^
+     36|     expect(replay.status === 'ok' && replay.run?.spec.source).toEqual(…
+     37|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 3 passed (8)
+   Start at  01:12:04
+   Duration  637ms (transform 96ms, setup 0ms, collect 186ms, tests 134ms, environment 0ms, prepare 57ms)
+

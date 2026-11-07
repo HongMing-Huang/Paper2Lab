@@ -1,0 +1,96 @@
+{
+  "date": "2026-11-06",
+  "scope": "Documentation/loop/task-contract consolidation, not product implementation or J1 signoff",
+  "identities": {
+    "AGENTS.md": "39e158ecd98f715f7e46ecdcfaabb9377e7fcfa7eea9b7dfdf5a29ca2a7926ca",
+    "LOOP.md": "5eca7e3c9054bd6874222a0b56817f118f020cb92e118b458e2d4e010e642b1f",
+    "PLAN.md": "1328a1cddfb95ec58e266c01743afdbfe0556840f33d8c3cf1cb93e301a317fb",
+    "STATE.md": "18c08040160b8dec6e7bbdf02a5870e391317a5960868f3cbcf1d64ad5d3f11d",
+    "DEVELOPMENT_PROMPT.md": "758293c0cecb5f059b3c355c8714601065237a1e9495ce2d8907a41232ad72c4",
+    "docs/development/COORDINATION.md": "a66ec1ec7f7ccb44ee7182cb2cd04c6b714d59c8a2976b3b9c9067052d762c0c",
+    "docs/development/linear-plan.json": "5d188021682f24d66eecf4956a559de0709ec06e79ec50da760b3ee8efa2785f",
+    "docs/development/product-experience-and-runtime.md": "b6e63653c1e9759c783d9378db09676d90a1b516b10c56ba6051e0bcbc90a473",
+    "docs/development/backend-implementation.md": "9afd1f7a40915a9ab76e917d3d3c3b0e0190471e617b95bdd7057ca5f80356a2",
+    "docs/development/backend-node-sources-20261106.md": "ae0e608b902010513e9ec12e883a33aefe01407159a1cfebeeca6ad990b644cf",
+    "docs/development/math-runtime-contract.md": "34c12adeb20b8c0c61adc5a0d1e12a16433869daa35fa2443e913c59c6a4dae5",
+    "docs/development/verify_agent_context.mjs": "6bfaf51b032717aa5f7397843e93e8621a9f4421bebc45d90c0fcc8279f6adc9",
+    "docs/development/zcode-loop.md": "5d64c75d4153bfd6e239bc4de4134640bf3fd9804f39f869409a913e2e4fccfa",
+    "README.md": "a65f9bdf46e9584cf317e720776b40308f05cf4a22a26f5ee1282f8e20386646"
+  },
+  "review": [
+    {
+      "agent": "/root/audit_j1_transition",
+      "result": "pass after three required fixes",
+      "scope": "DSH/Node migration, transaction/cancel/math/CI contracts; not runtime acceptance"
+    },
+    {
+      "agent": "/root/audit_loop_cleanup",
+      "result": "pass including final three-line delta",
+      "scope": "root contracts, cleanup, context, Linear pending-data DAG/hash, worktree isolation; not product acceptance"
+    }
+  ],
+  "checks": {
+    "nodeContext": {
+      "readable": 58,
+      "checked": 58,
+      "errors": []
+    },
+    "activeLocalMarkdownLinks": "pass",
+    "taskKeys": "unique",
+    "dependencyDAG": "acyclic",
+    "linearParents": 21,
+    "linearSlices": 65,
+    "remoteCreatedIssues": 0,
+    "linearConnection": "UNAUTHORIZED from list_projects/list_teams; user reconnection requested asynchronously"
+  },
+  "cleanup": {
+    "removedObsoleteFiles": 12,
+    "removedBytes": 215122,
+    "productionFilesDeleted": 0,
+    "manifest": "docs/history/20261106-before-loop-unification/cleanup-manifest.json"
+  },
+  "context": {
+    "fiveRootFilesBeforeBytes": 264311,
+    "fiveRootFilesAfterBytes": 93273,
+    "defaultHistoryLoading": false
+  },
+  "notDone": [
+    "Actual Linear create/update/read-back blocked by reauthentication",
+    "J1.1 latest product delta signoff belongs to current ZCode owner",
+    "No new worktree/checkpoint commit/parallel writer/test service isolation implemented",
+    "No CI workflow or production code changed; product tests not rerun in this documentation task"
+  ],
+  "sources": [
+    {
+      "url": "https://github.com/cobusgreyling/loop-engineering/blob/fa016d13584166913f9caa574c72b5c9046d57b4/docs/failure-modes.md",
+      "via": "GitHub plugin",
+      "blobSha": "9b301e7879cea3f24b4d508995237fda6bdfcf3f"
+    },
+    {
+      "url": "https://github.com/timgit/pg-boss/blob/12.38.1/docs/api/adapters.md",
+      "via": "GitHub plugin",
+      "blobSha": "0e4a3b8bc9bca8dcdc7270b876d4cd5310e6ef8f"
+    },
+    {
+      "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/sdk/client/src/api.ts",
+      "via": "GitHub plugin",
+      "blobSha": "34b644aadf74f757f9b1f13ce35ff07e872a0490"
+    },
+    {
+      "url": "https://git-scm.com/docs/git-worktree",
+      "via": "Parallel"
+    },
+    {
+      "url": "https://linear.app/docs/mcp",
+      "via": "Parallel"
+    },
+    {
+      "url": "https://linear.app/docs/issue-relations",
+      "via": "Parallel"
+    },
+    {
+      "url": "https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers",
+      "via": "Parallel"
+    }
+  ]
+}

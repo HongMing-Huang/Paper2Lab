@@ -1,0 +1,227 @@
+FFFFFFFFFF                                                               [100%]
+=================================== FAILURES ===================================
+_ TestWorkerConsumes.test_api_only_queues_and_a_separate_worker_process_consumes _
+
+self = <test_jobs_j11.TestWorkerConsumes object at 0x12a25da30>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_api_only_queues_and_a_sep0')
+
+    def test_api_only_queues_and_a_separate_worker_process_consumes(self, env):
+        with TestClient(app) as client:
+            submit = _upload(client, "ledger.pdf")
+>           assert submit["status"] == "queued" and isinstance(submit["taskId"], int)
+E           AssertionError: assert ('running' == 'queued'
+E             
+E             - queued
+E             + running)
+
+server/tests/test_jobs_j11.py:148: AssertionError
+_______ TestWorkerConsumes.test_a_failed_parse_is_recorded_by_the_worker _______
+
+self = <test_jobs_j11.TestWorkerConsumes object at 0x12a3112e0>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_a_failed_parse_is_recorde0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12a6450d0>
+
+    def test_a_failed_parse_is_recorded_by_the_worker(self, env, monkeypatch):
+        monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "crash")
+        with TestClient(app) as client:
+            submit = _upload(client, "boom.pdf")
+>           assert _run_worker() == 0
+                   ^^^^^^^^^^^^^
+
+server/tests/test_jobs_j11.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _run_worker() -> int:
+        """a REAL separate worker process (spawn = a fresh interpreter, its own
+        pid, inheriting the test's monkeypatched environment); burst mode drains
+        the queue and exits. Returns the process exit code."""
+>       from server import parse_worker
+E       ImportError: cannot import name 'parse_worker' from 'server' (unknown location)
+
+server/tests/test_jobs_j11.py:101: ImportError
+_______ TestWorkerConsumes.test_timeout_really_terminates_the_conversion _______
+
+self = <test_jobs_j11.TestWorkerConsumes object at 0x12a52b8f0>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_timeout_really_terminates0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12a615c70>
+
+    def test_timeout_really_terminates_the_conversion(self, env, monkeypatch):
+        monkeypatch.setenv("PAPER2LAB_TEST_CONVERT", "hang")
+        monkeypatch.setenv("PAPER2LAB_INGEST_TIMEOUT", "2")
+        with TestClient(app) as client:
+            submit = _upload(client, "slow.pdf")
+            started = time.time()
+>           assert _run_worker() == 0
+                   ^^^^^^^^^^^^^
+
+server/tests/test_jobs_j11.py:195: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _run_worker() -> int:
+        """a REAL separate worker process (spawn = a fresh interpreter, its own
+        pid, inheriting the test's monkeypatched environment); burst mode drains
+        the queue and exits. Returns the process exit code."""
+>       from server import parse_worker
+E       ImportError: cannot import name 'parse_worker' from 'server' (unknown location)
+
+server/tests/test_jobs_j11.py:101: ImportError
+________ TestWorkerConsumes.test_duplicate_delivery_runs_the_parse_once ________
+
+self = <test_jobs_j11.TestWorkerConsumes object at 0x12a564f50>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_duplicate_delivery_runs_t0')
+
+    def test_duplicate_delivery_runs_the_parse_once(self, env):
+        import redis as _redis
+        from rq import Queue
+    
+        from server import jobs as jobs_mod
+    
+        with TestClient(app) as client:
+            submit = _upload(client, "dup.pdf")
+            # an at-least-once queue may deliver the same task twice
+            Queue(jobs_mod.QUEUE_NAME, connection=_redis.Redis.from_url(TEST_REDIS_URL)).enqueue_call(
+>               jobs_mod.WORKER_FUNC, args=(submit["taskId"],), job_id="duplicate-delivery"
+                ^^^^^^^^^^^^^^^^^^^^
+            )
+E           AttributeError: module 'server.jobs' has no attribute 'WORKER_FUNC'
+
+server/tests/test_jobs_j11.py:218: AttributeError
+_ TestRebuildAndRestart.test_lost_queue_messages_are_rebuilt_from_pg_when_the_worker_starts _
+
+self = <test_jobs_j11.TestRebuildAndRestart object at 0x12a565190>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_lost_queue_messages_are_r0')
+
+    def test_lost_queue_messages_are_rebuilt_from_pg_when_the_worker_starts(self, env):
+        import redis as _redis
+    
+        with TestClient(app) as client:
+            submit = _upload(client, "lost.pdf")
+>           assert _queue_count() == 1
+E           assert 0 == 1
+E            +  where 0 = _queue_count()
+
+server/tests/test_jobs_j11.py:235: AssertionError
+___ TestRebuildAndRestart.test_api_restart_requeues_lost_tasks_exactly_once ____
+
+self = <test_jobs_j11.TestRebuildAndRestart object at 0x12a564d70>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_api_restart_requeues_lost0')
+
+    def test_api_restart_requeues_lost_tasks_exactly_once(self, env):
+        import redis as _redis
+    
+        with TestClient(app) as client:
+            submit = _upload(client, "restart.pdf")
+        _redis.Redis.from_url(TEST_REDIS_URL).flushdb()
+        with TestClient(app):  # API restart: lifespan reconciles queued tasks
+            pass
+>       assert _queue_count() == 1
+E       assert 0 == 1
+E        +  where 0 = _queue_count()
+
+server/tests/test_jobs_j11.py:252: AssertionError
+_____ TestRebuildAndRestart.test_api_restart_keeps_queue_backed_jobs_alive _____
+
+self = <test_jobs_j11.TestRebuildAndRestart object at 0x12a5641d0>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_api_restart_keeps_queue_b0')
+
+    def test_api_restart_keeps_queue_backed_jobs_alive(self, env):
+        import server.main as main_mod
+    
+        with TestClient(app) as client:
+            submit = _upload(client, "survive.pdf")
+        # the API process dies; the in-memory job table is rebuilt from disk
+        main_mod._jobs.clear()
+        main_mod._restore_jobs()
+        restored = main_mod._jobs[submit["jobId"]]
+        # a queue-backed job is NOT interrupted by an API restart (the worker
+        # is independent) — only in-process jobs die with the API
+>       assert restored.status == "queued" and restored.task_id == submit["taskId"]
+E       AssertionError: assert ('error' == 'queued'
+E         
+E         - queued
+E         + error)
+
+server/tests/test_jobs_j11.py:272: AssertionError
+_ TestSupersedeAndFallback.test_a_superseded_queued_task_is_cancelled_and_never_parsed _
+
+self = <test_jobs_j11.TestSupersedeAndFallback object at 0x12a564e60>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_a_superseded_queued_task_0')
+
+    def test_a_superseded_queued_task_is_cancelled_and_never_parsed(self, env):
+        with TestClient(app) as client:
+            first = _upload(client, "first.pdf", client_id="tab-1")
+            second = _upload(client, "second.pdf", client_id="tab-1")
+            assert client.get(f"/api/ingest/{first['jobId']}").json()["status"] == "superseded"
+>           assert _run_worker() == 0
+                   ^^^^^^^^^^^^^
+
+server/tests/test_jobs_j11.py:284: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _run_worker() -> int:
+        """a REAL separate worker process (spawn = a fresh interpreter, its own
+        pid, inheriting the test's monkeypatched environment); burst mode drains
+        the queue and exits. Returns the process exit code."""
+>       from server import parse_worker
+E       ImportError: cannot import name 'parse_worker' from 'server' (unknown location)
+
+server/tests/test_jobs_j11.py:101: ImportError
+_ TestSupersedeAndFallback.test_without_redis_the_in_process_path_is_unchanged _
+
+self = <test_jobs_j11.TestSupersedeAndFallback object at 0x12a5656d0>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_without_redis_the_in_proc0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12a71d6d0>
+
+    def test_without_redis_the_in_process_path_is_unchanged(self, env, monkeypatch):
+        monkeypatch.delenv("PAPER2LAB_REDIS_URL")
+        with TestClient(app) as client:
+            submit = _upload(client, "inproc.pdf")
+            deadline = time.time() + 30
+            status = {}
+            while time.time() < deadline:
+                status = client.get(f"/api/ingest/{submit['jobId']}").json()
+                if status["status"] in ("done", "error", "timeout"):
+                    break
+                time.sleep(0.05)
+        assert status["status"] == "done"
+>       assert _count("research_tasks") == 0  # no ledger semantics without a queue
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert 1 == 0
+E        +  where 1 = _count('research_tasks')
+
+server/tests/test_jobs_j11.py:304: AssertionError
+__ TestSupersedeAndFallback.test_the_worker_refuses_to_start_without_a_queue ___
+
+self = <test_jobs_j11.TestSupersedeAndFallback object at 0x12a566d50>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-103/test_the_worker_refuses_to_sta0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12a720710>
+capfd = <_pytest.capture.CaptureFixture object at 0x12a721b50>
+
+    def test_the_worker_refuses_to_start_without_a_queue(self, env, monkeypatch, capfd):
+        monkeypatch.delenv("PAPER2LAB_REDIS_URL")
+>       assert _run_worker() == 2
+               ^^^^^^^^^^^^^
+
+server/tests/test_jobs_j11.py:308: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _run_worker() -> int:
+        """a REAL separate worker process (spawn = a fresh interpreter, its own
+        pid, inheriting the test's monkeypatched environment); burst mode drains
+        the queue and exits. Returns the process exit code."""
+>       from server import parse_worker
+E       ImportError: cannot import name 'parse_worker' from 'server' (unknown location)
+
+server/tests/test_jobs_j11.py:101: ImportError
+=========================== short test summary info ============================
+FAILED server/tests/test_jobs_j11.py::TestWorkerConsumes::test_api_only_queues_and_a_separate_worker_process_consumes
+FAILED server/tests/test_jobs_j11.py::TestWorkerConsumes::test_a_failed_parse_is_recorded_by_the_worker
+FAILED server/tests/test_jobs_j11.py::TestWorkerConsumes::test_timeout_really_terminates_the_conversion
+FAILED server/tests/test_jobs_j11.py::TestWorkerConsumes::test_duplicate_delivery_runs_the_parse_once
+FAILED server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_lost_queue_messages_are_rebuilt_from_pg_when_the_worker_starts
+FAILED server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_api_restart_requeues_lost_tasks_exactly_once
+FAILED server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_api_restart_keeps_queue_backed_jobs_alive
+FAILED server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_a_superseded_queued_task_is_cancelled_and_never_parsed
+FAILED server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_without_redis_the_in_process_path_is_unchanged
+FAILED server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_the_worker_refuses_to_start_without_a_queue
+10 failed in 4.40s

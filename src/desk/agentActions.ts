@@ -171,12 +171,13 @@ export class ForkExperimentAction extends AgentActionUtil<{
     if (!explorerId || !this.helpers.explorerIds().includes(explorerId)) return null
     const params = this.helpers.explorerParams(explorerId)
     const raw = (a.changes ?? {}) as Record<string, unknown>
+    if (Object.keys(raw).some((name) => !params.some((p) => p.name === name))) return null
     const changes: Record<string, number> = {}
     for (const p of params) {
       const v = raw[p.name]
-      if (typeof v !== 'number' || !Number.isFinite(v)) continue
-      // clamp into the parameter's own range — the store would reject anyway
-      changes[p.name] = Math.min(p.max, Math.max(p.min, v))
+      if (!(p.name in raw)) continue
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < p.min || v > p.max) return null
+      changes[p.name] = v
     }
     if (Object.keys(changes).length === 0) return null // nothing valid to change
     return { ...a, explorerId, changes }

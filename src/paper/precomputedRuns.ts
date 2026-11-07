@@ -20,8 +20,9 @@ interface PrecomputedRun extends ExperimentRun<{ res: number; occupiedVolume: nu
 }
 
 function availableRows(): PrecomputedRun[] {
+  // resolved only — an imported error row must never become chart evidence
   return listExperimentRuns({ kind: 'kakeya.voxel', limit: 500 }).filter(
-    (r) => r.engine === 'cpp-precompute',
+    (r) => r.engine === 'cpp-precompute' && r.status === 'resolved',
   ) as PrecomputedRun[]
 }
 

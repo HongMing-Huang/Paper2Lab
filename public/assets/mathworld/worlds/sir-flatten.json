@@ -1,0 +1,52 @@
+{
+  "schema": "paper2lab.mathworld/v1",
+  "id": "sir-flatten",
+  "title": "压平曲线 · SIR 疫情的三维相轨",
+  "origin": {
+    "kind": "dev-sample",
+    "note": "开发样例：教科书 SIR 方程 Ṡ = −βSI，İ = βSI − γI，Ṙ = γI 与目标阈值；不是 PDF 解析结果，也不是 Qwen 生成"
+  },
+  "premise": "人群分成易感 S、感染 I、康复 R 三部分。(S, I, R) 随时间在三维空间里画出一条相轨，并始终贴在 S + I + R = 1 的平面上。β 是接触传染率，γ 是康复率。",
+  "objective": "感染峰值不超过医疗容量 0.10；第 160 天时 I ≤ 0.01（疫情结束）；同时 R ≥ 0.5（免疫足够，避免二次暴发）。",
+  "model": {
+    "kind": "ode",
+    "states": [
+      { "name": "S", "label": "易感 S", "initial": 0.99 },
+      { "name": "I", "label": "感染 I", "initial": 0.01 },
+      { "name": "R", "label": "康复 R", "initial": 0 }
+    ],
+    "rhs": {
+      "S": "-\\beta S I",
+      "I": "\\beta S I-\\gamma I",
+      "R": "\\gamma I"
+    },
+    "params": [
+      { "name": "beta", "label": "接触率 β", "initial": 0.5, "min": 0.05, "max": 0.8, "step": 0.002, "operable": true },
+      { "name": "gamma", "label": "康复率 γ", "initial": 0.1, "min": 0.05, "max": 0.4, "step": 0.002, "operable": true }
+    ],
+    "tSpan": [0, 160],
+    "steps": 2400,
+    "refineCheck": { "tol": 1e-6 }
+  },
+  "controls": [],
+  "goal": {
+    "attempts": 8,
+    "constraints": [
+      { "kind": "series-max", "id": "peak", "label": "医疗容量", "state": "I", "max": 0.1 },
+      { "kind": "final-range", "id": "over", "label": "疫情结束", "state": "I", "max": 0.01 },
+      { "kind": "final-range", "id": "herd", "label": "免疫足够", "state": "R", "min": 0.5 }
+    ]
+  },
+  "scene": {
+    "axes": {
+      "x": { "source": "S", "min": 0, "max": 1, "length": 8, "label": "S 易感" },
+      "y": { "source": "I", "min": 0, "max": 0.5, "length": 5, "label": "I 感染" },
+      "z": { "source": "R", "min": 0, "max": 1, "length": 8, "label": "R 康复" }
+    }
+  },
+  "rules": [
+    "拖动参数芯片只做预览（同一方程、粗步长 RK4），不计分。",
+    "松手提交正式 model.solve（RK4 2400 步），并用 4800 步加密重算对照；差异超过容差时判定为数值不确定，不算输赢。",
+    "峰值来自 241 个输出采样点，样本之间可能略高；贴近阈值时判为不确定。"
+  ]
+}

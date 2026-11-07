@@ -1,0 +1,77 @@
+PACKING_BEFORE packing
+0.00
+PACKING_AFTER packing
+1.00
+EVIDENCE 正式计算就绪 · ts-kakeya-worker@v3 · kakeya-voxel-mw4yhppz-xbzaz-1 · 参数恢复/文件保存仅限本机，未同步云端。
+CHALLENGE 分箱。sticky 时右尾拉长 = 中心高重数。
+CHART · |⋃T| 随 N 增长（点数据点⇒定位实验）
+CALCULATED
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+↑ |⋃T|（occupied volume）
+100
+150
+200
+250
+N（管数） →
+▶ 运行实时扫描（6 档 Worker）
+CALCULATED · C++ 高规模已载入 ✓
+4 数据点 · 实线=本页 Worker 实时扫描（已暂停——点左侧按钮按需运行）；朱砂点=C++ 高规模预计算（res≤1024³≈10.9 亿体素，δ≥2⁻¹⁰，真 runId）；其余=fork 分支。点击任意数据点 → 定位产生它的实验（Data→Experiment）。
+OBSERVATION
+CALCULATED
+有限尺度（res³=48³ 体素，δ=0.0625）：|⋃T| = 0.5729，Σ|T| = 1.2649，重叠率 = 54.7%，max m = 96。
+方向最小角距 = 10.5° ≥ δ-分离阈值 3.6° ✓。
+Perron 树（k=3, α=0.80）：实测面积 0.3454（原三角形 0.5774，理论上界 0.3823）。
+模型说明 · 预写说明，非实时 AI
+
+当前排布标签 packed/sticky 仅描述 packing 配置。改变排列会改变管束交叠； 体积和重数的变化以上方正式计算为准，不能从标签推断“几乎不重叠”。 当前展示方向分离检查，尚未完成论文全部 Wolff 非聚集假设的验证；有限尺度结果不证明定理。
+
+EXPERIMENT · 2D PERRON 树 + 针旋转
+CALCULATED
+细分层数 k（2ᵏ 子三角形）
+k=3（8 片）
+重叠比 α
+0.80
+实测面积 0.3454 · 原三角形 0.5774 · 理论上界 0.3823
+AI INFERENCE 注：针在各方向间的连续运动由 Pál join（面积可任意小）恢复——这是 PAPER 事实；此处动画只示意方向覆盖，实测面积不含 join。
+PACKING CHALLENGE
+CALCULATED
+规则：冻结 方向数 N 与 δ，拖动 3D 里的 tube 族（packing）， 在有限尺度体素度量下尽量降低 |⋃T|。用户与自动搜索使用完全相同的计算引擎。
+▶ 以当前 N=96 · δ=2^-4 开局
+从论文到亲手验证
+有限尺度计算 · 固定管束模型 · 不代表定理证明
+① 论文问题
+② 操作三维实验
+③ 尝试挑战
+论文原文 ↗
+保存正式结果
+继续上次实验
+读取实验文件
+开局冻结 N、δ 和计算分辨率，再操作三维管束并提交。自动搜索是确定性基线，不是 Qwen。
+正式计算就绪 · ts-kakeya-worker@v3 · kakeya-voxel-mw4yhppz-xbzaz-1 · 参数恢复/文件保存仅限本机，未同步云端。
+▭ 框选模式
+📎 成组所选
+✂️ 拆组
+← 返回首页
+↺ 重置桌面
+实验已展开到 Lab Canvas（参数就长在实验纸里）
+React Flow
+ATTEMPT who	packing	|⋃T|	max m	run
+你	1.00	0.5729	96	…bzaz-1
+RESTORED packing
+1.00
+RESTORE_STATUS 从论文到亲手验证
+有限尺度计算 · 固定管束模型 · 不代表定理证明
+① 论文问题
+② 操作三维实验
+③ 尝试挑战
+论文原文 ↗
+保存正式结果
+继续上次实验
+读取实验文件
+已恢复合法参数；正式指标以重算后的 Run 为准。文件中的历史指标不参与计算或计分。
+正式计算就绪 · ts-kakeya-worker@v3 · kakeya-voxel-mw4yhs4y-ua1wh-1 · 参数恢复/文件保存仅限本机，未同步云端。

@@ -11,6 +11,7 @@ import {
   deltaCell,
   tubesRunCell,
   voxelCell,
+  materializeVisGrid,
 } from '../paper/kakeyaGraph'
 import { Tubes3DView } from '../canvas/views/Tubes3DView'
 import { MultiplicityChart } from '../canvas/views/MultiplicityChart'
@@ -42,7 +43,7 @@ function Spike3DNode() {
       <div className="sheet-label">SPIKE · 3D δ-TUBES — δ = {delta.value?.toFixed(4)} {vox.stale ? '· computing…' : ''}</div>
       <Tubes3DView
         tubes={tubes.value?.result ?? []}
-        visGrid={vox.value?.result?.visGrid}
+        visGrid={materializeVisGrid(vox.value?.result?.visGrid)}
         visMaxM={vox.value?.result?.maxMultiplicity}
         showVoxels={!!showVox.value}
         height={300}

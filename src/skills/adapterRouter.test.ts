@@ -174,14 +174,20 @@ describe('planFormulaQuestion (NL → structured ops)', () => {
   })
   it('returns null for chit-chat instead of inventing actions', () => {
     expect(planFormulaQuestion('这篇论文讲了什么？', params)).toBeNull()
+    expect(planFormulaQuestion('增大一倍', params)).toBeNull()
+    for (const q of ['a 增大4倍', 'a 增大0.5倍', 'a 和 b 增大一倍']) expect(planFormulaQuestion(q, params)).toBeNull()
+    expect(planFormulaQuestion('b 设为2', ['a'])).toBeNull()
+    expect(planFormulaQuestion('A 设为2', ['a'])).toBeNull()
+    expect(planFormulaQuestion('alpha设为2', ['a', 'alpha'])?.[1]).toEqual({ op: 'set', param: 'alpha', value: 2 })
+    expect(planFormulaQuestion('a 增大三倍', params)?.[1]).toEqual({ op: 'scale', param: 'a', value: 3 })
   })
 })
 
 describe('validateFormulaActions (LLM gate)', () => {
   const params = ['a', 'b']
-  it('accepts whitelisted ops and clamps scale factors', () => {
+  it('preserves requested values; execution owns model bounds', () => {
     const v = validateFormulaActions([{ op: 'scale', param: 'a', value: 99 }], params)
-    expect(v).toEqual([{ op: 'scale', param: 'a', value: 10 }])
+    expect(v).toEqual([{ op: 'scale', param: 'a', value: 99 }])
   })
   it('rejects unknown params, unknown ops, and non-object lists', () => {
     expect(validateFormulaActions([{ op: 'set', param: 'zzz', value: 1 }], params)).toBeNull()

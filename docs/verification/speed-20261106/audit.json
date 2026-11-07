@@ -1,0 +1,137 @@
+{
+  "date": "2026-11-06",
+  "scope": "Product description, milestones, dependency/cadence correction; no production implementation by this research/coordination session",
+  "project": "P-CLI-3",
+  "projectState": "In Progress",
+  "milestones": [
+    {
+      "key": "M1",
+      "id": "bc9e4433-3937-47f7-97ce-21f9792be427",
+      "name": "M1｜AI驱动一次真实论文实验"
+    },
+    {
+      "key": "M2",
+      "id": "8140a90b-72da-4ea6-a363-0ecba4cd35c6",
+      "name": "M2｜可保存、可继续的论文研究空间（C1）"
+    },
+    {
+      "key": "M3",
+      "id": "31efece6-35a2-4cb5-b320-776a308616e8",
+      "name": "M3｜可进入的生成式数学游戏世界（E1）"
+    },
+    {
+      "key": "M4",
+      "id": "d2caf6d3-1e61-4ef4-bd1f-16a733bd9e4d",
+      "name": "M4｜跨模型探索与可靠性交付（E2）"
+    }
+  ],
+  "assignment": {
+    "M1": 28,
+    "M2": 22,
+    "M3": 24,
+    "M4": 12
+  },
+  "readback": {
+    "count": 86,
+    "errors": []
+  },
+  "changes": [
+    {
+      "taskKey": "J1.2a",
+      "removedDependencies": [
+        "J1.CI"
+      ],
+      "addedDependencies": [],
+      "priority": 2
+    },
+    {
+      "taskKey": "L1.1",
+      "removedDependencies": [
+        "J1"
+      ],
+      "addedDependencies": [
+        "P1",
+        "A1"
+      ],
+      "priority": 2
+    },
+    {
+      "taskKey": "N1.1",
+      "removedDependencies": [],
+      "addedDependencies": [],
+      "priority": 2
+    },
+    {
+      "taskKey": "J1.CI",
+      "removedDependencies": [],
+      "addedDependencies": [],
+      "priority": 2
+    },
+    {
+      "taskKey": "J1.1",
+      "removedDependencies": [],
+      "addedDependencies": [],
+      "priority": 2
+    }
+  ],
+  "liveObserved": {
+    "J11": "Done by original owner at 2026-11-06T08:41:10.794Z; this session never sent a status change",
+    "J1CI": "In Progress by existing owner; safe checkpoint before reordering",
+    "J12a": "Todo; CI whole-task blocker removed",
+    "L11": "Todo; only P1/A1 blockers retained"
+  },
+  "sources": [
+    {
+      "url": "https://code.claude.com/docs/en/best-practices",
+      "via": "Firecrawl targeted query",
+      "usedFor": "short context, runnable checks, separate checkouts for independent sessions",
+      "extractedEvidence": "## Tell Claude what it can’t see\nOnly write down what Claude can’t find by reading the repo, or what it would otherwise spend time rediscovering every session.\n\n## Keep CLAUDE.md short\nClaude Code loads `CLAUDE.md` into every session, which means every line in it takes a little of Claude’s attention on every task, whether it’s relevant or not. That’s why the file works best when it only holds what Claude couldn’t work out from the code itself.\n\n## Give Claude a check to run\nGive Claude something it can run that comes back pass or fail. Once it has that, it can keep going on its own and you don’t have to watch.\n\n## Keep cost and context down\nWith a 1M-token window on most current models and compaction near the top of it, you’ll rarely run out of context. You can still pay for context you don’t need, though. Every request sends the whole conversation, so a session that’s collected three unrelated tasks re-reads all three on every turn of the fourth.\n\n## Run sessions in parallel\nWhen you have separate pieces of work going at once, give each its own checkout so the edits can’t collide. `claude -w feature-auth` starts a session in a new worktree, the desktop app runs several of these side by side, and cloud sessions run them in the cloud instead of on your machine.\n\n## What you can stop doing\nEvery one of these was good advice when it was written. Most were workarounds for something the model couldn’t reliably do yet, and the models have since caught up."
+    },
+    {
+      "url": "https://github.com/openai/symphony/blob/main/elixir/WORKFLOW.md",
+      "via": "GitHub",
+      "blobSha": "c87d04838ce8f4b974a128b8d9d20174555aef87",
+      "usedFor": "reuse checkpoint, do not repeat completed investigation/validation without new changes; one task workpad and scoped workspace",
+      "notAdopted": "No Symphony daemon installed; no inherited commit/push/merge authorization"
+    },
+    {
+      "url": "https://linear.app/docs/project-milestones",
+      "via": "Firecrawl",
+      "usedFor": "outcome descriptions and real issue assignment; progress percentages are not product acceptance"
+    }
+  ],
+  "review": {
+    "agent": "/root/review_speed_plan",
+    "result": "pass after two minimal corrections",
+    "scope": "local contracts only, not independent remote readback or runtime throughput validation"
+  },
+  "j11Review": {
+    "agent": "/root/speed_gate_review",
+    "scope": "static final delta, matching code identities and existing logs; no tests run",
+    "result": "pass; original owner independently signed off while this work ran"
+  },
+  "limits": [
+    "No measured speedup or delivery-date estimate claimed",
+    "No product code, CI workflow, queue/DB, worktree or credentials changed by this session",
+    "Existing production owner continues active scope",
+    "Firecrawl second search feedback window expired; retryable false, no retry"
+  ],
+  "readbackRowsArtifact": "milestone-readback.json",
+  "documentHashes": {
+    "AGENTS.md": "52ce80737adf8f01e94a00545ab87056514682d30c18c355bad6a5c27631af4e",
+    "LOOP.md": "ef3e10febdd08e894ac21d8fa1a414a54dd45c17b40cd593d256afbfb0f27715",
+    "PLAN.md": "12e54810f165a083a83dbc1dc93c941e5f9c38e0825384e0f175d55f5c3725d3",
+    "STATE.md": "80bc9d7c96701eeca88204e163212bffc088259bc42df4984c687cc8b5c9cea9",
+    "DEVELOPMENT_PROMPT.md": "7beb002de8edd12e788c766b759287e3268c48146b427ffed27a13dade0a9984",
+    "README.md": "58238fde1b739cc14dc61ef75de0f8d838a87e5d5ce159b7d4f4e127eea4e5c0",
+    "docs/development/WINDOW_PROMPTS.md": "5e5d8852522321cd644151edf29eeed330e8708183f6771b49a971dc1b658a1a",
+    "docs/development/math-runtime-contract.md": "34c12adeb20b8c0c61adc5a0d1e12a16433869daa35fa2443e913c59c6a4dae5",
+    "docs/development/zcode-loop.md": "af9f56a3b4edbc18194a86c262a2a9aa85c8479aad9995577ed15eff8aa5eee0",
+    "docs/development/COORDINATION.md": "cdfb7e2311ea9d93fe2d799abd210a8fb129ee421cc0bce8c55e8f03801f16f1",
+    "docs/development/codebase-map.md": "5b852654a750b0264338dfe101a8e08fa0e57cbb9ba795dcd2403642258a223c",
+    "docs/development/backend-implementation.md": "9afd1f7a40915a9ab76e917d3d3c3b0e0190471e617b95bdd7057ca5f80356a2",
+    "docs/development/backend-node-sources-20261106.md": "ae0e608b902010513e9ec12e883a33aefe01407159a1cfebeeca6ad990b644cf",
+    "docs/development/product-experience-and-runtime.md": "b6e63653c1e9759c783d9378db09676d90a1b516b10c56ba6051e0bcbc90a473"
+  },
+  "activeLocalLinkErrors": []
+}

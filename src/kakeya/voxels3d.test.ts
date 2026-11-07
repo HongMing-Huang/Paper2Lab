@@ -6,6 +6,7 @@ const axisTube = (dir: [number, number, number]): Tube3 => ({
   dir: { x: dir[0], y: dir[1], z: dir[2] },
   center: { x: 0.5, y: 0.5, z: 0.5 },
   radius: 0.1,
+  length: 1,
 })
 
 describe('computeVoxelCoverage', () => {

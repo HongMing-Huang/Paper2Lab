@@ -34,9 +34,10 @@ registerSkillRunner('challenge.attempt', async (input, opts) => {
       params: {},
       seed: 0,
       model: { challenge: spec.kind, level: base, changes: c, spec },
+      source: opts.source,
     },
     { engine: 'challenge-kernel', version: '0.1' },
     () => runChallenge(spec),
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 })

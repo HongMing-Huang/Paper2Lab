@@ -35,6 +35,8 @@ const main = async () => {
     await page.locator('button.home-drop').click()
     const chooser = await chooserP
     await chooser.setFiles([PAPER])
+    // CLI-151: the study space opens first; full parse → desk is explicit
+    await page.getByTestId('study-full-parse').click()
     await page.waitForSelector('.desk-topbar-meta', { timeout: 480000 })
     console.log('[desk] up — opening 理解卡')
 

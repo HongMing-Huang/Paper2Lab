@@ -1,0 +1,95 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ❯ src/skills/planBinding.test.ts (8 tests | 4 failed) 54ms
+   × plan registration conflict detection > re-registering the same planId with DIFFERENT content is refused, not silently first-wins 4ms
+     → expected [Function] to throw an error
+   ✓ plan registration conflict detection > re-registering identical content stays idempotent 0ms
+   × plan registration conflict detection > registerPlanFromJson reports the conflict too (engine plan op path) 0ms
+     → expected [Function] to throw an error
+   ✓ the plan gates THIS execution > same registered plan + same inputs → runs 45ms
+   × the plan gates THIS execution > same planId + DIFFERENT input → refused before any run 2ms
+     → expected 'ok' to be 'needs_input' // Object.is equality
+   ✓ the plan gates THIS execution > the refusal covers a different skill input shape entirely 0ms
+   × the public replay switch no longer bypasses the plan gate > a caller passing replay:true with an unregistered planId is still refused 1ms
+     → expected 'ok' to be 'needs_input' // Object.is equality
+   ✓ the public replay switch no longer bypasses the plan gate > the internal fork path (fork:runId + replay) still works 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/skills/planBinding.test.ts > plan registration conflict detection > re-registering the same planId with DIFFERENT content is refused, not silently first-wins
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/skills/planBinding.test.ts:19:7
+     17|         goal: 'a different goal entirely',
+     18|       }),
+     19|     ).toThrow(/conflict/i)
+       |       ^
+     20|     // the original contract is unchanged
+     21|     expect(getPlan(first.planId)?.goal).toBe('g')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/skills/planBinding.test.ts > plan registration conflict detection > registerPlanFromJson reports the conflict too (engine plan op path)
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/skills/planBinding.test.ts:33:7
+     31|     expect(() =>
+     32|       registerPlanFromJson({ ...JSON.parse(JSON.stringify(plan)), goal…
+     33|     ).toThrow(/conflict/i)
+       |       ^
+     34|   })
+     35| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/skills/planBinding.test.ts > the plan gates THIS execution > same planId + DIFFERENT input → refused before any run
+AssertionError: expected 'ok' to be 'needs_input' // Object.is equality
+
+Expected: "needs_input"
+Received: "ok"
+
+ ❯ src/skills/planBinding.test.ts:48:24
+     46|     const other = { expression: expr, bindings: { a: 9, x: 9 } }
+     47|     const out = await executeSkill('formula.evaluate', other, { planId…
+     48|     expect(out.status).toBe('needs_input')
+       |                        ^
+     49|     if (out.status === 'needs_input') expect(out.message).toMatch(/inp…
+     50|     expect(out.run).toBeUndefined()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/skills/planBinding.test.ts > the public replay switch no longer bypasses the plan gate > a caller passing replay:true with an unregistered planId is still refused
+AssertionError: expected 'ok' to be 'needs_input' // Object.is equality
+
+Expected: "needs_input"
+Received: "ok"
+
+ ❯ src/skills/planBinding.test.ts:64:24
+     62|   it('a caller passing replay:true with an unregistered planId is stil…
+     63|     const out = await executeSkill('formula.evaluate', input, { planId…
+     64|     expect(out.status).toBe('needs_input')
+       |                        ^
+     65|     expect(out.run).toBeUndefined()
+     66|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 passed (8)
+   Start at  01:47:25
+   Duration  556ms (transform 58ms, setup 0ms, collect 139ms, tests 54ms, environment 0ms, prepare 37ms)
+

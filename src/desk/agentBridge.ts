@@ -115,8 +115,13 @@ export async function runAgentTurn(
   let resume: Record<string, unknown> | null = null
   for (let round = 0; round < 5; round++) {
     const pending: AgentSseEvent[] = []
+    let declaredAiBackend = false
     for await (const e of streamTurn({ sessionId, intent, context, resume })) {
       exec.onEvent?.(e)
+      if (e.type === 'sop_fallback' || (e.type === 'backend' && (e.provider === 'sop' || e.backend === 'sop-deterministic'))) {
+        throw new Error('Agent 未连接真实模型或调用失败；已停止预设 SOP。可明确选择「本地参数指令（非 AI）」进行真实计算。')
+      }
+      if (e.type === 'backend' && e.provider && e.provider !== 'sop' && e.backend && e.backend !== 'sop-deterministic') declaredAiBackend = true
       if (e.type === 'error') throw new Error(e.message ?? 'Agent execution failed')
       // the server recorded an execution failure for this turn — terminal
       if (e.type === 'experiment_failed') {
@@ -126,6 +131,7 @@ export async function runAgentTurn(
         // surfaced to the paper via agentState by the caller's onEvent
       }
       if (e.type === 'require_execution') {
+        if (!declaredAiBackend) throw new Error('本回合缺少真实 Agent 后端声明；未执行任何预设工具操作。')
         if (!e.toolCallId || !e.tool || !['canvas_apply', 'scientific_execute'].includes(e.tool)) throw new Error('Unknown or malformed external tool')
         pending.push(e)
       }

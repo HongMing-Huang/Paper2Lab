@@ -46,6 +46,9 @@ class ExecuteRequest(BaseModel):
     """#32: full PlayPlan JSON (planId/skill/goal + contract) — registered in
     the engine before execution; a bare planId string proves nothing."""
     plan: dict[str, Any] | None = None
+    """S1.1: provenance anchor (SourceAnchor-shaped) recorded on the run spec,
+    so server-side Runs keep their paper origin like browser Runs do."""
+    source: dict[str, Any] | None = None
 
 
 _EXEC_CACHE_LIMIT = 128
@@ -91,13 +94,14 @@ async def _execute_raw(req: ExecuteRequest) -> dict[str, Any]:
     # FC instance freezing that starves the long-lived stdio engine
     if _ONCE_BUNDLE.exists():
         plan_json = json.dumps(req.plan, ensure_ascii=False) if req.plan else ""
+        source_json = json.dumps(req.source, ensure_ascii=False) if req.source else ""
         # FIXED argv layout (matches engine_once exactly — the historical
         # ["", parentRunId] tuple shifted the plan into argv[6] and the
         # parentRunId into never-never land): argv[4]=planId, argv[5]=parent,
-        # argv[6]=plan. Empty strings are falsy in the runner.
+        # argv[6]=plan, argv[7]=source. Empty strings are falsy in the runner.
         proc = await asyncio.create_subprocess_exec(
             "node", str(_ONCE_BUNDLE), req.skill, payload, req.planId or "",
-            req.parentRunId or "", plan_json,
+            req.parentRunId or "", plan_json, source_json,
             cwd=str(REPO_ROOT),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -125,6 +129,7 @@ async def _execute_raw(req: ExecuteRequest) -> dict[str, Any]:
             planId=req.planId,
             parentRunId=req.parentRunId,
             **({"plan": req.plan} if req.plan else {}),
+            **({"source": req.source} if req.source else {}),
         )
     except TimeoutError:
         raise HTTPException(status_code=504, detail="engine execution timed out") from None

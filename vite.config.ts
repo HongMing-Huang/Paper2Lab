@@ -17,8 +17,15 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    // Docling ingestion backend (server/main.py)
-    proxy: { '/api': 'http://127.0.0.1:8787' },
+    // J1.2: the Node backend serves /api/v1/* (science + research); everything
+    // else under /api stays on the Docling ingestion backend (server/main.py).
+    // Vite matches the longest prefix first.
+    proxy: {
+      '/api/v1': `http://127.0.0.1:${process.env.PAPER2LAB_NODE_PORT ?? '8790'}`,
+      '/api': `http://127.0.0.1:${process.env.PAPER2LAB_API_PORT ?? '8787'}`,
+    },
   },
   build: { target: 'es2022' },
+  // default dep scan crawls every **/*.html under root, research archive included
+  optimizeDeps: { entries: ['index.html'] },
 })

@@ -1,0 +1,20 @@
+[scene] webgl: WebGL 2.0 (OpenGL ES 3.0 Chromium)
+[scene] tubes: 96, geometry run: kakeya-geometry-0.0625-0.00
+[scene] readPixels: mean=119.4 std=17.1
+[scene] packing=1 geometry run: kakeya-geometry-0.0625-1.00
+[scene] screenshots: 135086B vs 90196B identical=false
+[scene] drag write-back: packing → 0.8
+[product] Paper Mode loaded
+[product] chips before: ["δ2^−4.00","packing0.00","N96"]
+[product] observation before: OBSERVATIONCALCULATED有限尺度（res³=48³ 体素，δ=0.0625）：|⋃T| = 0.6149，Σ|T| = 1.2444，重叠率 
+[product] real 3D canvas screenshot: 20765B
+[product] element at drag point: {"tag":"CANVAS","inViewport":true} viewport={"w":1440,"h":900}
+[product] chips after: ["δ2^−4.00","packing0.60","N96"]
+[product] observation after: OBSERVATIONCALCULATED有限尺度（res³=48³ 体素，δ=0.0625）：|⋃T| = 0.4904，Σ|T| = 1.2613，重叠率 
+[product] node title: 在管上上下拖动 = 改变 packing；双击（实验纸）= Microscope
+[product] cpp runs imported: 63 (kakeya-cpp-d4-p0-n64 …)
+[product] cpp button: CALCULATED · C++ 高规模已载入 ✓
+[product] chart caption: 4 数据点 · 实线=本页 Worker 实时扫描（已暂停——点左侧按钮按需运行）；朱砂点=C++ 高规模预计算（res≤1024³≈10.
+[product] console: 0 errors
+
+PASS: scene evidence + real product path (pixels, drag write-back, CALCULATED observation)

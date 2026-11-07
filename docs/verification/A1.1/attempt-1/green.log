@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ✓ src/skills/toolPort.test.ts (9 tests) 54ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  03:12:38
+   Duration  500ms (transform 61ms, setup 0ms, collect 147ms, tests 54ms, environment 0ms, prepare 35ms)
+

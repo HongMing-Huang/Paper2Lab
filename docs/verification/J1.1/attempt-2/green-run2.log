@@ -1,0 +1,6 @@
+..........                                                               [100%]
+============================= slowest 3 durations ==============================
+2.24s call     test_jobs_j11.py::TestWorkerConsumes::test_timeout_really_terminates_the_conversion
+0.66s call     test_jobs_j11.py::TestWorkerConsumes::test_api_only_queues_and_a_separate_worker_process_consumes
+0.21s call     test_jobs_j11.py::TestSupersedeAndFallback::test_a_superseded_queued_task_is_cancelled_and_never_parsed
+10 passed in 6.42s

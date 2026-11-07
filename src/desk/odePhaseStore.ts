@@ -147,7 +147,10 @@ export class OdePhaseStore {
       skill: 'ode.phase',
       goal: `从论文初值 (${init.initial[0]}, ${init.initial[1]}) 出发积分论文方程，观察轨迹/周期随初值的变化`,
       metrics: ['trajectory', 'period0'],
-      inputs: { states: init.states, rhs: init.rhs, tSpan: init.tSpan ?? [0, 20] },
+      // S1.3: the initial state is the manipulable (drags re-execute under
+      // this same plan); the invariant equations/tSpan are bound by N1's
+      // model revision, so the seed stays a family contract here
+      inputs: {},
     }))
     this.experiments.set(id, ex)
     void this.commit(id, [...ex.initial])

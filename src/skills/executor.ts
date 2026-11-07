@@ -5,17 +5,17 @@
 // (finite numbers, required fields) and returns a uniform outcome. Skills
 // that exist in the registry but are not wired here answer `unsupported`.
 import { compile, type MathJsonExpression } from '@cortex-js/compute-engine'
-import { executeSpec, getExperimentRun, listExperimentRuns, ENGINES, type ExperimentRun } from '../experiments/protocol'
+import { executeSpec, getExperimentRun, listExperimentRuns, ENGINES, ExperimentExecutionError, type ExperimentRun, type OutputValidator } from '../experiments/protocol'
 import { compareRuns, type RunComparison } from '../experiments/runRepository'
-import { getSkill, schemaError } from './registry'
+import { getSkill, schemaError, type ScientificSkill } from './registry'
 import { fibonacciDirections } from '../kakeya/directions'
-import { makeTubes, type Tube3 } from '../kakeya/tubes'
+import { makeTubes, applyOffsets, type Offset3, type Tube3 } from '../kakeya/tubes'
 import { computeVoxelCoverage, type VoxelResult } from '../kakeya/voxels3d'
 import { perronTree } from '../kakeya/perron'
 import { isWorkerAvailable, measureVoxelCover } from '../workers/voxelClient'
 import { analyzeFormula } from '../formula/analyze'
 import { getEngine } from '../formula/engine'
-import { getPlan, planCoversSkill } from './playPlan'
+import { getPlan, hasPlanCovering, planCoversInput, planCoversSkill } from './playPlan'
 import { compileFormula } from '../formula/compile'
 
 /** the Kakeya family seed pinned across UI cells and C++ precompute */
@@ -37,14 +37,23 @@ export type SkillOutcome<T = unknown> =
 export interface ExecuteOptions {
   /** PlayPlan id — formal numeric skills refuse to run without one */
   planId?: string
-  /** set when re-executing an already-planned historical run (replay) */
+  /** internal only: the fork/replay materialisation paths re-execute an
+   *  ALREADY-GOVERNED run under this executor's own authority — public entry
+   *  points cannot set it to dodge the plan gate (S1.3) */
   replay?: boolean
   parentRunId?: string
   /** provenance anchor stored on the run spec (Docling source) */
   source?: unknown
+  /** set by executeSkill from the registered output schema; runners hand it to executeSpec */
+  validateOutput?: OutputValidator
 }
 
 type Input = Record<string, unknown>
+
+/** a skill's registered output schema as the check executeSpec runs before stamping a result */
+function outputGate(skill: ScientificSkill): OutputValidator {
+  return (result) => schemaError(skill.outputSchema, result, `${skill.name} result`)
+}
 
 // ---- formula runtime (Cortex → JS) ----------------------------------------
 
@@ -66,7 +75,7 @@ function compileExpr(expression: MathJsonExpression) {
   return compiled
 }
 
-async function runFormulaEvaluate(input: Input, opts: ExecuteOptions = {}): Promise<ExperimentRun<{ value: number }>> {
+async function runFormulaEvaluate(input: Input, opts: ExecuteOptions): Promise<ExperimentRun<{ value: number }>> {
   const compiled = compileExpr(input.expression as MathJsonExpression)
   return executeSpec(
     {
@@ -83,6 +92,7 @@ async function runFormulaEvaluate(input: Input, opts: ExecuteOptions = {}): Prom
       if (!Number.isFinite(value)) throw new Error(`Formula produced a non-finite value: ${String(raw)}`)
       return { value }
     },
+    opts,
   )
 }
 
@@ -101,7 +111,10 @@ async function runFormulaPlot(input: Input, opts: ExecuteOptions): Promise<Exper
       kind: 'formula.curve',
       params: Object.fromEntries(parameters.map((p) => [p, Number(values[p] ?? 1)])),
       seed: 0,
-      model: { expression: input.expression, independent, range: [x0, x1], samples, parameters },
+      // values (the FULL binding map incl. the independent's seed) ride in the
+      // model: spec.params only carries the declared parameters, so a chained
+      // replay (inputFromRun) would otherwise lose e.g. x's seed value
+      model: { expression: input.expression, independent, range: [x0, x1], samples, parameters, values: { ...values } },
       source: opts.source,
     },
     ENGINES.cortexJs,
@@ -122,14 +135,14 @@ async function runFormulaPlot(input: Input, opts: ExecuteOptions): Promise<Exper
       }
       return { points, peak, integral }
     },
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
 // ---- kakeya runtime (same kernels the worker uses) -------------------------
 
-function tubesFor(deltaExp: number, nTubes: number, packing: number): Tube3[] {
-  return makeTubes(fibonacciDirections(nTubes), 2 ** -deltaExp, packing, KAKEYA_SEED)
+function tubesFor(deltaExp: number, nTubes: number, packing: number, length = 1): Tube3[] {
+  return makeTubes(fibonacciDirections(nTubes), 2 ** -deltaExp, packing, KAKEYA_SEED, length)
 }
 
 async function measureVoxels(
@@ -169,7 +182,7 @@ async function runKakeyaGenerate(input: Input, opts: ExecuteOptions): Promise<Ex
     },
     ENGINES.kakeyaWorker,
     () => tubes,
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
@@ -178,19 +191,27 @@ async function runKakeyaMeasure(input: Input, opts: ExecuteOptions): Promise<Exp
   const nTubes = Number(input.nTubes)
   const packing = Number(input.packing)
   const res = typeof input.res === 'number' ? Number(input.res) : 48
-  const tubes = tubesFor(deltaExp, nTubes, packing)
+  // CLI-149: the playable room may shorten the family (a unit-length capsule
+  // cannot fit every direction inside [0,1]³); default 1 keeps the classic
+  // experiment byte-identical. length is recorded in the run lineage.
+  const length = typeof input.length === 'number' && Number.isFinite(input.length) && input.length > 0 && input.length <= 1 ? Number(input.length) : 1
+  // CLI-149: optional per-tube cluster offsets — directions, lengths and radii
+  // stay frozen; a capsule leaving the scoring domain [0,1]³ throws BEFORE any
+  // run exists (an invalid layout is refused, never measured smaller)
+  const offsets = Array.isArray(input.offsets) ? (input.offsets as Offset3[]) : undefined
+  const tubes = applyOffsets(tubesFor(deltaExp, nTubes, packing, length), offsets)
   return executeSpec(
     {
       kind: 'kakeya.voxel',
       params: { deltaExp, packing, nTubes },
       seed: KAKEYA_SEED,
       res,
-      model: { deltaExp, packing, nTubes, res },
+      model: { deltaExp, packing, nTubes, res, ...(length !== 1 ? { length } : {}), ...(offsets ? { offsets } : {}) },
       source: opts.source,
     },
     ENGINES.kakeyaWorker,
     () => measureVoxels(tubes, res),
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
@@ -226,13 +247,14 @@ async function runKakeyaSweep(input: Input, opts: ExecuteOptions): Promise<Exper
             : param === 'packing'
               ? { nTubes, deltaExp, packing: v, res }
               : { nTubes, deltaExp: v, packing, res },
-          { ...opts, parentRunId: opts.parentRunId },
+          // each datapoint is its own kakeya.measure run, held to that skill's contract
+          { ...opts, validateOutput: outputGate(getSkill('kakeya.measure')!) },
         )
         points.push({ x: v, y: (child.result as { occupiedVolume: number }).occupiedVolume, series: 'sweep', runId: child.runId })
       }
       return { points }
     },
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
@@ -255,6 +277,7 @@ async function runGeometry2D(input: Input, opts: ExecuteOptions): Promise<Experi
         seed: 0,
         res: PERRON_RASTER,
         model: { construction, k, alpha, raster: PERRON_RASTER },
+        source: opts.source,
       },
       ENGINES.kakeyaWorker,
       () => {
@@ -268,7 +291,7 @@ async function runGeometry2D(input: Input, opts: ExecuteOptions): Promise<Experi
           triangles: r.triangles.length,
         }
       },
-      { parentRunId: opts.parentRunId },
+      opts,
     )
   }
   // needle-sweep: rasterised union area of a unit needle rotated over [0, π/2]
@@ -312,7 +335,7 @@ async function runGeometry2D(input: Input, opts: ExecuteOptions): Promise<Experi
       // analytic: area swept by a unit needle rotating through π/2 is π/4
       return { grid, sweptArea, analyticArea: Math.PI / 4, ratio: sweptArea / (Math.PI / 4) }
     },
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
@@ -379,7 +402,7 @@ async function runOdeSolve(input: Input, opts: ExecuteOptions): Promise<Experime
       const V1 = delta * last.prey - gamma * Math.log(last.prey) + beta * last.predator - alpha * Math.log(last.predator)
       return { t: points.map((p2) => p2.t), y: { prey: points.map((p2) => p2.prey), predator: points.map((p2) => p2.predator) }, conservedDrift: Math.abs(V1 - V0), conserved0: V0 }
     },
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
@@ -408,6 +431,11 @@ async function runOdePhase(input: Input, opts: ExecuteOptions): Promise<Experime
   const system = (input as { system: { kind?: string; states?: [string, string]; rhs?: Record<string, string>; params?: Record<string, number> } }).system
   if (system?.kind !== 'generic2' || !Array.isArray(system.states) || system.states.length !== 2) {
     throw new Error(`ode.phase: only system.kind='generic2' with exactly 2 states is supported, got ${JSON.stringify(system?.kind ?? null)}`)
+  }
+  // the kernel runs the paper's literal coefficients: accepting a binding it never
+  // reads would record a parameter that had no effect on the numbers
+  if (Object.keys(system.params ?? {}).length > 0) {
+    throw new Error('ode.phase does not bind system.params: use model.solve for symbolic parameters')
   }
   const [s0name, s1name] = system.states
   const rhs0 = compileOdeRhs(String(system.rhs?.[s0name] ?? ''), [s0name, s1name])
@@ -487,7 +515,7 @@ async function runOdePhase(input: Input, opts: ExecuteOptions): Promise<Experime
         maxAbs1,
       }
     },
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
@@ -565,7 +593,13 @@ function compileModelRhs(
     }
     let expr: MathJsonExpression = box.json
     if (Array.isArray(expr) && expr[0] === 'Equal' && expr.length >= 3) expr = expr[2] as MathJsonExpression
-    const compiled = compileFormula(sanitizeSymbols(expr, map))
+    let safe = sanitizeSymbols(expr, map)
+    // a BARE renamed symbol (ẋ = y → "v1") compiles as the subscripted
+    // `v_1`, which no env key binds — the rhs then evaluates to undefined and
+    // the solve "diverges" at the first step. Inside any expression the name
+    // compiles verbatim, so a bare symbol is wrapped as the identical v1 + 0.
+    if (typeof safe === 'string') safe = ['Add', safe, 0] as unknown as MathJsonExpression
+    const compiled = compileFormula(safe)
     if (!compiled) throw new Error(`model: right-hand side of state '${s}' failed to compile to JS: ${latex}`)
     fns[s] = compiled
   }
@@ -625,7 +659,7 @@ async function runModelBuild(input: Input, opts: ExecuteOptions): Promise<Experi
       verifiedAt: states.map((s, i) => ({ state: s, value: verifiedAt[i] })),
       freeParams: [...free].sort(),
     }),
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
@@ -718,7 +752,7 @@ async function runModelSolve(input: Input, opts: ExecuteOptions): Promise<Experi
         steps,
       }
     },
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 }
 
@@ -777,7 +811,7 @@ export async function replayRun(runId: string): Promise<SkillOutcome> {
   if (!skillName) return { status: 'unsupported', skill: run.spec.kind, message: `No compute skill mapped for kind ${run.spec.kind}` }
   const input = inputFromSpec(skillName, run)
   if (!input) return { status: 'error', code: 'invalid_input', message: `Run ${runId} spec lacks the model fields needed for replay` }
-  return executeSkill(skillName, input, { planId: `replay:${runId}`, replay: true })
+  return executeInternal(skillName, input, { planId: `replay:${runId}`, replay: true, source: run.spec.source })
 }
 
 /** merge fork parameterChanges into each skill's REAL nested input shape */
@@ -811,6 +845,18 @@ function applyForkChanges(skillName: string, forkInput: Input, changes: Record<s
       }
       forkInput.system = { ...sys, params }
       forkInput.initialValues = init
+      return
+    }
+    case 'ode.phase': {
+      // only initial states fork: the kernel runs the paper's literal right-hand
+      // sides and never reads system.params, so changing one would relabel an
+      // identical computation as a new experiment
+      const initial = { ...((forkInput.initialState as Record<string, number>) ?? {}) }
+      for (const [k, v] of Object.entries(changes)) {
+        if (!(k in initial)) throw new Error(`fork(ode.phase): unknown initial state '${k}' — known: ${JSON.stringify(Object.keys(initial))}`)
+        initial[k] = v
+      }
+      forkInput.initialState = initial
       return
     }
     case 'model.build':
@@ -890,16 +936,25 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  c
       parameters: model.parameters ?? [],
       independent: model.independent ?? 'x',
       range: model.range ?? [-5, 5],
-      values: Object.fromEntries(Object.entries(run.spec.params).filter(([, v]) => typeof v === 'number')),
+      // the full binding map when the run recorded it; parameter-only runs
+      // (older records) fall back to spec.params
+      values: (model.values as Record<string, number> | undefined)
+        ?? Object.fromEntries(Object.entries(run.spec.params).filter(([, v]) => typeof v === 'number')),
       samples: model.samples,
     }
   }
   if (skillName === 'kakeya.measure' || skillName === 'kakeya.generate') {
+    // review M3: a fork must clone the SAME experiment — the room's family
+    // carries length + per-tube offsets in its lineage; dropping them would
+    // recompute the classic unit family under the new run's name
+    const m = model as { deltaExp?: number; nTubes?: number; packing?: number; res?: number; length?: number; offsets?: unknown } | undefined
     return {
-      deltaExp: model?.deltaExp ?? run.spec.params.deltaExp,
-      nTubes: model?.nTubes ?? run.spec.params.nTubes,
-      packing: model?.packing ?? run.spec.params.packing,
-      res: model?.res ?? run.spec.res,
+      deltaExp: m?.deltaExp ?? run.spec.params.deltaExp,
+      nTubes: m?.nTubes ?? run.spec.params.nTubes,
+      packing: m?.packing ?? run.spec.params.packing,
+      res: m?.res ?? run.spec.res,
+      ...(m?.length !== undefined && m.length !== 1 ? { length: m.length } : {}),
+      ...(Array.isArray(m?.offsets) && (m!.offsets as unknown[]).length > 0 ? { offsets: m!.offsets } : {}),
     }
   }
   if (skillName === 'kakeya.sweep' && model) {
@@ -909,6 +964,8 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  c
       deltaExp: model.deltaExp,
       packing: model.packing,
       res: model.res,
+      // packing/deltaExp sweeps measure a fixed family: without its size they refuse to run
+      ...(model.nTubes !== undefined ? { nTubes: model.nTubes } : {}),
     }
   }
   if (skillName === 'formula.evaluate' && model) {
@@ -923,6 +980,9 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  c
       initialValues: model.initialValues,
       tSpan: model.tSpan,
     }
+  }
+  if (skillName === 'ode.phase' && model) {
+    return { system: model.system, initialState: model.initialState, tSpan: model.tSpan }
   }
   if (skillName === 'model.build') {
     return {
@@ -948,9 +1008,26 @@ function inputFromSpec(skillName: string, run: ExperimentRun): Input | null {  c
 // ---- the single entry -------------------------------------------------------
 
 /** skills whose runs are formal evidence and therefore need a PlayPlan */
-const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve', 'model.build', 'model.solve', 'mujoco.simulate', 'challenge.attempt'])
+const FORMAL_SKILLS = new Set(['formula.plot', 'formula.evaluate', 'kakeya.generate', 'kakeya.measure', 'kakeya.sweep', 'geometry.2d', 'ode.solve', 'ode.phase', 'model.build', 'model.solve', 'mujoco.simulate', 'challenge.attempt'])
 
+/**
+ * The public single door (constitution §0.7). Callers cannot grant themselves
+ * the internal replay exemption: opts.replay is dropped here, so the plan gate
+ * always runs for formal skills.
+ */
 export async function executeSkill<T = unknown>(
+  name: string,
+  input: unknown,
+  opts: ExecuteOptions = {},
+): Promise<SkillOutcome<T>> {
+  const { replay: _callerSupplied, ...publicOpts } = opts
+  return executeInternal<T>(name, input, publicOpts)
+}
+
+/** internal entry: the fork/replay materialisation paths re-execute runs this
+ *  executor itself produced (their plan governance already happened), so they
+ *  may carry replay:true */
+async function executeInternal<T = unknown>(
   name: string,
   input: unknown,
   opts: ExecuteOptions = {},
@@ -969,6 +1046,11 @@ export async function executeSkill<T = unknown>(
   if (skill.name !== name) name = skill.name
   const inputError = schemaError(skill.inputSchema, input, name)
   if (inputError) return { status: 'error', code: 'invalid_input', message: inputError }
+  // run-less skills answer with a payload, checked here against their schema
+  const payloadOutcome = (payload: unknown, run: ExperimentRun<T> | null = null): SkillOutcome<T> => {
+    const invalid = schemaError(skill.outputSchema, payload, `${skill.name} payload`)
+    return invalid ? { status: 'error', code: 'output_invalid', message: invalid, run: run ?? undefined } : { status: 'ok', run, payload }
+  }
   if (FORMAL_SKILLS.has(name) && !opts.replay) {
     // #32: a bare planId string proves nothing — the plan must be REGISTERED
     // (builder/plan-op) and COVER this skill. Env escape hatch is for local
@@ -999,19 +1081,29 @@ export async function executeSkill<T = unknown>(
           message: `PlayPlan '${registered.planId}' (skill ${registered.skill}) does not cover '${name}' — a plan governs its own experiment`,
         }
       }
+      // S1.3: the plan governs THIS input too — same planId with different
+      // inputs must not execute under the reviewed contract
+      if (!planCoversInput(registered, input)) {
+        return {
+          status: 'needs_input',
+          missing: ['plan.inputs'],
+          message: `PlayPlan '${registered.planId}' does not cover this input — the plan governs its registered inputs; submit a plan for this experiment`,
+        }
+      }
     }
   }
+  const gated: ExecuteOptions = { ...opts, validateOutput: outputGate(skill) }
   try {
-    if (name === 'formula.evaluate') return { status: 'ok', run: (await runFormulaEvaluate(input as Input)) as ExperimentRun<T> }
-    if (name === 'formula.plot') return { status: 'ok', run: (await runFormulaPlot(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'kakeya.generate') return { status: 'ok', run: (await runKakeyaGenerate(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'kakeya.measure') return { status: 'ok', run: (await runKakeyaMeasure(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'kakeya.sweep') return { status: 'ok', run: (await runKakeyaSweep(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'geometry.2d') return { status: 'ok', run: (await runGeometry2D(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'ode.solve') return { status: 'ok', run: (await runOdeSolve(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'ode.phase') return { status: 'ok', run: (await runOdePhase(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'model.build') return { status: 'ok', run: (await runModelBuild(input as Input, opts)) as ExperimentRun<T> }
-    if (name === 'model.solve') return { status: 'ok', run: (await runModelSolve(input as Input, opts)) as ExperimentRun<T> }
+    if (name === 'formula.evaluate') return { status: 'ok', run: (await runFormulaEvaluate(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'formula.plot') return { status: 'ok', run: (await runFormulaPlot(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'kakeya.generate') return { status: 'ok', run: (await runKakeyaGenerate(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'kakeya.measure') return { status: 'ok', run: (await runKakeyaMeasure(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'kakeya.sweep') return { status: 'ok', run: (await runKakeyaSweep(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'geometry.2d') return { status: 'ok', run: (await runGeometry2D(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'ode.solve') return { status: 'ok', run: (await runOdeSolve(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'ode.phase') return { status: 'ok', run: (await runOdePhase(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'model.build') return { status: 'ok', run: (await runModelBuild(input as Input, gated)) as ExperimentRun<T> }
+    if (name === 'model.solve') return { status: 'ok', run: (await runModelSolve(input as Input, gated)) as ExperimentRun<T> }
     if (name === 'experiment.fork') {
       const { sourceRunId, parameterChanges = {} } = input as { sourceRunId: string; parameterChanges?: Record<string, number> }
       const source = getExperimentRun(sourceRunId)
@@ -1020,11 +1112,21 @@ export async function executeSkill<T = unknown>(
       if (!skillName) return { status: 'unsupported', skill: source.spec.kind, message: 'Source run kind has no compute skill' }
       const forkInput = inputFromSpec(skillName, source)
       if (!forkInput) return { status: 'error', code: 'invalid_input', message: 'Source run spec cannot be replayed' }
+      // §3.3: even the internal fork replay keeps checking permission — a
+      // compute re-execution needs SOME registered plan governing that skill
+      // (ghost-forking an imported run with no plan on record is refused)
+      if (!hasPlanCovering(skillName)) {
+        return {
+          status: 'needs_input',
+          missing: ['plan'],
+          message: `fork(${skillName}): no registered PlayPlan covers '${skillName}' — register a plan for this experiment before forking`,
+        }
+      }
       // merge parameterChanges into each skill's ACTUAL nested input shape —
       // top-level Object.assign used to silently recompute the unchanged
       // experiment for every non-formula skill (review finding)
       applyForkChanges(skillName, forkInput, parameterChanges)
-      const outcome = await executeSkill(skillName, forkInput, {
+      const outcome = await executeInternal(skillName, forkInput, {
         planId: `fork:${sourceRunId}`,
         replay: true,
         parentRunId: sourceRunId,
@@ -1033,7 +1135,7 @@ export async function executeSkill<T = unknown>(
         source: source.spec.source,
       })
       if (outcome.status === 'ok' && outcome.run) {
-        return { status: 'ok', run: outcome.run as ExperimentRun<T>, payload: { forkRunId: outcome.run.runId } }
+        return payloadOutcome({ forkRunId: outcome.run.runId }, outcome.run as ExperimentRun<T>)
       }
       return outcome as SkillOutcome<T>
     }
@@ -1041,7 +1143,7 @@ export async function executeSkill<T = unknown>(
       const { runA, runB } = input as { runA: string; runB: string }
       try {
         const comparison: RunComparison = compareRuns(runA, runB)
-        return { status: 'ok', run: null, payload: comparison }
+        return payloadOutcome(comparison)
       } catch (err) {
         return { status: 'error', code: 'invalid_input', message: err instanceof Error ? err.message : String(err) }
       }
@@ -1055,7 +1157,7 @@ export async function executeSkill<T = unknown>(
           message: `${name} runs in the backend engine (Node WASM) — use server execution mode / the engine API; the page imports the resulting Runs`,
         }
       }
-      return { status: 'ok', run: (await runner(input as Input, opts)) as ExperimentRun<T> }
+      return { status: 'ok', run: (await runner(input as Input, gated)) as ExperimentRun<T> }
     }
     if (name === 'paper.trace-source') {
       const { anchorId } = input as { anchorId: string }
@@ -1065,12 +1167,12 @@ export async function executeSkill<T = unknown>(
       if (withSource.length === 0) {
         return { status: 'needs_input', missing: ['anchor'], message: `No recorded run carries source anchor ${anchorId}` }
       }
-      return { status: 'ok', run: null, payload: withSource[0].spec.source }
+      return payloadOutcome(withSource[0].spec.source)
     }
     return { status: 'unsupported', skill: name, message: 'No implementation branch' }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     const failedRun = (err as { run?: ExperimentRun }).run
-    return { status: 'error', code: 'execution_failed', message, run: failedRun }
+    return { status: 'error', code: err instanceof ExperimentExecutionError ? err.code : 'execution_failed', message, run: failedRun }
   }
 }

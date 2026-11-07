@@ -46,11 +46,11 @@ describe('agent action registry (AgentActionUtil port)', () => {
     expect(ok.label).toBe('展开实验')
   })
 
-  it('fork_experiment: clamps out-of-range values, rejects empty/unknown params, defaults to selection', async () => {
+  it('fork_experiment: rejects out-of-range values without mutation, defaults valid requests to selection', async () => {
     const h = makeHelpers()
     const clamped = await runAgentAction(h, { type: 'fork_experiment', changes: { a: 99 } })
-    expect(clamped.ok).toBe(true)
-    expect(h.fork('exp-2', { a: 5 })).toBe('fork-of-exp-2') // selection default + clamp to max
+    expect(clamped.ok).toBe(false)
+    expect((await runAgentAction(h, { type: 'fork_experiment', changes: { a: 4 } })).ok).toBe(true)
 
     const empty = await runAgentAction(h, { type: 'fork_experiment', changes: { q: 1 } })
     expect(empty.ok).toBe(false)

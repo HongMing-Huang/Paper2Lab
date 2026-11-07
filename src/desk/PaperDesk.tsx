@@ -27,7 +27,6 @@ import { explorerStore } from './explorerStore'
 import { odePhaseStore } from './odePhaseStore'
 import { listExperimentRuns } from '../experiments/protocol'
 import { planFormulaActions } from '../skills/formulaPlan'
-import { llmConfigFromEnv } from '../skills/llmPlanner'
 import { runAgentTurn, newAgentSessionId, type DeskAgentContext } from './agentBridge'
 import { agentState } from './agentState'
 import { executeFormulaSteps } from '../skills/formulaExecutor'
@@ -48,7 +47,8 @@ function AgentPhaseStrip() {
   else if (p.kind === 'computed') text = `LOCAL COMPUTE → CALCULATED · run …${p.runId.slice(-4)}`
   else if (p.kind === 'error') text = `ERROR · ${p.message.slice(0, 60)}`
   const backendChip = s.backend
-    ? `${s.backend.backend === 'sop-deterministic' ? 'SOP' : `AI ${s.backend.provider}/${s.backend.model ?? '?'}`}${s.backend.aiVerified ? ' ✓已验证' : ' 未验证'}`
+    ? s.backend.backend === 'explicit-local' ? '本地指令 · 非 AI'
+      : `${s.backend.backend === 'sop-deterministic' ? 'SOP · 非 AI' : `AI ${s.backend.provider}/${s.backend.model ?? '?'}`}${s.backend.aiVerified ? ' ✓已验证' : ' 未验证'}`
     : null
   return (
     <div className={`desk-agent-strip st-${p.kind}`}>
@@ -442,7 +442,7 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
     [createForkShape, payload.decision.keyFormula?.id],
   )
 
-  const runAskImpl = useCallback(async () => {
+  const runAskImpl = useCallback(async (mode: 'agent' | 'local') => {
     const q = ask.trim()
     if (!q) return
     // canvas intents first (agent action registry — AgentActionUtil port):
@@ -492,8 +492,9 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           ? payload.decision.binding.equations.map((e) => ({ latex: e.latex, anchorId: e.anchorId }))
           : [],
       current: { deskKind: 'formula', params: { ...src.params }, anchorId: src.spec.anchor.anchorId ?? null },
-      history: listExperimentRuns({ limit: 6 })
-        .filter((r) => r.spec.kind === 'formula.curve' || r.spec.kind === 'formula.preview')
+      history: listExperimentRuns({ limit: Number.MAX_SAFE_INTEGER })
+        .filter((r) => r.spec.kind === 'formula.curve' && r.status === 'resolved' &&
+          (r.spec.source as { docId?: string } | undefined)?.docId === payload.doc.docId)
         .slice(0, 6)
         .map((r) => ({
           runId: r.runId,
@@ -504,7 +505,8 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
           },
         })),
     }
-    agentState.set({ phase: { kind: 'plan', goal: q, skill: 'formula.plot' }, explorerId: firstId, observation: null, plan: null })
+    agentState.set({ phase: { kind: 'plan', goal: q, skill: 'formula.plot' }, explorerId: firstId, observation: null, plan: null, backend: null, fallbackReason: null })
+    if (mode === 'agent') {
     try {
       // Research Orchestrator on the server (AgentScope/Qwen or deterministic
       // SOP) — computation always comes back to THIS browser.
@@ -547,63 +549,36 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
       setAsk('')
       return
     } catch (err) {
-      // Never repeat a partially executed tool sequence as a new local fork.
-      if (!(err instanceof TypeError)) {
-        agentState.set({ phase: { kind: 'error', message: err instanceof Error ? err.message : String(err) } })
-        message(err instanceof Error ? err.message : String(err))
-        return
-      }
-      // server unreachable → deterministic local planner (same action grammar)
-      agentState.reset()
+      // A dropped stream may follow an already applied action: never replay it.
+      const reason = err instanceof Error ? err.message : String(err)
+      agentState.set({ phase: { kind: 'error', message: reason } })
+      message(`Agent 未完成：${reason}。未自动重试或执行本地替代；请先检查已有实验。`)
+      return
+    }
     }
 
-    const cfg = llmConfigFromEnv()
-    const actions = await planFormulaActions(q, paramNames, cfg ? async (qq) =>
-      fetch(`${cfg.endpoint.replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
-        body: JSON.stringify({
-          model: cfg.model,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You convert a question about a formula experiment into structured ops. ' +
-                'Return ONLY a JSON object {"actions":[{op,param,value}]}. ' +
-                'ops fork|set|scale|rerun|compare; ' +
-                `param must be one of ${JSON.stringify(paramNames)}. set.value is absolute, scale.value is a factor.`,
-            },
-            { role: 'user', content: qq },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0,
-        }),
-      })
-        .then((r) => r.json())
-        .then(
-          (d) =>
-            JSON.parse(
-              ((d as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]
-                ?.message?.content ?? 'null'),
-            ) as unknown,
-        )
-        .then((c) => Array.isArray(c) ? c : (c as { actions?: unknown[] })?.actions ?? null)
-    : undefined)
+    // Explicit offline command mode uses the same kernel, never claims AI.
+    const actions = await planFormulaActions(q, paramNames)
     if (!actions) {
-      message('没听懂 — 试试「如果 a 增大一倍会怎样？」「把 b 设为 3」')
+      message('本地指令只支持明确参数操作；请写「a 增大一倍」或「b 设为 3」。条件解释与新模型需要已连接的 Agent。')
       return
     }
     const opNames = { fork: 'experiment.fork', set: 'formula.set', scale: 'formula.scale', rerun: 'formula.plot', compare: 'experiment.compare' }
-    await scientificExecute({ deskKind: 'formula', steps: actions.map((a) => ({ ...a, op: opNames[a.op] })) })
+    const result = await scientificExecute({ deskKind: 'formula', steps: actions.map((a) => ({ ...a, op: opNames[a.op] })) })
     setAsk('')
-    message(`Agent：${actions.map((a) => (a.param ? `${a.op} ${a.param}${a.value ? (a.op === 'scale' ? '×' : '=') + a.value : ''}` : a.op)).join(' → ')}`)
+    message(`本地指令（非 AI）：${result.summary}。曲线与指标来自真实采样计算；不代表论文定理证明。`)
+    agentState.set({ backend: { provider: 'local-command', model: null, backend: 'explicit-local', aiVerified: false } })
   }, [ask, message, payload.decision.keyFormula?.id, payload.doc.title, createForkShape, scientificExecute, canvasApply, agentHelpers])
 
-  const runAsk = useCallback(async () => {
+  const runAsk = useCallback(async (mode: 'agent' | 'local' = 'agent') => {
     if (busy.current) return
     busy.current = true
     setAsking(true)
-    try { await runAskImpl() } catch (err) { message(err instanceof Error ? err.message : String(err)) }
+    try { await runAskImpl(mode) } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err)
+      agentState.set({ phase: { kind: 'error', message: reason } })
+      message(`操作未完成：${reason}`)
+    }
     finally { busy.current = false; setAsking(false) }
   }, [runAskImpl, message])
 
@@ -696,7 +671,28 @@ export function PaperDesk({ payload, onOpenKakeya }: { payload: DeskPayload; onO
               placeholder="问一个实验问题，如：如果 a 增大一倍会怎样？"
             />
             <button type="button" className="desk-btn desk-btn-play" disabled={asking} onClick={() => void runAsk()}>
-              {asking ? '实验执行中' : '运行'}
+              {asking ? '实验执行中' : '询问 Agent'}
+            </button>
+          </div>
+          <div className="desk-ask">
+            <button type="button" className="desk-btn" disabled={asking} onClick={() => void runAsk('local')}>
+              本地参数指令（非 AI）
+            </button>
+            <button type="button" className="desk-btn" onClick={() => {
+              const runs = listExperimentRuns({ limit: Number.MAX_SAFE_INTEGER }).filter((r) =>
+                r.status === 'resolved' && !r.spec.kind.endsWith('.preview') &&
+                (r.spec.source as { docId?: string } | undefined)?.docId === payload.doc.docId,
+              )
+              if (!runs.length) { message('当前论文还没有可保存的正式计算结果'); return }
+              const url = URL.createObjectURL(new Blob([JSON.stringify(runs, null, 2)], { type: 'application/json' }))
+              const link = document.createElement('a')
+              link.href = url
+              link.download = `paper2lab-${payload.doc.docId}-runs.json`
+              link.click()
+              setTimeout(() => URL.revokeObjectURL(url), 1000)
+              message(`已导出 ${runs.length} 个正式 Run（含来源、输入、结果和血缘）；这是本地文件，尚未同步数据库。`)
+            }}>
+              保存实验结果（JSON）
             </button>
           </div>
           {note && <div className="desk-note">{note}</div>}

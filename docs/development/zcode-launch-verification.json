@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-05",
+  "scope": "launch prompt and operating guide; no product implementation or model request",
+  "local_cli": {
+    "executable": "/opt/homebrew/bin/zcode",
+    "version": "0.17.1",
+    "commands_executed": [
+      "zcode --version",
+      "zcode --help"
+    ],
+    "exit_code": 0,
+    "help_confirmed": [
+      "--cwd",
+      "--workflow-mode",
+      "--continue",
+      "--resume",
+      "--mode",
+      "--prompt",
+      "--attach"
+    ],
+    "runtime_task": "NOT_RUN"
+  },
+  "official_references": [
+    "https://github.com/zai-org/ZCode/blob/main/apps/zcode-cli/docs/usage/02-cli-reference.md",
+    "https://github.com/zai-org/ZCode/blob/main/apps/zcode-cli/docs/usage/05-permissions.md",
+    "https://zcode.z.ai/cn/docs/agents",
+    "https://zcode.z.ai/cn/docs/subagents"
+  ],
+  "local_links": {
+    "checked": 34,
+    "missing": []
+  },
+  "review": {
+    "reviewer": "/root/review_launch_prompt",
+    "result": "PASS static review of launch prompt, instructions, single-writer delegation, scope and restart semantics; no model/product execution"
+  },
+  "file_hashes": {
+    "AGENTS.md": "e7ef11f24ab7097959a35ac57950419bfa11a580657b2d170fe4d2c1119b9b2a",
+    "LOOP.md": "c072a59991b23f0a9c464e70aa93bf32baf78678c9357f0fd1733daef65fc07a",
+    "PLAN.md": "5b19bbf309aae17f214554f4cca5dcded9cd78521196ae9bfae2e80e2ffaf026",
+    "README.md": "026436c77fd871145287532bdc99b9635e3c1ae77f019cd9ba5fef7710cec9ce",
+    "DEVELOPMENT_PROMPT.md": "5f3c0a67a4efeb7a0cdc5fc7a70396da3484a0fd6dddfc4096c8e7dd579ca246",
+    "docs/development/zcode-loop.md": "b4e2a563fd37b3ff744c6f0545d22c582ced2846fd520783e39de4f2ded32c30"
+  },
+  "before_codebase_orientation_hashes": {
+    "AGENTS.md": "87df8465aabfc6ab562c3f0a55a4780cf88e1c7f9ee9da50360711a3f80566f7",
+    "LOOP.md": "8cd353568b00e4c69c7d28829d3052dd8daa5f0c515fc0126d1901f192c9ec6f",
+    "PLAN.md": "50e87375978ad9a6795c080b18660b647595a4a6849c8d46c360c2aba4067b83",
+    "README.md": "2cf70993f3e83e0499cc14ad558b79eb26a171f8abe8808c7cea6ebf5bb81015",
+    "DEVELOPMENT_PROMPT.md": "4263eb4381868b0b5ea864a127927f796af0fa58a6aada1b10e0401a0a9fc571",
+    "docs/development/zcode-loop.md": "b08b5e11aaac6765785611afeb5bf0e7448854010187b098f5704785b48932d0"
+  },
+  "orientation_incremental_review": {
+    "reviewer": "/root/map_code_frontend",
+    "result": "PASS static source map / mandatory research reading / phased cleanup / active artifact checks",
+    "evidence": "docs/development/codebase-map-verification.json"
+  },
+  "context_readability_revision_20261106": {
+    "evidence": "docs/development/context-repair-20261106",
+    "note": "AGENTS/prompt/launch guide gained local readability/root checks after prior review; prior hashes retain historical scope; see new reviewer result"
+  }
+}

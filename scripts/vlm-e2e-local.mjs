@@ -41,6 +41,8 @@ const main = async () => {
     await page.locator('button.home-drop').click()
     const chooser = await chooserP
     await chooser.setFiles([SAMPLE])
+    // CLI-151: the study space opens first; full parse → desk is explicit
+    await page.getByTestId('study-full-parse').click()
     await page.waitForSelector('.desk-topbar-meta', { timeout: 120000 })
     const seconds = ((Date.now() - t0) / 1000).toFixed(1)
     console.log(`[vlm] desk appeared in ${seconds}s`)

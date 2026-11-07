@@ -168,7 +168,7 @@ export interface OdeSystem {
   equations: [OdeEquationItem, OdeEquationItem]
 }
 
-const ODE_LHS = [
+export const ODE_LHS = [
   /\\dot\s*\{\s*([a-zA-Z])\s*\}\s*=/,
   /\\frac\s*\{\s*d\s*([a-zA-Z])\s*\}\s*\{\s*d[a-zA-Z]+\s*\}\s*=/,
   /([a-zA-Z])'\s*=/,

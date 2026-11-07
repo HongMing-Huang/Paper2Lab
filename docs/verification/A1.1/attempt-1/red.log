@@ -1,0 +1,27 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/skills/toolPort.test.ts [ src/skills/toolPort.test.ts ]
+Error: Cannot find module './toolPort' imported from '/Users/c14h14n3/Desktop/Paper2Lab/src/skills/toolPort.test.ts'
+ ❯ src/skills/toolPort.test.ts:8:1
+      6| import { executeSkill } from './executor'
+      7| import { buildPlan } from './playPlan'
+      8| import { toolCatalog, invokeScientificTool } from './toolPort'
+       | ^
+      9| import { SKILL_REGISTRY } from './registry'
+     10| 
+
+Caused by: Error: Failed to load url ./toolPort (resolved id: ./toolPort) in /Users/c14h14n3/Desktop/Paper2Lab/src/skills/toolPort.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/.pnpm/vite@7.3.6_@types+node@26.6.3_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:22739:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  03:11:44
+   Duration  551ms (transform 63ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 35ms)
+

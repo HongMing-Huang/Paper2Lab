@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-06",
+  "scope": "product experience and runtime design revision, no production migration",
+  "user_decision": "direct DSH TS SDK / pnpm / Node-TS default; legacy consumers only after quality replacement",
+  "reviewer": "/root/python_dependency_audit",
+  "review": "PASS static contract review; no model/product execution",
+  "plan_checks": {
+    "work_packages": 21,
+    "steps": 63,
+    "dag": "acyclic",
+    "missing_local_targets": []
+  },
+  "node_context": {
+    "checked": 55,
+    "readable": 55,
+    "errors": []
+  },
+  "desktop_handoff": "/Users/c14h14n3/Desktop/Paper2Lab/docs/development/2026-11-06-product-runtime-change",
+  "active_desktop_state_preserved": true,
+  "file_hashes": {
+    "PLAN.md": "19b6009f5fff9cab2ce356514137b3834b5a2eb926f6a03d5ddbad5afadf68bf",
+    "AGENTS.md": "82ee81ca91ac5ff330798e10a8bfcc3ce834127d4c9e07fc6e7e69c8f825856b",
+    "LOOP.md": "1ab0147e70c889035cd9f1074c12a67fcfc8f6639a07c780d799de3084428f5f",
+    "DEVELOPMENT_PROMPT.md": "134f191e06bda7798cb8cb1daa2513a4dc92ba76db2343d4eb3a076c34347965",
+    "README.md": "a47ae9ddc7309f2ab6b5e53b1383d5e139775b0ff92cec0654ad34e54cecd9fc",
+    "docs/development/product-experience-and-runtime.md": "59566fa033c0a90e6c0dfa766a8f6c234d47e3974dc6f56a0ffd2f7633619d04"
+  }
+}

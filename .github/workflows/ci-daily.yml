@@ -14,6 +14,39 @@ jobs:
   full-backend:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # J1.CI: the daily FULL run gets the same real DB/queue services as the
+    # per-PR backend job, and REQUIRES them — a silent skip-wave here is the
+    # exact failure mode (PR #38) this backstop exists to catch
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: paper2lab_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # cred-free URL: the password travels via PGPASSWORD (libpq), never
+      # inside a URL that other processes/stack traces could log
+      PAPER2LAB_TEST_DATABASE: postgresql://postgres@localhost:5432/paper2lab_ci_test
+      PGPASSWORD: postgres
+      PAPER2LAB_TEST_REDIS_URL: redis://127.0.0.1:6379/15
+      PAPER2LAB_TEST_REQUIRE_SERVICES: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

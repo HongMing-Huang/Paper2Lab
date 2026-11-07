@@ -1,0 +1,14 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ✓ src/experiments/protocol.test.ts (24 tests) 5ms
+ ✓ src/experiments/artifacts.test.ts (14 tests) 12ms
+ ✓ src/skills/outputContract.test.ts (25 tests) 293ms
+ ✓ src/paper/kakeyaGraph.test.ts (2 tests) 982ms
+   ✓ kakeya.sweep on-demand (#23) > off → resolves to [] with no grid points; on → full SWEEP_NS series; off again → []  821ms
+
+ Test Files  4 passed (4)
+      Tests  65 passed (65)
+   Start at  01:35:04
+   Duration  1.47s (transform 155ms, setup 0ms, collect 353ms, tests 1.29s, environment 0ms, prepare 188ms)
+

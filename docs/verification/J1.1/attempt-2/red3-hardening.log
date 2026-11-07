@@ -1,0 +1,40 @@
+........FF..                                                             [100%]
+=================================== FAILURES ===================================
+_ TestSupersedeAndFallback.test_a_finished_but_never_polled_task_is_not_relabelled_superseded _
+
+self = <test_jobs_j11.TestSupersedeAndFallback object at 0x12de1f320>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-111/test_a_finished_but_never_poll0')
+
+    def test_a_finished_but_never_polled_task_is_not_relabelled_superseded(self, env):
+        # the worker finished the first task while nobody polled it (the API's
+        # in-memory status is stale "queued"); a same-tab retry must read the
+        # LEDGER, not the stale status — a completed parse stays done
+        with TestClient(app) as client:
+            first = _upload(client, "finished.pdf", client_id="tab-2")
+            assert _run_worker() == 0
+            _upload(client, "retry.pdf", client_id="tab-2")
+>           assert client.get(f"/api/ingest/{first['jobId']}").json()["status"] == "done"
+E           AssertionError: assert 'superseded' == 'done'
+E             
+E             - done
+E             + superseded
+
+server/tests/test_jobs_j11.py:300: AssertionError
+_____ TestSupersedeAndFallback.test_queue_depth_counts_ledger_tasks_ahead ______
+
+self = <test_jobs_j11.TestSupersedeAndFallback object at 0x12de1f6b0>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-111/test_queue_depth_counts_ledger0')
+
+    def test_queue_depth_counts_ledger_tasks_ahead(self, env):
+        with TestClient(app) as client:
+            first = _upload(client, "a.pdf", client_id="tab-a")
+            second = _upload(client, "b.pdf", client_id="tab-b")
+            # the UI shows "前面还有 queueDepth-1 个任务" — self + tasks ahead
+>           assert client.get(f"/api/ingest/{first['jobId']}").json()["queueDepth"] == 1
+E           assert 3 == 1
+
+server/tests/test_jobs_j11.py:308: AssertionError
+=========================== short test summary info ============================
+FAILED server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_a_finished_but_never_polled_task_is_not_relabelled_superseded
+FAILED server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_queue_depth_counts_ledger_tasks_ahead
+2 failed, 10 passed, 1 deselected in 8.37s

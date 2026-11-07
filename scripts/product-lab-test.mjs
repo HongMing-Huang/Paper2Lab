@@ -72,6 +72,9 @@ async function main() {
     await page.locator('button.home-drop').click()
     const chooser = await chooserP
     await chooser.setFiles([SAMPLE])
+    // CLI-151: a dropped PDF opens the paper study space first; the full
+    // parse → experiment desk is its explicit action
+    await page.getByTestId('study-full-parse').click()
     // same REAL-parse reality as the formula test: on the shared CI runner a
     // 2-page PDF takes minutes (CPU OCR+layout); locally ~45s warm. See
     // product-formula-test.mjs — 480s keeps CI honest without flaking.
@@ -136,6 +139,7 @@ async function main() {
         await kPage.locator('button.home-drop').click()
         const chooser2 = await chooserP2
         await chooser2.setFiles([KAKEYA_PDF])
+        await kPage.getByTestId('study-full-parse').click()
         await kPage.waitForSelector('.lab-frame', { timeout: 480000 })
         await kPage.locator('[data-testid="grow-3d"]').click()
         await kPage.waitForTimeout(600)

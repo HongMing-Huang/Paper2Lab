@@ -1,0 +1,96 @@
+....F..F.......                                                          [100%]
+=================================== FAILURES ===================================
+__ TestWorkerConsumes.test_a_failed_artifact_write_leaves_no_orphan_document ___
+
+self = <test_jobs_j11.TestWorkerConsumes object at 0x12c485580>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-123/test_a_failed_artifact_write_l0')
+
+    def test_a_failed_artifact_write_leaves_no_orphan_document(self, env):
+        # review finding: document, parse artifact and task settlement are ONE
+        # transaction — a parse artifact that cannot be written (here: an FK
+        # to a paper that does not exist) must roll the document back too
+        import redis as _redis
+    
+        from server import jobs as jobs_mod
+    
+        with db.connect(TEST_DB_URL) as conn:
+            record = db.store_paper_upload(
+                conn, workspace="default", filename="orphan.pdf", content=PDF + b"orphan", storage_root=env
+            )
+            task_id = jobs_mod.create_task(
+                conn,
+                kind="parse",
+                payload={
+                    "jobId": "planted",
+                    "title": "orphan",
+                    "mode": "docling",
+                    "sha256": record["sha256"],
+                    "paperId": "no-such-paper",
+                    "versionId": "no-such-version",
+                },
+            )
+            jobs_mod.enqueue_task(conn, _redis.Redis.from_url(TEST_REDIS_URL), task_id)
+        assert _run_worker() == 0
+        ledger = _ledger(task_id)
+        assert ledger["task"]["status"] == "failed"
+        # one label for the whole commit unit (document + artifact + settlement
+        # are one transaction); the underlying cause is kept verbatim
+        error = ledger["task"]["result"]["error"]
+>       assert error.startswith("result commit failed") and "parse_artifacts" in error
+E       assert (False)
+E        +  where False = <built-in method startswith of str object at 0x12c6317d0>('result commit failed')
+E        +    where <built-in method startswith of str object at 0x12c6317d0> = 'document persist failed: insert or update on table "parse_artifacts" violates foreign key constraint "parse_artifacts_paper_id_fkey"\nDETAIL:  Key (paper_id)=(no-such-paper) is not present in table "papers".'.startswith
+
+server/tests/test_jobs_j11.py:261: AssertionError
+_ TestRebuildAndRestart.test_one_bad_queue_record_cannot_abort_the_reconcile_pass _
+
+self = <test_jobs_j11.TestRebuildAndRestart object at 0x12c4859a0>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-123/test_one_bad_queue_record_cann0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c6614f0>
+
+    def test_one_bad_queue_record_cannot_abort_the_reconcile_pass(self, env, monkeypatch):
+        # review finding (reproduced on RQ 3.0.0): for ~60s after an abandoned
+        # job's execution record expires, deleting the stale job raises
+        # "Execution … not found in Redis" — the unguarded reconcile crashed
+        # worker startup and dropped every other task of the pass. The RQ
+        # timing is injected deterministically here.
+        import redis as _redis
+    
+        from server import jobs as jobs_mod
+    
+        with db.connect(TEST_DB_URL) as conn:
+            bad = jobs_mod.create_task(conn, kind="parse", payload={"title": "bad"})
+            good = jobs_mod.create_task(conn, kind="parse", payload={"title": "good"})
+        real_enqueue = jobs_mod.enqueue_task
+    
+        def flaky_enqueue(conn, r, task_id, *, requeue=False):
+            if task_id == bad:
+                raise ValueError(f"Execution {jobs_mod.rq_job_id(task_id)}:x not found in Redis")
+            return real_enqueue(conn, r, task_id, requeue=requeue)
+    
+        monkeypatch.setattr(jobs_mod, "enqueue_task", flaky_enqueue)
+        with db.connect(TEST_DB_URL) as conn:
+>           requeued = jobs_mod.reconcile_queued(conn, _redis.Redis.from_url(TEST_REDIS_URL))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_jobs_j11.py:320: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/jobs.py:133: in reconcile_queued
+    return [task_id for task_id in task_ids if enqueue_task(conn, r, task_id, requeue=True)]
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+conn = <psycopg.Connection [BAD] at 0x12c661490>
+r = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.Connection(host=127.0.0.1,port=6379,db=15,maint...d_timeout=10, endpoint_type=None),orig_host_address=127.0.0.1,orig_socket_timeout=5,orig_socket_connect_timeout=5)>)>)>
+task_id = 242, requeue = True
+
+    def flaky_enqueue(conn, r, task_id, *, requeue=False):
+        if task_id == bad:
+>           raise ValueError(f"Execution {jobs_mod.rq_job_id(task_id)}:x not found in Redis")
+E           ValueError: Execution p2l-parse-242:x not found in Redis
+
+server/tests/test_jobs_j11.py:315: ValueError
+=========================== short test summary info ============================
+FAILED server/tests/test_jobs_j11.py::TestWorkerConsumes::test_a_failed_artifact_write_leaves_no_orphan_document
+FAILED server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_one_bad_queue_record_cannot_abort_the_reconcile_pass
+2 failed, 13 passed, 1 deselected in 8.73s

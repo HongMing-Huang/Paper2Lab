@@ -9,7 +9,9 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 const docCache = new Map<string, Promise<PDFDocumentProxy>>()
-function getDoc(url: string) {
+/** one shared PDF.js document per URL (the paper-study text layer reuses it,
+ *  so a paper is fetched and parsed by PDF.js once) */
+export function getPdfDocument(url: string) {
   let p = docCache.get(url)
   if (!p) {
     p = pdfjsLib.getDocument({ url }).promise
@@ -17,6 +19,7 @@ function getDoc(url: string) {
   }
   return p
 }
+const getDoc = getPdfDocument
 
 export function usePdfPageSize(url: string, page: number) {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null)
@@ -44,12 +47,15 @@ export function PdfCanvas({
   page,
   width,
   highlight,
+  onRendered,
 }: {
   url: string
   page: number
   width: number
   /** page-relative bbox (fractions) to flash-highlight */
   highlight?: { x: number; y: number; w: number; h: number } | null
+  /** fires once this page is painted (render-span end for the study view) */
+  onRendered?: (page: number) => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [height, setHeight] = useState(0)
@@ -75,6 +81,7 @@ export function PdfCanvas({
         const ctx = canvas.getContext('2d')!
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
         await p.render({ canvasContext: ctx, viewport }).promise
+        if (!cancelled) onRendered?.(page)
       } catch (err) {
         console.error('[PdfCanvas] render', err)
       }
@@ -82,6 +89,8 @@ export function PdfCanvas({
     return () => {
       cancelled = true
     }
+    // onRendered is a notification only — re-rendering on its identity would loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, page, width])
 
   return (

@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-05",
+  "scope": "static orientation and prompt refinement only; no product edits/installs/runs",
+  "source_agents": [
+    "map_code_frontend",
+    "map_code_backend"
+  ],
+  "incremental_review": {
+    "reviewer": "/root/map_code_frontend",
+    "result": "PASS independent read-only merged map and prompt review; execution branches checked against source; not runtime acceptance"
+  },
+  "checks": {
+    "local_links": 54,
+    "missing": [],
+    "work_packages": 21,
+    "steps": 63,
+    "dag": "acyclic"
+  },
+  "file_hashes": {
+    "DEVELOPMENT_PROMPT.md": "5f3c0a67a4efeb7a0cdc5fc7a70396da3484a0fd6dddfc4096c8e7dd579ca246",
+    "docs/development/codebase-map.md": "c19a6418d9dbaaa4eaa0d006a94d3ed958112df381d5c422bb658d5402fdf774",
+    "docs/development/zcode-loop.md": "b4e2a563fd37b3ff744c6f0545d22c582ced2846fd520783e39de4f2ded32c30",
+    "AGENTS.md": "e7ef11f24ab7097959a35ac57950419bfa11a580657b2d170fe4d2c1119b9b2a",
+    "LOOP.md": "c072a59991b23f0a9c464e70aa93bf32baf78678c9357f0fd1733daef65fc07a",
+    "PLAN.md": "5b19bbf309aae17f214554f4cca5dcded9cd78521196ae9bfae2e80e2ffaf026",
+    "README.md": "026436c77fd871145287532bdc99b9635e3c1ae77f019cd9ba5fef7710cec9ce"
+  },
+  "context_readability_revision_20261106": {
+    "evidence": "docs/development/context-repair-20261106",
+    "note": "AGENTS/prompt/launch guide gained local readability/root checks after prior review; prior hashes retain historical scope; see new reviewer result"
+  }
+}

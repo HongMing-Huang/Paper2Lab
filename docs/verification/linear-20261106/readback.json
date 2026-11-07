@@ -1,0 +1,2507 @@
+{
+  "rows": [
+    {
+      "taskKey": "B0",
+      "id": "CLI-61",
+      "title": "[B0] 基线与工具链",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-144",
+            "title": "[J1.CI] 数据库/队列测试隔离与CI必需服务"
+          },
+          {
+            "id": "CLI-94",
+            "title": "[D1.1] 领域数据与导入：为现有上传消费者接内容hash、Paper/Version与workspace索引，实际数据库往返与同文件去重；不提前建全部未来表"
+          },
+          {
+            "id": "CLI-65",
+            "title": "[D1] 领域数据与导入"
+          },
+          {
+            "id": "CLI-88",
+            "title": "[A1.1] 统一工具端口：从现有Registry导出科学工具合同，保留原API调用；同参数经工具端口与原executor的结果语义一致"
+          },
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          },
+          {
+            "id": "CLI-85",
+            "title": "[S1.1] 科学执行合同：用现有真实求值/fork复现source与parent丢失，最小修正透传；验证数值不变、来源和血缘一致"
+          },
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          }
+        ],
+        "blockedBy": [],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-61/b0-基线与工具链"
+    },
+    {
+      "taskKey": "B0.1",
+      "id": "CLI-82",
+      "title": "[B0.1] 基线与工具链：按代码地图核对HEAD/脏文件、锁/工具、PDF与Agent/Run/UI链、源码/once/bundle选择，列受保护修改；完成",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-61",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-83",
+            "title": "[B0.2] 基线与工具链：冻结锁安装Node依赖；先核对收集范围，排除研究归档的上游测试且保留全部现有产品测试，再跑vitest/build记录退出码/旧失"
+          }
+        ],
+        "blockedBy": [],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-82/b01-基线与工具链按代码地图核对head脏文件锁工具pdf与agentrunui链源码oncebundle选择列受保护修改完成"
+    },
+    {
+      "taskKey": "B0.2",
+      "id": "CLI-83",
+      "title": "[B0.2] 基线与工具链：冻结锁安装Node依赖；先核对收集范围，排除研究归档的上游测试且保留全部现有产品测试，再跑vitest/build记录退出码/旧失",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-61",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-84",
+            "title": "[B0.3] 基线与工具链：历史Python消费者基线保留；新增Node/DSH及CI版本在J1.CI/J1.2校准，固定相关测试/工件/服务与供应商存在性。"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-82",
+            "title": "[B0.1] 基线与工具链：按代码地图核对HEAD/脏文件、锁/工具、PDF与Agent/Run/UI链、源码/once/bundle选择，列受保护修改；完成"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-83/b02-基线与工具链冻结锁安装node依赖先核对收集范围排除研究归档的上游测试且保留全部现有产品测试再跑vitestbuild记录退出码旧失"
+    },
+    {
+      "taskKey": "B0.3",
+      "id": "CLI-84",
+      "title": "[B0.3] 基线与工具链：历史Python消费者基线保留；新增Node/DSH及CI版本在J1.CI/J1.2校准，固定相关测试/工件/服务与供应商存在性。",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-61",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-83",
+            "title": "[B0.2] 基线与工具链：冻结锁安装Node依赖；先核对收集范围，排除研究归档的上游测试且保留全部现有产品测试，再跑vitest/build记录退出码/旧失"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-84/b03-基线与工具链历史python消费者基线保留新增nodedsh及ci版本在j1cij12校准固定相关测试工件服务与供应商存在性"
+    },
+    {
+      "taskKey": "S1",
+      "id": "CLI-62",
+      "title": "[S1] 科学执行合同",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-117",
+            "title": "[W1.1] MathWorld Host/ABI：明确World/Action/Goal/事件DTO、Host与guest写权限，先用已有科学Skill接一个事务消费者，不等SPD"
+          },
+          {
+            "id": "CLI-73",
+            "title": "[W1] MathWorld Host/ABI"
+          },
+          {
+            "id": "CLI-105",
+            "title": "[N1.1] 数学模型/能力/质量：扩展paperSpec候选工具合同，支持域内未预装专属模型的PDF可由解析或已有工具产候选，不要求A0/A2先完成；方程/角色/条"
+          },
+          {
+            "id": "CLI-69",
+            "title": "[N1] 数学模型/能力/质量"
+          },
+          {
+            "id": "CLI-100",
+            "title": "[J1.1] 持久执行与恢复：用一个真实解析任务落task/attempt/outbox；实际worker消费，queued状态可重启重建；先不上全部队列"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          },
+          {
+            "id": "CLI-91",
+            "title": "[A0.1] 早期真实Agent回合：消除全局摘要，session串行锁随生命周期释放；两session交错执行不串结果，异常后锁可再次取得"
+          },
+          {
+            "id": "CLI-64",
+            "title": "[A0] 早期真实Agent回合"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-61",
+            "title": "[B0] 基线与工具链"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-62/s1-科学执行合同"
+    },
+    {
+      "taskKey": "S1.1",
+      "id": "CLI-85",
+      "title": "[S1.1] 科学执行合同：用现有真实求值/fork复现source与parent丢失，最小修正透传；验证数值不变、来源和血缘一致",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-62",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-86",
+            "title": "[S1.2] 科学执行合同：校准registry的runKind/nullable字段与JSON/二进制制品边界；验证NaN TypedArray拒绝、返回后"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-61",
+            "title": "[B0] 基线与工具链"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-85/s11-科学执行合同用现有真实求值fork复现source与parent丢失最小修正透传验证数值不变来源和血缘一致"
+    },
+    {
+      "taskKey": "S1.2",
+      "id": "CLI-86",
+      "title": "[S1.2] 科学执行合同：校准registry的runKind/nullable字段与JSON/二进制制品边界；验证NaN TypedArray拒绝、返回后",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-62",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-87",
+            "title": "[S1.3] 科学执行合同：绑定当前Spec的规范输入、source/parent和预算；拒同plan异输入、公共replay绕门；复跑历史19断言及受影响主"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-85",
+            "title": "[S1.1] 科学执行合同：用现有真实求值/fork复现source与parent丢失，最小修正透传；验证数值不变、来源和血缘一致"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-86/s12-科学执行合同校准registry的runkindnullable字段与json二进制制品边界验证nan"
+    },
+    {
+      "taskKey": "S1.3",
+      "id": "CLI-87",
+      "title": "[S1.3] 科学执行合同：绑定当前Spec的规范输入、source/parent和预算；拒同plan异输入、公共replay绕门；复跑历史19断言及受影响主",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-62",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-86",
+            "title": "[S1.2] 科学执行合同：校准registry的runKind/nullable字段与JSON/二进制制品边界；验证NaN TypedArray拒绝、返回后"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-87/s13-科学执行合同绑定当前spec的规范输入sourceparent和预算拒同plan异输入公共replay绕门复跑历史19断言及受影响主"
+    },
+    {
+      "taskKey": "A1",
+      "id": "CLI-63",
+      "title": "[A1] 统一工具端口",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-146",
+            "title": "[J1.2b] DSH官方TS SDK接同一科学端口"
+          },
+          {
+            "id": "CLI-117",
+            "title": "[W1.1] MathWorld Host/ABI：明确World/Action/Goal/事件DTO、Host与guest写权限，先用已有科学Skill接一个事务消费者，不等SPD"
+          },
+          {
+            "id": "CLI-73",
+            "title": "[W1] MathWorld Host/ABI"
+          },
+          {
+            "id": "CLI-111",
+            "title": "[U1.1] 研究桌面恢复：论文库与原PDF进入既有桌面，参数在公式/对象内操作；所有科学组件按runId投影，显示preview/正式结果区别；修run3d"
+          },
+          {
+            "id": "CLI-71",
+            "title": "[U1] 研究桌面恢复"
+          },
+          {
+            "id": "CLI-102",
+            "title": "[L1.1] 文献和证据工具：先接一个可用检索provider与标识解析，按需补其他服务；返回身份/检索来源/限额，429不是空搜索结果"
+          },
+          {
+            "id": "CLI-68",
+            "title": "[L1] 文献和证据工具"
+          },
+          {
+            "id": "CLI-100",
+            "title": "[J1.1] 持久执行与恢复：用一个真实解析任务落task/attempt/outbox；实际worker消费，queued状态可重启重建；先不上全部队列"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          },
+          {
+            "id": "CLI-91",
+            "title": "[A0.1] 早期真实Agent回合：消除全局摘要，session串行锁随生命周期释放；两session交错执行不串结果，异常后锁可再次取得"
+          },
+          {
+            "id": "CLI-64",
+            "title": "[A0] 早期真实Agent回合"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-61",
+            "title": "[B0] 基线与工具链"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-63/a1-统一工具端口"
+    },
+    {
+      "taskKey": "A1.1",
+      "id": "CLI-88",
+      "title": "[A1.1] 统一工具端口：从现有Registry导出科学工具合同，保留原API调用；同参数经工具端口与原executor的结果语义一致",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-63",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-89",
+            "title": "[A1.2] 统一工具端口：接统一invocation/operation/回执；当前单用户部署使用服务端命名空间，拒同键异payload/未知工具；持久化延"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-61",
+            "title": "[B0] 基线与工具链"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-88/a11-统一工具端口从现有registry导出科学工具合同保留原api调用同参数经工具端口与原executor的结果语义一致"
+    },
+    {
+      "taskKey": "A1.2",
+      "id": "CLI-89",
+      "title": "[A1.2] 统一工具端口：接统一invocation/operation/回执；当前单用户部署使用服务端命名空间，拒同键异payload/未知工具；持久化延",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-63",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-90",
+            "title": "[A1.3] 统一工具端口：已完成旧回填/SSE与baseRunId/expectedExperimentRevision；DSH适配在J1.2b/A0.3增"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-88",
+            "title": "[A1.1] 统一工具端口：从现有Registry导出科学工具合同，保留原API调用；同参数经工具端口与原executor的结果语义一致"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-89/a12-统一工具端口接统一invocationoperation回执当前单用户部署使用服务端命名空间拒同键异payload未知工具持久化延"
+    },
+    {
+      "taskKey": "A1.3",
+      "id": "CLI-90",
+      "title": "[A1.3] 统一工具端口：已完成旧回填/SSE与baseRunId/expectedExperimentRevision；DSH适配在J1.2b/A0.3增",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-63",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-89",
+            "title": "[A1.2] 统一工具端口：接统一invocation/operation/回执；当前单用户部署使用服务端命名空间，拒同键异payload/未知工具；持久化延"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-90/a13-统一工具端口已完成旧回填sse与baserunidexpectedexperimentrevisiondsh适配在j12ba03增"
+    },
+    {
+      "taskKey": "A0",
+      "id": "CLI-64",
+      "title": "[A0] 早期真实Agent回合",
+      "status": "In Progress",
+      "statusType": "started",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-108",
+            "title": "[A2.1] DSH论文研究循环：在Node新默认路径接通PDF页图/转写/锚点质量门（同真实PDF比legacy，扫描/公式/表格/失败留痕，未过不称替代）；把L"
+          },
+          {
+            "id": "CLI-70",
+            "title": "[A2] DSH论文研究循环"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          },
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-64/a0-早期真实agent回合"
+    },
+    {
+      "taskKey": "A0.1",
+      "id": "CLI-91",
+      "title": "[A0.1] 早期真实Agent回合：消除全局摘要，session串行锁随生命周期释放；两session交错执行不串结果，异常后锁可再次取得",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-64",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-92",
+            "title": "[A0.2] 早期真实Agent回合：大结果用结构化摘要/制品选择器，保留完整受权结果；覆盖超过旧8000字符的输出，JSON有效且有完整性标记"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          },
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-91/a01-早期真实agent回合消除全局摘要session串行锁随生命周期释放两session交错执行不串结果异常后锁可再次取得"
+    },
+    {
+      "taskKey": "A0.2",
+      "id": "CLI-92",
+      "title": "[A0.2] 早期真实Agent回合：大结果用结构化摘要/制品选择器，保留完整受权结果；覆盖超过旧8000字符的输出，JSON有效且有完整性标记",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-64",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-93",
+            "title": "[A0.3] 早期真实Agent回合：额外依赖已集成J1.2b的DSH工具适配（不要求整个J1完成）；经DSH官方TS SDK/产品白名单工具的有限预算真Qwen多回合"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-91",
+            "title": "[A0.1] 早期真实Agent回合：消除全局摘要，session串行锁随生命周期释放；两session交错执行不串结果，异常后锁可再次取得"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-92/a02-早期真实agent回合大结果用结构化摘要制品选择器保留完整受权结果覆盖超过旧8000字符的输出json有效且有完整性标记"
+    },
+    {
+      "taskKey": "A0.3",
+      "id": "CLI-93",
+      "title": "[A0.3] 早期真实Agent回合：额外依赖已集成J1.2b的DSH工具适配（不要求整个J1完成）；经DSH官方TS SDK/产品白名单工具的有限预算真Qwen多回合",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-64",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-92",
+            "title": "[A0.2] 早期真实Agent回合：大结果用结构化摘要/制品选择器，保留完整受权结果；覆盖超过旧8000字符的输出，JSON有效且有完整性标记"
+          },
+          {
+            "id": "CLI-146",
+            "title": "[J1.2b] DSH官方TS SDK接同一科学端口"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-93/a03-早期真实agent回合额外依赖已集成j12b的dsh工具适配不要求整个j1完成经dsh官方ts"
+    },
+    {
+      "taskKey": "D1",
+      "id": "CLI-65",
+      "title": "[D1] 领域数据与导入",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-144",
+            "title": "[J1.CI] 数据库/队列测试隔离与CI必需服务"
+          },
+          {
+            "id": "CLI-97",
+            "title": "[P1.1] 论文入库解析：上传与打开复用现有入口，建立版本列表/来源；解析尚未完成或失败时仍能读取原PDF"
+          },
+          {
+            "id": "CLI-66",
+            "title": "[P1] 论文入库解析"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-61",
+            "title": "[B0] 基线与工具链"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-65/d1-领域数据与导入"
+    },
+    {
+      "taskKey": "D1.1",
+      "id": "CLI-94",
+      "title": "[D1.1] 领域数据与导入：为现有上传消费者接内容hash、Paper/Version与workspace索引，实际数据库往返与同文件去重；不提前建全部未来表",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-65",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-95",
+            "title": "[D1.2] 领域数据与导入：只读导入旧doc/Run快照，保留ID与legacy来源精度，核对数量/hash/断链，迁移可重复执行且不造新Run"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-61",
+            "title": "[B0] 基线与工具链"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-94/d11"
+    },
+    {
+      "taskKey": "D1.2",
+      "id": "CLI-95",
+      "title": "[D1.2] 领域数据与导入：只读导入旧doc/Run快照，保留ID与legacy来源精度，核对数量/hash/断链，迁移可重复执行且不造新Run",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-65",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-96",
+            "title": "[D1.3] 领域数据与导入：切换该消费者唯一写入路径，演练中断和切换后数据导出恢复；确认旧JSONL不再承担同数据的写权威"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-94",
+            "title": "[D1.1] 领域数据与导入：为现有上传消费者接内容hash、Paper/Version与workspace索引，实际数据库往返与同文件去重；不提前建全部未来表"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-95/d12-领域数据与导入只读导入旧docrun快照保留id与legacy来源精度核对数量hash断链迁移可重复执行且不造新run"
+    },
+    {
+      "taskKey": "D1.3",
+      "id": "CLI-96",
+      "title": "[D1.3] 领域数据与导入：切换该消费者唯一写入路径，演练中断和切换后数据导出恢复；确认旧JSONL不再承担同数据的写权威",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-65",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-95",
+            "title": "[D1.2] 领域数据与导入：只读导入旧doc/Run快照，保留ID与legacy来源精度，核对数量/hash/断链，迁移可重复执行且不造新Run"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-96/d13-领域数据与导入切换该消费者唯一写入路径演练中断和切换后数据导出恢复确认旧jsonl不再承担同数据的写权威"
+    },
+    {
+      "taskKey": "P1",
+      "id": "CLI-66",
+      "title": "[P1] 论文入库解析",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-144",
+            "title": "[J1.CI] 数据库/队列测试隔离与CI必需服务"
+          },
+          {
+            "id": "CLI-105",
+            "title": "[N1.1] 数学模型/能力/质量：扩展paperSpec候选工具合同，支持域内未预装专属模型的PDF可由解析或已有工具产候选，不要求A0/A2先完成；方程/角色/条"
+          },
+          {
+            "id": "CLI-69",
+            "title": "[N1] 数学模型/能力/质量"
+          },
+          {
+            "id": "CLI-102",
+            "title": "[L1.1] 文献和证据工具：先接一个可用检索provider与标识解析，按需补其他服务；返回身份/检索来源/限额，429不是空搜索结果"
+          },
+          {
+            "id": "CLI-68",
+            "title": "[L1] 文献和证据工具"
+          },
+          {
+            "id": "CLI-100",
+            "title": "[J1.1] 持久执行与恢复：用一个真实解析任务落task/attempt/outbox；实际worker消费，queued状态可重启重建；先不上全部队列"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-65",
+            "title": "[D1] 领域数据与导入"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-66/p1-论文入库解析"
+    },
+    {
+      "taskKey": "P1.1",
+      "id": "CLI-97",
+      "title": "[P1.1] 论文入库解析：上传与打开复用现有入口，建立版本列表/来源；解析尚未完成或失败时仍能读取原PDF",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-66",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-98",
+            "title": "[P1.2] 论文入库解析：Docling/VLM产物带parser版本与锚点精度，重解析产生新artifact；旧anchor可打开，不将页级来源升级成字符"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-65",
+            "title": "[D1] 领域数据与导入"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-97/p11-论文入库解析上传与打开复用现有入口建立版本列表来源解析尚未完成或失败时仍能读取原pdf"
+    },
+    {
+      "taskKey": "P1.2",
+      "id": "CLI-98",
+      "title": "[P1.2] 论文入库解析：Docling/VLM产物带parser版本与锚点精度，重解析产生新artifact；旧anchor可打开，不将页级来源升级成字符",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-66",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-99",
+            "title": "[P1.3] 论文入库解析：校验重复PDF、同DOI不同版本、失败重试、缺全文；接入一份真实PDF并完整trace，不以fixture声称新解析验收"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-97",
+            "title": "[P1.1] 论文入库解析：上传与打开复用现有入口，建立版本列表/来源；解析尚未完成或失败时仍能读取原PDF"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-98/p12"
+    },
+    {
+      "taskKey": "P1.3",
+      "id": "CLI-99",
+      "title": "[P1.3] 论文入库解析：校验重复PDF、同DOI不同版本、失败重试、缺全文；接入一份真实PDF并完整trace，不以fixture声称新解析验收",
+      "status": "Done",
+      "statusType": "completed",
+      "parentId": "CLI-66",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-98",
+            "title": "[P1.2] 论文入库解析：Docling/VLM产物带parser版本与锚点精度，重解析产生新artifact；旧anchor可打开，不将页级来源升级成字符"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-99/p13-论文入库解析校验重复pdf同doi不同版本失败重试缺全文接入一份真实pdf并完整trace不以fixture声称新解析验收"
+    },
+    {
+      "taskKey": "J1",
+      "id": "CLI-67",
+      "title": "[J1] 持久执行与恢复",
+      "status": "In Progress",
+      "statusType": "started",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-117",
+            "title": "[W1.1] MathWorld Host/ABI：明确World/Action/Goal/事件DTO、Host与guest写权限，先用已有科学Skill接一个事务消费者，不等SPD"
+          },
+          {
+            "id": "CLI-73",
+            "title": "[W1] MathWorld Host/ABI"
+          },
+          {
+            "id": "CLI-111",
+            "title": "[U1.1] 研究桌面恢复：论文库与原PDF进入既有桌面，参数在公式/对象内操作；所有科学组件按runId投影，显示preview/正式结果区别；修run3d"
+          },
+          {
+            "id": "CLI-71",
+            "title": "[U1] 研究桌面恢复"
+          },
+          {
+            "id": "CLI-108",
+            "title": "[A2.1] DSH论文研究循环：在Node新默认路径接通PDF页图/转写/锚点质量门（同真实PDF比legacy，扫描/公式/表格/失败留痕，未过不称替代）；把L"
+          },
+          {
+            "id": "CLI-70",
+            "title": "[A2] DSH论文研究循环"
+          },
+          {
+            "id": "CLI-102",
+            "title": "[L1.1] 文献和证据工具：先接一个可用检索provider与标识解析，按需补其他服务；返回身份/检索来源/限额，429不是空搜索结果"
+          },
+          {
+            "id": "CLI-68",
+            "title": "[L1] 文献和证据工具"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-66",
+            "title": "[P1] 论文入库解析"
+          },
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          },
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-67/j1-持久执行与恢复"
+    },
+    {
+      "taskKey": "J1.1",
+      "id": "CLI-100",
+      "title": "[J1.1] 持久执行与恢复：用一个真实解析任务落task/attempt/outbox；实际worker消费，queued状态可重启重建；先不上全部队列",
+      "status": "In Review",
+      "statusType": "started",
+      "parentId": "CLI-67",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-145",
+            "title": "[J1.2a] Node科学worker和原子Run提交"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          },
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          },
+          {
+            "id": "CLI-66",
+            "title": "[P1] 论文入库解析"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-100/j11-持久执行与恢复用一个真实解析任务落taskattemptoutbox实际worker消费queued状态可重启重建先不上全部队列"
+    },
+    {
+      "taskKey": "J1.3",
+      "id": "CLI-101",
+      "title": "[J1.3] 持久执行与恢复：接有界Agent activation与waiting_input检查点、资源分道/取消/reconcile；等待不占worker",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-67",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-146",
+            "title": "[J1.2b] DSH官方TS SDK接同一科学端口"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-101/j13-持久执行与恢复接有界agent-activation与waiting"
+    },
+    {
+      "taskKey": "L1",
+      "id": "CLI-68",
+      "title": "[L1] 文献和证据工具",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-108",
+            "title": "[A2.1] DSH论文研究循环：在Node新默认路径接通PDF页图/转写/锚点质量门（同真实PDF比legacy，扫描/公式/表格/失败留痕，未过不称替代）；把L"
+          },
+          {
+            "id": "CLI-70",
+            "title": "[A2] DSH论文研究循环"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          },
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          },
+          {
+            "id": "CLI-66",
+            "title": "[P1] 论文入库解析"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-68/l1-文献和证据工具"
+    },
+    {
+      "taskKey": "L1.1",
+      "id": "CLI-102",
+      "title": "[L1.1] 文献和证据工具：先接一个可用检索provider与标识解析，按需补其他服务；返回身份/检索来源/限额，429不是空搜索结果",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-68",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-103",
+            "title": "[L1.2] 文献和证据工具：合法获取全文→P1解析→已有文本证据检索；同一片段可定位原文，错误/不完整覆盖明确；先不引入额外向量服务"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-66",
+            "title": "[P1] 论文入库解析"
+          },
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-102/l11-文献和证据工具先接一个可用检索provider与标识解析按需补其他服务返回身份检索来源限额429不是空搜索结果"
+    },
+    {
+      "taskKey": "L1.2",
+      "id": "CLI-103",
+      "title": "[L1.2] 文献和证据工具：合法获取全文→P1解析→已有文本证据检索；同一片段可定位原文，错误/不完整覆盖明确；先不引入额外向量服务",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-68",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-104",
+            "title": "[L1.3] 文献和证据工具：明确引用边与AI关系分开；用小语料正例/干扰项评估相关片段是否被找到，保存漏检，决定PaperQA/GROBID是否真有接入必要"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-102",
+            "title": "[L1.1] 文献和证据工具：先接一个可用检索provider与标识解析，按需补其他服务；返回身份/检索来源/限额，429不是空搜索结果"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-103/l12-文献和证据工具合法获取全文p1解析已有文本证据检索同一片段可定位原文错误不完整覆盖明确先不引入额外向量服务"
+    },
+    {
+      "taskKey": "L1.3",
+      "id": "CLI-104",
+      "title": "[L1.3] 文献和证据工具：明确引用边与AI关系分开；用小语料正例/干扰项评估相关片段是否被找到，保存漏检，决定PaperQA/GROBID是否真有接入必要",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-68",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-103",
+            "title": "[L1.2] 文献和证据工具：合法获取全文→P1解析→已有文本证据检索；同一片段可定位原文，错误/不完整覆盖明确；先不引入额外向量服务"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-104/l13-文献和证据工具明确引用边与ai关系分开用小语料正例干扰项评估相关片段是否被找到保存漏检决定paperqagrobid是否真有接入必要"
+    },
+    {
+      "taskKey": "N1",
+      "id": "CLI-69",
+      "title": "[N1] 数学模型/能力/质量",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-117",
+            "title": "[W1.1] MathWorld Host/ABI：明确World/Action/Goal/事件DTO、Host与guest写权限，先用已有科学Skill接一个事务消费者，不等SPD"
+          },
+          {
+            "id": "CLI-73",
+            "title": "[W1] MathWorld Host/ABI"
+          },
+          {
+            "id": "CLI-111",
+            "title": "[U1.1] 研究桌面恢复：论文库与原PDF进入既有桌面，参数在公式/对象内操作；所有科学组件按runId投影，显示preview/正式结果区别；修run3d"
+          },
+          {
+            "id": "CLI-71",
+            "title": "[U1] 研究桌面恢复"
+          },
+          {
+            "id": "CLI-108",
+            "title": "[A2.1] DSH论文研究循环：在Node新默认路径接通PDF页图/转写/锚点质量门（同真实PDF比legacy，扫描/公式/表格/失败留痕，未过不称替代）；把L"
+          },
+          {
+            "id": "CLI-70",
+            "title": "[A2] DSH论文研究循环"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-66",
+            "title": "[P1] 论文入库解析"
+          },
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-69/n1-数学模型能力质量"
+    },
+    {
+      "taskKey": "N1.1",
+      "id": "CLI-105",
+      "title": "[N1.1] 数学模型/能力/质量：扩展paperSpec候选工具合同，支持域内未预装专属模型的PDF可由解析或已有工具产候选，不要求A0/A2先完成；方程/角色/条",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-69",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-106",
+            "title": "[N1.2] 数学模型/能力/质量：确认记录绑定PDF版本/原文区域/转写/核对方法/差异；负号或上下标误识别但AST合法的候选不得自动确认，修订留痕；再匹配能力/P"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          },
+          {
+            "id": "CLI-66",
+            "title": "[P1] 论文入库解析"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-105/n11"
+    },
+    {
+      "taskKey": "N1.2",
+      "id": "CLI-106",
+      "title": "[N1.2] 数学模型/能力/质量：确认记录绑定PDF版本/原文区域/转写/核对方法/差异；负号或上下标误识别但AST合法的候选不得自动确认，修订留痕；再匹配能力/P",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-69",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-107",
+            "title": "[N1.3] 数学模型/能力/质量：普通合法调参保持modelRevision，仅更新Runtime参数/计划/Run；方程、假设或允许域改变才建模型修订并复用内核，"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-105",
+            "title": "[N1.1] 数学模型/能力/质量：扩展paperSpec候选工具合同，支持域内未预装专属模型的PDF可由解析或已有工具产候选，不要求A0/A2先完成；方程/角色/条"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-106/n12-数学模型能力质量确认记录绑定pdf版本原文区域转写核对方法差异负号或上下标误识别但ast合法的候选不得自动确认修订留痕再匹配能力p"
+    },
+    {
+      "taskKey": "N1.3",
+      "id": "CLI-107",
+      "title": "[N1.3] 数学模型/能力/质量：普通合法调参保持modelRevision，仅更新Runtime参数/计划/Run；方程、假设或允许域改变才建模型修订并复用内核，",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-69",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-106",
+            "title": "[N1.2] 数学模型/能力/质量：确认记录绑定PDF版本/原文区域/转写/核对方法/差异；负号或上下标误识别但AST合法的候选不得自动确认，修订留痕；再匹配能力/P"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-107/n13"
+    },
+    {
+      "taskKey": "A2",
+      "id": "CLI-70",
+      "title": "[A2] DSH论文研究循环",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-126",
+            "title": "[A3.1] AI生成与游戏导演：给真实Qwen模型/能力/任务约束而非完成程序，生成版本化源码，经compile→playtest取得诊断"
+          },
+          {
+            "id": "CLI-76",
+            "title": "[A3] AI生成与游戏导演"
+          },
+          {
+            "id": "CLI-114",
+            "title": "[C1.1] 完整论文研究验收：选择支持域内未预装专属模型的真实PDF，冻结来源/问题；必须展示parseArtifact→Agent候选→校验/纠正→确认rev"
+          },
+          {
+            "id": "CLI-72",
+            "title": "[C1] 完整论文研究验收"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-68",
+            "title": "[L1] 文献和证据工具"
+          },
+          {
+            "id": "CLI-69",
+            "title": "[N1] 数学模型/能力/质量"
+          },
+          {
+            "id": "CLI-64",
+            "title": "[A0] 早期真实Agent回合"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-70/a2-dsh论文研究循环"
+    },
+    {
+      "taskKey": "A2.1",
+      "id": "CLI-108",
+      "title": "[A2.1] DSH论文研究循环：在Node新默认路径接通PDF页图/转写/锚点质量门（同真实PDF比legacy，扫描/公式/表格/失败留痕，未过不称替代）；把L",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-70",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-109",
+            "title": "[A2.2] DSH论文研究循环：真Qwen查源→实验→读结果→改变下一动作；用事先定义的可观察结果依赖判定自主性，不要求随机模型每次生成同一句话/同序列"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-68",
+            "title": "[L1] 文献和证据工具"
+          },
+          {
+            "id": "CLI-64",
+            "title": "[A0] 早期真实Agent回合"
+          },
+          {
+            "id": "CLI-69",
+            "title": "[N1] 数学模型/能力/质量"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-108/a21-dsh论文研究循环在node新默认路径接通pdf页图转写锚点质量门同真实pdf比legacy扫描公式表格失败留痕未过不称替代把l"
+    },
+    {
+      "taskKey": "A2.2",
+      "id": "CLI-109",
+      "title": "[A2.2] DSH论文研究循环：真Qwen查源→实验→读结果→改变下一动作；用事先定义的可观察结果依赖判定自主性，不要求随机模型每次生成同一句话/同序列",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-70",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-110",
+            "title": "[A2.3] DSH论文研究循环：持久消息/工具批次检查点；批次未执行、部分完成、完成未回填三处kill后无孤立tool result/重复副作用；必要时批次边界重"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-108",
+            "title": "[A2.1] DSH论文研究循环：在Node新默认路径接通PDF页图/转写/锚点质量门（同真实PDF比legacy，扫描/公式/表格/失败留痕，未过不称替代）；把L"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-109/a22-dsh论文研究循环真qwen查源实验读结果改变下一动作用事先定义的可观察结果依赖判定自主性不要求随机模型每次生成同一句话同序列"
+    },
+    {
+      "taskKey": "A2.3",
+      "id": "CLI-110",
+      "title": "[A2.3] DSH论文研究循环：持久消息/工具批次检查点；批次未执行、部分完成、完成未回填三处kill后无孤立tool result/重复副作用；必要时批次边界重",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-70",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-109",
+            "title": "[A2.2] DSH论文研究循环：真Qwen查源→实验→读结果→改变下一动作；用事先定义的可观察结果依赖判定自主性，不要求随机模型每次生成同一句话/同序列"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-110/a23-dsh论文研究循环持久消息工具批次检查点批次未执行部分完成完成未回填三处kill后无孤立tool"
+    },
+    {
+      "taskKey": "U1",
+      "id": "CLI-71",
+      "title": "[U1] 研究桌面恢复",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-129",
+            "title": "[U2.1] 动态游戏空间：同R3F页面按Run几何与程序实体投影，Koota有界owner、相机/输入归属明确；试运行时可用标注夹具"
+          },
+          {
+            "id": "CLI-77",
+            "title": "[U2] 动态游戏空间"
+          },
+          {
+            "id": "CLI-114",
+            "title": "[C1.1] 完整论文研究验收：选择支持域内未预装专属模型的真实PDF，冻结来源/问题；必须展示parseArtifact→Agent候选→校验/纠正→确认rev"
+          },
+          {
+            "id": "CLI-72",
+            "title": "[C1] 完整论文研究验收"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-69",
+            "title": "[N1] 数学模型/能力/质量"
+          },
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-71/u1-研究桌面恢复"
+    },
+    {
+      "taskKey": "U1.1",
+      "id": "CLI-111",
+      "title": "[U1.1] 研究桌面恢复：论文库与原PDF进入既有桌面，参数在公式/对象内操作；所有科学组件按runId投影，显示preview/正式结果区别；修run3d",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-71",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-112",
+            "title": "[U1.2] 研究桌面恢复：Agent状态/问题/历史与CanvasCommand接通，收到浏览器应用ack才标应用完成；失联命令保留，冲突展示具体对象"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          },
+          {
+            "id": "CLI-69",
+            "title": "[N1] 数学模型/能力/质量"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-111/u11-研究桌面恢复论文库与原pdf进入既有桌面参数在公式对象内操作所有科学组件按runid投影显示preview正式结果区别修run3d"
+    },
+    {
+      "taskKey": "U1.2",
+      "id": "CLI-112",
+      "title": "[U1.2] 研究桌面恢复：Agent状态/问题/历史与CanvasCommand接通，收到浏览器应用ack才标应用完成；失联命令保留，冲突展示具体对象",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-71",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-113",
+            "title": "[U1.3] 研究桌面恢复：真指针操作、Fork/Compare/Trace、刷新重连/重复事件去重；三模式恢复同一实验，Console与资源释放检查"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-111",
+            "title": "[U1.1] 研究桌面恢复：论文库与原PDF进入既有桌面，参数在公式/对象内操作；所有科学组件按runId投影，显示preview/正式结果区别；修run3d"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-112/u12-研究桌面恢复agent状态问题历史与canvascommand接通收到浏览器应用ack才标应用完成失联命令保留冲突展示具体对象"
+    },
+    {
+      "taskKey": "U1.3",
+      "id": "CLI-113",
+      "title": "[U1.3] 研究桌面恢复：真指针操作、Fork/Compare/Trace、刷新重连/重复事件去重；三模式恢复同一实验，Console与资源释放检查",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-71",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-112",
+            "title": "[U1.2] 研究桌面恢复：Agent状态/问题/历史与CanvasCommand接通，收到浏览器应用ack才标应用完成；失联命令保留，冲突展示具体对象"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-113/u13-研究桌面恢复真指针操作forkcomparetrace刷新重连重复事件去重三模式恢复同一实验console与资源释放检查"
+    },
+    {
+      "taskKey": "C1",
+      "id": "CLI-72",
+      "title": "[C1] 完整论文研究验收",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-132",
+            "title": "[E1.1] 生成游戏验收：固定来源模型与预算，使用A3真实生成的两份程序创建attempt；输入与目标不同机制可辨识"
+          },
+          {
+            "id": "CLI-78",
+            "title": "[E1] 生成游戏验收"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-70",
+            "title": "[A2] DSH论文研究循环"
+          },
+          {
+            "id": "CLI-71",
+            "title": "[U1] 研究桌面恢复"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-72/c1-完整论文研究验收"
+    },
+    {
+      "taskKey": "C1.1",
+      "id": "CLI-114",
+      "title": "[C1.1] 完整论文研究验收：选择支持域内未预装专属模型的真实PDF，冻结来源/问题；必须展示parseArtifact→Agent候选→校验/纠正→确认rev",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-72",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-115",
+            "title": "[C1.2] 完整论文研究验收：单浏览器完成上传→研究→Run→画布→trace；保存同一task下的工具回执与UI ack，不能拼接不同运行截图"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-70",
+            "title": "[A2] DSH论文研究循环"
+          },
+          {
+            "id": "CLI-71",
+            "title": "[U1] 研究桌面恢复"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-114/c11-完整论文研究验收选择支持域内未预装专属模型的真实pdf冻结来源问题必须展示parseartifactagent候选校验纠正确认rev"
+    },
+    {
+      "taskKey": "C1.2",
+      "id": "CLI-115",
+      "title": "[C1.2] 完整论文研究验收：单浏览器完成上传→研究→Run→画布→trace；保存同一task下的工具回执与UI ack，不能拼接不同运行截图",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-72",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-116",
+            "title": "[C1.3] 完整论文研究验收：刷新/重启后继续同研究，再验旧Kakeya/公式主路；所有必需证据和独立review具备后收口C1"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-114",
+            "title": "[C1.1] 完整论文研究验收：选择支持域内未预装专属模型的真实PDF，冻结来源/问题；必须展示parseArtifact→Agent候选→校验/纠正→确认rev"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-115/c12-完整论文研究验收单浏览器完成上传研究run画布trace保存同一task下的工具回执与ui-ack不能拼接不同运行截图"
+    },
+    {
+      "taskKey": "C1.3",
+      "id": "CLI-116",
+      "title": "[C1.3] 完整论文研究验收：刷新/重启后继续同研究，再验旧Kakeya/公式主路；所有必需证据和独立review具备后收口C1",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-72",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-115",
+            "title": "[C1.2] 完整论文研究验收：单浏览器完成上传→研究→Run→画布→trace；保存同一task下的工具回执与UI ack，不能拼接不同运行截图"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-116/c13-完整论文研究验收刷新重启后继续同研究再验旧kakeya公式主路所有必需证据和独立review具备后收口c1"
+    },
+    {
+      "taskKey": "W1",
+      "id": "CLI-73",
+      "title": "[W1] MathWorld Host/ABI",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-123",
+            "title": "[W3.1] SPD科学能力/Solver：从确认SPD模型注册几何/support/合法变形能力，经同一executor产Run；独立代数oracle校验，拒非正定/病态超"
+          },
+          {
+            "id": "CLI-75",
+            "title": "[W3] SPD科学能力/Solver"
+          },
+          {
+            "id": "CLI-120",
+            "title": "[W2.1] 受控程序执行：锁QuickJS制品并复用同ABI：本地探索用浏览器Worker；严格盲测由服务端可终止隔离单元执行冻结step/Goal，客户端"
+          },
+          {
+            "id": "CLI-74",
+            "title": "[W2] 受控程序执行"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-69",
+            "title": "[N1] 数学模型/能力/质量"
+          },
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          },
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          },
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-73/w1-mathworld-hostabi"
+    },
+    {
+      "taskKey": "W1.1",
+      "id": "CLI-117",
+      "title": "[W1.1] MathWorld Host/ABI：明确World/Action/Goal/事件DTO、Host与guest写权限，先用已有科学Skill接一个事务消费者，不等SPD",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-73",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-118",
+            "title": "[W1.2] MathWorld Host/ABI：候选转换/只读Goal/预留/提交接通；新revision竞争拒旧回包，失败Run/伪回执不能计分，资源实际消耗不回滚"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-67",
+            "title": "[J1] 持久执行与恢复"
+          },
+          {
+            "id": "CLI-69",
+            "title": "[N1] 数学模型/能力/质量"
+          },
+          {
+            "id": "CLI-62",
+            "title": "[S1] 科学执行合同"
+          },
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-117/w11-mathworld"
+    },
+    {
+      "taskKey": "W1.2",
+      "id": "CLI-118",
+      "title": "[W1.2] MathWorld Host/ABI：候选转换/只读Goal/预留/提交接通；新revision竞争拒旧回包，失败Run/伪回执不能计分，资源实际消耗不回滚",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-73",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-119",
+            "title": "[W1.3] MathWorld Host/ABI：状态/事件/Run引用落入D1/J1同一持久回执链，按revision恢复；一个attempt一个权威Host，受权读取不泄漏私有"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-117",
+            "title": "[W1.1] MathWorld Host/ABI：明确World/Action/Goal/事件DTO、Host与guest写权限，先用已有科学Skill接一个事务消费者，不等SPD"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-118/w12-mathworld"
+    },
+    {
+      "taskKey": "W1.3",
+      "id": "CLI-119",
+      "title": "[W1.3] MathWorld Host/ABI：状态/事件/Run引用落入D1/J1同一持久回执链，按revision恢复；一个attempt一个权威Host，受权读取不泄漏私有",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-73",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-118",
+            "title": "[W1.2] MathWorld Host/ABI：候选转换/只读Goal/预留/提交接通；新revision竞争拒旧回包，失败Run/伪回执不能计分，资源实际消耗不回滚"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-119/w13-mathworld"
+    },
+    {
+      "taskKey": "W2",
+      "id": "CLI-74",
+      "title": "[W2] 受控程序执行",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-129",
+            "title": "[U2.1] 动态游戏空间：同R3F页面按Run几何与程序实体投影，Koota有界owner、相机/输入归属明确；试运行时可用标注夹具"
+          },
+          {
+            "id": "CLI-77",
+            "title": "[U2] 动态游戏空间"
+          },
+          {
+            "id": "CLI-126",
+            "title": "[A3.1] AI生成与游戏导演：给真实Qwen模型/能力/任务约束而非完成程序，生成版本化源码，经compile→playtest取得诊断"
+          },
+          {
+            "id": "CLI-76",
+            "title": "[A3] AI生成与游戏导演"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-73",
+            "title": "[W1] MathWorld Host/ABI"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-74/w2-受控程序执行"
+    },
+    {
+      "taskKey": "W2.1",
+      "id": "CLI-120",
+      "title": "[W2.1] 受控程序执行：锁QuickJS制品并复用同ABI：本地探索用浏览器Worker；严格盲测由服务端可终止隔离单元执行冻结step/Goal，客户端",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-74",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-121",
+            "title": "[W2.2] 受控程序执行：显式guest DTO+seed/tick+有界意图接W1；新VM重建可回放，不依赖闭包/Date/环境随机"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-73",
+            "title": "[W1] MathWorld Host/ABI"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-120/w21"
+    },
+    {
+      "taskKey": "W2.2",
+      "id": "CLI-121",
+      "title": "[W2.2] 受控程序执行：显式guest DTO+seed/tick+有界意图接W1；新VM重建可回放，不依赖闭包/Date/环境随机",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-74",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-122",
+            "title": "[W2.3] 受控程序执行：死循环/内存/深层消息/事件风暴/伪回执负例有界失败，CSP与实际构建可用；记录开销而非许诺实时帧率"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-120",
+            "title": "[W2.1] 受控程序执行：锁QuickJS制品并复用同ABI：本地探索用浏览器Worker；严格盲测由服务端可终止隔离单元执行冻结step/Goal，客户端"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-121/w22-受控程序执行显式guest-dtoseedtick有界意图接w1新vm重建可回放不依赖闭包date环境随机"
+    },
+    {
+      "taskKey": "W2.3",
+      "id": "CLI-122",
+      "title": "[W2.3] 受控程序执行：死循环/内存/深层消息/事件风暴/伪回执负例有界失败，CSP与实际构建可用；记录开销而非许诺实时帧率",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-74",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-121",
+            "title": "[W2.2] 受控程序执行：显式guest DTO+seed/tick+有界意图接W1；新VM重建可回放，不依赖闭包/Date/环境随机"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-122/w23-受控程序执行死循环内存深层消息事件风暴伪回执负例有界失败csp与实际构建可用记录开销而非许诺实时帧率"
+    },
+    {
+      "taskKey": "W3",
+      "id": "CLI-75",
+      "title": "[W3] SPD科学能力/Solver",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-129",
+            "title": "[U2.1] 动态游戏空间：同R3F页面按Run几何与程序实体投影，Koota有界owner、相机/输入归属明确；试运行时可用标注夹具"
+          },
+          {
+            "id": "CLI-77",
+            "title": "[U2] 动态游戏空间"
+          },
+          {
+            "id": "CLI-126",
+            "title": "[A3.1] AI生成与游戏导演：给真实Qwen模型/能力/任务约束而非完成程序，生成版本化源码，经compile→playtest取得诊断"
+          },
+          {
+            "id": "CLI-76",
+            "title": "[A3] AI生成与游戏导演"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-73",
+            "title": "[W1] MathWorld Host/ABI"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-75/w3-spd科学能力solver"
+    },
+    {
+      "taskKey": "W3.1",
+      "id": "CLI-123",
+      "title": "[W3.1] SPD科学能力/Solver：从确认SPD模型注册几何/support/合法变形能力，经同一executor产Run；独立代数oracle校验，拒非正定/病态超",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-75",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-124",
+            "title": "[W3.2] SPD科学能力/Solver：先纯Host验证整段动作与Goal/失败轨迹，确定游戏额外机制；私有Q由服务器持有，公开接口仅返回合法观测"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-73",
+            "title": "[W1] MathWorld Host/ABI"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-123/w31"
+    },
+    {
+      "taskKey": "W3.2",
+      "id": "CLI-124",
+      "title": "[W3.2] SPD科学能力/Solver：先纯Host验证整段动作与Goal/失败轨迹，确定游戏额外机制；私有Q由服务器持有，公开接口仅返回合法观测",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-75",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-125",
+            "title": "[W3.3] SPD科学能力/Solver：有限搜索与同transition纯Host回放给见证或unknown，生成程序新VM重放归W2/A3；盲测另验只读公开历史的基准策"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-123",
+            "title": "[W3.1] SPD科学能力/Solver：从确认SPD模型注册几何/support/合法变形能力，经同一executor产Run；独立代数oracle校验，拒非正定/病态超"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-124/w32-spd科学能力solver先纯host验证整段动作与goal失败轨迹确定游戏额外机制私有q由服务器持有公开接口仅返回合法观测"
+    },
+    {
+      "taskKey": "W3.3",
+      "id": "CLI-125",
+      "title": "[W3.3] SPD科学能力/Solver：有限搜索与同transition纯Host回放给见证或unknown，生成程序新VM重放归W2/A3；盲测另验只读公开历史的基准策",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-75",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-124",
+            "title": "[W3.2] SPD科学能力/Solver：先纯Host验证整段动作与Goal/失败轨迹，确定游戏额外机制；私有Q由服务器持有，公开接口仅返回合法观测"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-125/w33"
+    },
+    {
+      "taskKey": "A3",
+      "id": "CLI-76",
+      "title": "[A3] AI生成与游戏导演",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-132",
+            "title": "[E1.1] 生成游戏验收：固定来源模型与预算，使用A3真实生成的两份程序创建attempt；输入与目标不同机制可辨识"
+          },
+          {
+            "id": "CLI-78",
+            "title": "[E1] 生成游戏验收"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-75",
+            "title": "[W3] SPD科学能力/Solver"
+          },
+          {
+            "id": "CLI-74",
+            "title": "[W2] 受控程序执行"
+          },
+          {
+            "id": "CLI-70",
+            "title": "[A2] DSH论文研究循环"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-76/a3-ai生成与游戏导演"
+    },
+    {
+      "taskKey": "A3.1",
+      "id": "CLI-126",
+      "title": "[A3.1] AI生成与游戏导演：给真实Qwen模型/能力/任务约束而非完成程序，生成版本化源码，经compile→playtest取得诊断",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-76",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-127",
+            "title": "[A3.2] AI生成与游戏导演：修复诊断并新VM重放；同SPD两种机制trace不同；如果自然生成无错，可对真实生成制品做标注故障注入验修复，不伪称模型自己犯错"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-75",
+            "title": "[W3] SPD科学能力/Solver"
+          },
+          {
+            "id": "CLI-70",
+            "title": "[A2] DSH论文研究循环"
+          },
+          {
+            "id": "CLI-74",
+            "title": "[W2] 受控程序执行"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-126/a31-ai生成与游戏导演给真实qwen模型能力任务约束而非完成程序生成版本化源码经compileplaytest取得诊断"
+    },
+    {
+      "taskKey": "A3.2",
+      "id": "CLI-127",
+      "title": "[A3.2] AI生成与游戏导演：修复诊断并新VM重放；同SPD两种机制trace不同；如果自然生成无错，可对真实生成制品做标注故障注入验修复，不伪称模型自己犯错",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-76",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-128",
+            "title": "[A3.3] AI生成与游戏导演：导演只读公开行为与Run给提示/提出下一关；下一关重新验证后发布，当前规则冻结；提示不能漏私有答案"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-126",
+            "title": "[A3.1] AI生成与游戏导演：给真实Qwen模型/能力/任务约束而非完成程序，生成版本化源码，经compile→playtest取得诊断"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-127/a32"
+    },
+    {
+      "taskKey": "A3.3",
+      "id": "CLI-128",
+      "title": "[A3.3] AI生成与游戏导演：导演只读公开行为与Run给提示/提出下一关；下一关重新验证后发布，当前规则冻结；提示不能漏私有答案",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-76",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-127",
+            "title": "[A3.2] AI生成与游戏导演：修复诊断并新VM重放；同SPD两种机制trace不同；如果自然生成无错，可对真实生成制品做标注故障注入验修复，不伪称模型自己犯错"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-128/a33-ai生成与游戏导演导演只读公开行为与run给提示提出下一关下一关重新验证后发布当前规则冻结提示不能漏私有答案"
+    },
+    {
+      "taskKey": "U2",
+      "id": "CLI-77",
+      "title": "[U2] 动态游戏空间",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-132",
+            "title": "[E1.1] 生成游戏验收：固定来源模型与预算，使用A3真实生成的两份程序创建attempt；输入与目标不同机制可辨识"
+          },
+          {
+            "id": "CLI-78",
+            "title": "[E1] 生成游戏验收"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-71",
+            "title": "[U1] 研究桌面恢复"
+          },
+          {
+            "id": "CLI-74",
+            "title": "[W2] 受控程序执行"
+          },
+          {
+            "id": "CLI-75",
+            "title": "[W3] SPD科学能力/Solver"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-77/u2-动态游戏空间"
+    },
+    {
+      "taskKey": "U2.1",
+      "id": "CLI-129",
+      "title": "[U2.1] 动态游戏空间：同R3F页面按Run几何与程序实体投影，Koota有界owner、相机/输入归属明确；试运行时可用标注夹具",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-77",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-130",
+            "title": "[U2.2] 动态游戏空间：对象抓取/公式编辑→Action→真实Run→反馈；新几何与碰撞代理版本一起生效，拒绝回到最后合法状态"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-75",
+            "title": "[W3] SPD科学能力/Solver"
+          },
+          {
+            "id": "CLI-74",
+            "title": "[W2] 受控程序执行"
+          },
+          {
+            "id": "CLI-71",
+            "title": "[U1] 研究桌面恢复"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-129/u21-动态游戏空间同r3f页面按run几何与程序实体投影koota有界owner相机输入归属明确试运行时可用标注夹具"
+    },
+    {
+      "taskKey": "U2.2",
+      "id": "CLI-130",
+      "title": "[U2.2] 动态游戏空间：对象抓取/公式编辑→Action→真实Run→反馈；新几何与碰撞代理版本一起生效，拒绝回到最后合法状态",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-77",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-131",
+            "title": "[U2.3] 动态游戏空间：完成重试/回放/进入退出/返回来源，验证两玩法同页面；StrictMode/切换/销毁不留实体或GPU资源；夹具不替代A3"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-129",
+            "title": "[U2.1] 动态游戏空间：同R3F页面按Run几何与程序实体投影，Koota有界owner、相机/输入归属明确；试运行时可用标注夹具"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-130/u22-动态游戏空间对象抓取公式编辑action真实run反馈新几何与碰撞代理版本一起生效拒绝回到最后合法状态"
+    },
+    {
+      "taskKey": "U2.3",
+      "id": "CLI-131",
+      "title": "[U2.3] 动态游戏空间：完成重试/回放/进入退出/返回来源，验证两玩法同页面；StrictMode/切换/销毁不留实体或GPU资源；夹具不替代A3",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-77",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-130",
+            "title": "[U2.2] 动态游戏空间：对象抓取/公式编辑→Action→真实Run→反馈；新几何与碰撞代理版本一起生效，拒绝回到最后合法状态"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-131/u23-动态游戏空间完成重试回放进入退出返回来源验证两玩法同页面strictmode切换销毁不留实体或gpu资源夹具不替代a3"
+    },
+    {
+      "taskKey": "E1",
+      "id": "CLI-78",
+      "title": "[E1] 生成游戏验收",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-138",
+            "title": "[O1.1] 可靠性和发布前检查：用实际构建产物复验新旧引擎入口、WASM/解析工件及启动；前端无密钥、资源读取与workspace权限实际拒绝越界"
+          },
+          {
+            "id": "CLI-80",
+            "title": "[O1] 可靠性和发布前检查"
+          },
+          {
+            "id": "CLI-135",
+            "title": "[X1.1] 函数/动力系统复用：函数世界：复用ABI生成新行为，曲线/轨道来自Run；限制域、奇点与采样误差，附加运动规则单独声明"
+          },
+          {
+            "id": "CLI-79",
+            "title": "[X1] 函数/动力系统复用"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-72",
+            "title": "[C1] 完整论文研究验收"
+          },
+          {
+            "id": "CLI-76",
+            "title": "[A3] AI生成与游戏导演"
+          },
+          {
+            "id": "CLI-77",
+            "title": "[U2] 动态游戏空间"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-78/e1-生成游戏验收"
+    },
+    {
+      "taskKey": "E1.1",
+      "id": "CLI-132",
+      "title": "[E1.1] 生成游戏验收：固定来源模型与预算，使用A3真实生成的两份程序创建attempt；输入与目标不同机制可辨识",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-78",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-133",
+            "title": "[E1.2] 生成游戏验收：真操作经历观察/猜测/动作/响应/判定/提示/重试及下一关；独立Goal和实际Run逐次关联"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-77",
+            "title": "[U2] 动态游戏空间"
+          },
+          {
+            "id": "CLI-72",
+            "title": "[C1] 完整论文研究验收"
+          },
+          {
+            "id": "CLI-76",
+            "title": "[A3] AI生成与游戏导演"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-132/e11-生成游戏验收固定来源模型与预算使用a3真实生成的两份程序创建attempt输入与目标不同机制可辨识"
+    },
+    {
+      "taskKey": "E1.2",
+      "id": "CLI-133",
+      "title": "[E1.2] 生成游戏验收：真操作经历观察/猜测/动作/响应/判定/提示/重试及下一关；独立Goal和实际Run逐次关联",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-78",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-134",
+            "title": "[E1.3] 生成游戏验收：回放/断线恢复/论文历史及关键行为删除负例，收口整链；证明机制可运行，不宣称已证明趣味或教学效果"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-132",
+            "title": "[E1.1] 生成游戏验收：固定来源模型与预算，使用A3真实生成的两份程序创建attempt；输入与目标不同机制可辨识"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-133/e12-生成游戏验收真操作经历观察猜测动作响应判定提示重试及下一关独立goal和实际run逐次关联"
+    },
+    {
+      "taskKey": "E1.3",
+      "id": "CLI-134",
+      "title": "[E1.3] 生成游戏验收：回放/断线恢复/论文历史及关键行为删除负例，收口整链；证明机制可运行，不宣称已证明趣味或教学效果",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-78",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-133",
+            "title": "[E1.2] 生成游戏验收：真操作经历观察/猜测/动作/响应/判定/提示/重试及下一关；独立Goal和实际Run逐次关联"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-134/e13-生成游戏验收回放断线恢复论文历史及关键行为删除负例收口整链证明机制可运行不宣称已证明趣味或教学效果"
+    },
+    {
+      "taskKey": "X1",
+      "id": "CLI-79",
+      "title": "[X1] 函数/动力系统复用",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-141",
+            "title": "[E2.1] 完整产品交付：逐项核对C1/E1/X1/O1证据与支持能力表，标出known limits/unsupported；缺必需项不降级成完成"
+          },
+          {
+            "id": "CLI-81",
+            "title": "[E2] 完整产品交付"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-78",
+            "title": "[E1] 生成游戏验收"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-79/x1-函数动力系统复用"
+    },
+    {
+      "taskKey": "X1.1",
+      "id": "CLI-135",
+      "title": "[X1.1] 函数/动力系统复用：函数世界：复用ABI生成新行为，曲线/轨道来自Run；限制域、奇点与采样误差，附加运动规则单独声明",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-79",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-136",
+            "title": "[X1.2] 函数/动力系统复用：ODE世界：只改允许初值/参数，短时轨迹事件经误差检查；未经确认不加控制力，unknown不通关"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-78",
+            "title": "[E1] 生成游戏验收"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-135/x11-函数动力系统复用函数世界复用abi生成新行为曲线轨道来自run限制域奇点与采样误差附加运动规则单独声明"
+    },
+    {
+      "taskKey": "X1.2",
+      "id": "CLI-136",
+      "title": "[X1.2] 函数/动力系统复用：ODE世界：只改允许初值/参数，短时轨迹事件经误差检查；未经确认不加控制力，unknown不通关",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-79",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-137",
+            "title": "[X1.3] 函数/动力系统复用：各选有来源案例，经同编译/Host/UI/导演与Replay；跨论文比较先查共同条件，新增专属页面不能签收复用"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-135",
+            "title": "[X1.1] 函数/动力系统复用：函数世界：复用ABI生成新行为，曲线/轨道来自Run；限制域、奇点与采样误差，附加运动规则单独声明"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-136/x12-函数动力系统复用ode世界只改允许初值参数短时轨迹事件经误差检查未经确认不加控制力unknown不通关"
+    },
+    {
+      "taskKey": "X1.3",
+      "id": "CLI-137",
+      "title": "[X1.3] 函数/动力系统复用：各选有来源案例，经同编译/Host/UI/导演与Replay；跨论文比较先查共同条件，新增专属页面不能签收复用",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-79",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-136",
+            "title": "[X1.2] 函数/动力系统复用：ODE世界：只改允许初值/参数，短时轨迹事件经误差检查；未经确认不加控制力，unknown不通关"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-137/x13-函数动力系统复用各选有来源案例经同编译hostui导演与replay跨论文比较先查共同条件新增专属页面不能签收复用"
+    },
+    {
+      "taskKey": "O1",
+      "id": "CLI-80",
+      "title": "[O1] 可靠性和发布前检查",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-141",
+            "title": "[E2.1] 完整产品交付：逐项核对C1/E1/X1/O1证据与支持能力表，标出known limits/unsupported；缺必需项不降级成完成"
+          },
+          {
+            "id": "CLI-81",
+            "title": "[E2] 完整产品交付"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-78",
+            "title": "[E1] 生成游戏验收"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-80/o1-可靠性和发布前检查"
+    },
+    {
+      "taskKey": "O1.1",
+      "id": "CLI-138",
+      "title": "[O1.1] 可靠性和发布前检查：用实际构建产物复验新旧引擎入口、WASM/解析工件及启动；前端无密钥、资源读取与workspace权限实际拒绝越界",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-80",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-139",
+            "title": "[O1.2] 可靠性和发布前检查：数据库/制品备份与恢复、队列/worker/API失效演练；验证取消/费用/幂等/历史完整，失败可定位"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-78",
+            "title": "[E1] 生成游戏验收"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-138/o11-可靠性和发布前检查用实际构建产物复验新旧引擎入口wasm解析工件及启动前端无密钥资源读取与workspace权限实际拒绝越界"
+    },
+    {
+      "taskKey": "O1.2",
+      "id": "CLI-139",
+      "title": "[O1.2] 可靠性和发布前检查：数据库/制品备份与恢复、队列/worker/API失效演练；验证取消/费用/幂等/历史完整，失败可定位",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-80",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-140",
+            "title": "[O1.3] 可靠性和发布前检查：固定生产构建与版本、许可/配置/回滚说明，单目标本机验收；实际部署独立授权，不借此开多端电池"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-138",
+            "title": "[O1.1] 可靠性和发布前检查：用实际构建产物复验新旧引擎入口、WASM/解析工件及启动；前端无密钥、资源读取与workspace权限实际拒绝越界"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-139/o12-可靠性和发布前检查数据库制品备份与恢复队列workerapi失效演练验证取消费用幂等历史完整失败可定位"
+    },
+    {
+      "taskKey": "O1.3",
+      "id": "CLI-140",
+      "title": "[O1.3] 可靠性和发布前检查：固定生产构建与版本、许可/配置/回滚说明，单目标本机验收；实际部署独立授权，不借此开多端电池",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-80",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-139",
+            "title": "[O1.2] 可靠性和发布前检查：数据库/制品备份与恢复、队列/worker/API失效演练；验证取消/费用/幂等/历史完整，失败可定位"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-140/o13-可靠性和发布前检查固定生产构建与版本许可配置回滚说明单目标本机验收实际部署独立授权不借此开多端电池"
+    },
+    {
+      "taskKey": "E2",
+      "id": "CLI-81",
+      "title": "[E2] 完整产品交付",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": null,
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-79",
+            "title": "[X1] 函数/动力系统复用"
+          },
+          {
+            "id": "CLI-80",
+            "title": "[O1] 可靠性和发布前检查"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-81/e2-完整产品交付"
+    },
+    {
+      "taskKey": "E2.1",
+      "id": "CLI-141",
+      "title": "[E2.1] 完整产品交付：逐项核对C1/E1/X1/O1证据与支持能力表，标出known limits/unsupported；缺必需项不降级成完成",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-81",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-142",
+            "title": "[E2.2] 完整产品交付：在确认替代和无消费者后清理旧路径，跑对应回归；按实际实现更新入口和恢复说明"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-79",
+            "title": "[X1] 函数/动力系统复用"
+          },
+          {
+            "id": "CLI-80",
+            "title": "[O1] 可靠性和发布前检查"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-141/e21-完整产品交付逐项核对c1e1x1o1证据与支持能力表标出known-limitsunsupported缺必需项不降级成完成"
+    },
+    {
+      "taskKey": "E2.2",
+      "id": "CLI-142",
+      "title": "[E2.2] 完整产品交付：在确认替代和无消费者后清理旧路径，跑对应回归；按实际实现更新入口和恢复说明",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-81",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-143",
+            "title": "[E2.3] 完整产品交付：交付可复现产物/证据索引/恢复点与剩余问题；本地验收、可发布、已部署三个状态分别报告"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-141",
+            "title": "[E2.1] 完整产品交付：逐项核对C1/E1/X1/O1证据与支持能力表，标出known limits/unsupported；缺必需项不降级成完成"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-142/e22-完整产品交付在确认替代和无消费者后清理旧路径跑对应回归按实际实现更新入口和恢复说明"
+    },
+    {
+      "taskKey": "E2.3",
+      "id": "CLI-143",
+      "title": "[E2.3] 完整产品交付：交付可复现产物/证据索引/恢复点与剩余问题；本地验收、可发布、已部署三个状态分别报告",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-81",
+      "relations": {
+        "blocks": [],
+        "blockedBy": [
+          {
+            "id": "CLI-142",
+            "title": "[E2.2] 完整产品交付：在确认替代和无消费者后清理旧路径，跑对应回归；按实际实现更新入口和恢复说明"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-143/e23-完整产品交付交付可复现产物证据索引恢复点与剩余问题本地验收可发布已部署三个状态分别报告"
+    },
+    {
+      "taskKey": "J1.CI",
+      "id": "CLI-144",
+      "title": "[J1.CI] 数据库/队列测试隔离与CI必需服务",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-67",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-145",
+            "title": "[J1.2a] Node科学worker和原子Run提交"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-61",
+            "title": "[B0] 基线与工具链"
+          },
+          {
+            "id": "CLI-66",
+            "title": "[P1] 论文入库解析"
+          },
+          {
+            "id": "CLI-65",
+            "title": "[D1] 领域数据与导入"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-144/j1ci-数据库队列测试隔离与ci必需服务"
+    },
+    {
+      "taskKey": "J1.2a",
+      "id": "CLI-145",
+      "title": "[J1.2a] Node科学worker和原子Run提交",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-67",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-146",
+            "title": "[J1.2b] DSH官方TS SDK接同一科学端口"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-100",
+            "title": "[J1.1] 持久执行与恢复：用一个真实解析任务落task/attempt/outbox；实际worker消费，queued状态可重启重建；先不上全部队列"
+          },
+          {
+            "id": "CLI-144",
+            "title": "[J1.CI] 数据库/队列测试隔离与CI必需服务"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-145/j12a-node科学worker和原子run提交"
+    },
+    {
+      "taskKey": "J1.2b",
+      "id": "CLI-146",
+      "title": "[J1.2b] DSH官方TS SDK接同一科学端口",
+      "status": "Todo",
+      "statusType": "unstarted",
+      "parentId": "CLI-67",
+      "relations": {
+        "blocks": [
+          {
+            "id": "CLI-101",
+            "title": "[J1.3] 持久执行与恢复：接有界Agent activation与waiting_input检查点、资源分道/取消/reconcile；等待不占worker"
+          },
+          {
+            "id": "CLI-93",
+            "title": "[A0.3] 早期真实Agent回合：额外依赖已集成J1.2b的DSH工具适配（不要求整个J1完成）；经DSH官方TS SDK/产品白名单工具的有限预算真Qwen多回合"
+          }
+        ],
+        "blockedBy": [
+          {
+            "id": "CLI-63",
+            "title": "[A1] 统一工具端口"
+          },
+          {
+            "id": "CLI-145",
+            "title": "[J1.2a] Node科学worker和原子Run提交"
+          }
+        ],
+        "relatedTo": [],
+        "duplicateOf": null
+      },
+      "url": "https://linear.app/clion/issue/CLI-146/j12b-dsh官方ts-sdk接同一科学端口"
+    }
+  ],
+  "errors": []
+}

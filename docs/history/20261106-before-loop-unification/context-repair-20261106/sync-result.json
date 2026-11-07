@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-06",
+  "source_root": "/Users/c14h14n3/.codex/worktrees/0c04/Paper2Lab",
+  "destination_root": "/Users/c14h14n3/Desktop/Paper2Lab",
+  "copied_files": 11929,
+  "verification": "all copied bytes match before destination-specific STATE note",
+  "protected_user_code": {
+    "path": "src/skills/paperSpec.ts",
+    "before_sha256": "dade8284b90d5285aa578dfa0ef8de7899482b4e05b9e2f73f69e376620b3eb5",
+    "after_sha256": "dade8284b90d5285aa578dfa0ef8de7899482b4e05b9e2f73f69e376620b3eb5"
+  },
+  "git_commit_push": "not performed",
+  "scope": "development documents and research materials only; no production source synchronized"
+}

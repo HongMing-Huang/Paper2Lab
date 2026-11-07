@@ -1,0 +1,48 @@
+.FF..                                                                    [100%]
+=================================== FAILURES ===================================
+_ TestContentAddressedRoundTrip.test_upload_stores_artifact_paper_version_and_reads_back _
+
+self = <test_db_d1.TestContentAddressedRoundTrip object at 0x109c95580>
+db = (<psycopg.Connection [INTRANS] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x109d45280>, 'postgresql...private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-36/test_upload_stores_artifact_pa0'))
+
+    def test_upload_stores_artifact_paper_version_and_reads_back(self, db):
+        conn, _, storage = db
+        ensure_workspace(conn, "default")
+        sha = hashlib.sha256(PDF).hexdigest()
+        rec = store_paper_upload(conn, workspace="default", filename="paper-a.pdf", content=PDF, storage_root=storage)
+        assert rec["sha256"] == sha
+        assert rec["paper_id"] and rec["version_id"]
+        # the blob round-trips byte-for-byte from the content-addressed store
+        assert artifact_bytes(rec["artifact_sha256"], storage_root=storage) == PDF
+        # the identity index reads back by (workspace, sha)
+        got = get_paper_by_sha(conn, workspace="default", sha256=sha)
+>       assert got is not None and got["paper_id"] == rec["paper_id"]
+                                   ^^^^^^^^^^^^^^^
+E       KeyError: 'paper_id'
+
+server/tests/test_db_d1.py:86: KeyError
+_ TestContentAddressedRoundTrip.test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads _
+
+self = <test_db_d1.TestContentAddressedRoundTrip object at 0x109c96b40>
+db = (<psycopg.Connection [INTRANS] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x109d45c10>, 'postgresql...private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-36/test_same_file_twice_dedups_to0'))
+
+    def test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads(self, db):
+        conn, _, storage = db
+        ensure_workspace(conn, "default")
+        first = store_paper_upload(conn, workspace="default", filename="a.pdf", content=PDF, storage_root=storage)
+        second = store_paper_upload(conn, workspace="default", filename="b.pdf", content=PDF, storage_root=storage)
+        assert first["paper_id"] == second["paper_id"]  # one paper per (workspace, content)
+        assert first["version_id"] == second["version_id"]  # same bytes → same version
+        assert first["artifact_sha256"] == second["artifact_sha256"]
+        # but the provenance of each upload is preserved (P1's per-source rows)
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM upload_events WHERE version_id = %s", (first["version_id"],))
+>           assert cur.fetchone()[0] == 2
+                   ^^^^^^^^^^^^^^^^^
+E           KeyError: 0
+
+server/tests/test_db_d1.py:100: KeyError
+=========================== short test summary info ============================
+FAILED server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_upload_stores_artifact_paper_version_and_reads_back
+FAILED server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads
+2 failed, 3 passed in 0.15s

@@ -43,13 +43,14 @@ export function computeVoxelCoverage(
     const d = t.dir
     const r = t.radius
     const c = t.center
-    // segment endpoints c ± d/2; bounding box expanded by radius
-    const minx = Math.max(0, Math.floor((c.x - (Math.abs(d.x) / 2 + r)) * res))
-    const maxx = Math.min(res - 1, Math.ceil((c.x + (Math.abs(d.x) / 2 + r)) * res))
-    const miny = Math.max(0, Math.floor((c.y - (Math.abs(d.y) / 2 + r)) * res))
-    const maxy = Math.min(res - 1, Math.ceil((c.y + (Math.abs(d.y) / 2 + r)) * res))
-    const minz = Math.max(0, Math.floor((c.z - (Math.abs(d.z) / 2 + r)) * res))
-    const maxz = Math.min(res - 1, Math.ceil((c.z + (Math.abs(d.z) / 2 + r)) * res))
+    const half = (t.length ?? 1) / 2
+    // segment endpoints c ± d·half; bounding box expanded by radius
+    const minx = Math.max(0, Math.floor((c.x - (Math.abs(d.x) * half + r)) * res))
+    const maxx = Math.min(res - 1, Math.ceil((c.x + (Math.abs(d.x) * half + r)) * res))
+    const miny = Math.max(0, Math.floor((c.y - (Math.abs(d.y) * half + r)) * res))
+    const maxy = Math.min(res - 1, Math.ceil((c.y + (Math.abs(d.y) * half + r)) * res))
+    const minz = Math.max(0, Math.floor((c.z - (Math.abs(d.z) * half + r)) * res))
+    const maxz = Math.min(res - 1, Math.ceil((c.z + (Math.abs(d.z) * half + r)) * res))
     let tubeVoxels = 0
     for (let i = minx; i <= maxx; i++) {
       const px = (i + 0.5) * h - c.x
@@ -58,10 +59,10 @@ export function computeVoxelCoverage(
         // quick axis-aligned rejection on the xy disc projection
         for (let k = minz; k <= maxz; k++) {
           const pz = (k + 0.5) * h - c.z
-          // t-param along unit direction, clamped to segment of half-length 1/2
+          // t-param along unit direction, clamped to the segment half-length
           let s = px * d.x + py * d.y + pz * d.z
-          if (s < -0.5) s = -0.5
-          else if (s > 0.5) s = 0.5
+          if (s < -half) s = -half
+          else if (s > half) s = half
           const qx = px - s * d.x
           const qy = py - s * d.y
           const qz = pz - s * d.z
@@ -88,6 +89,7 @@ export function computeVoxelCoverage(
   for (let idx = 0; idx < coverage.length; idx++) histogram[coverage[idx]]++
 
   const delta = tubes[0]?.radius ?? 0
+  const L = tubes[0]?.length ?? 1
   const result: VoxelResult = {
     res,
     occupiedVolume: occupied / (res * res * res),
@@ -98,7 +100,7 @@ export function computeVoxelCoverage(
     // capsule = cylinder πδ²·L + a FULL sphere of radius δ (two hemispherical
     // caps); an earlier version used half the sphere and was caught by the
     // independent NumPy/Pyodide Monte-Carlo cross-check (verify.pyodide_numpy)
-    analyticPerTube: Math.PI * delta * delta + (4 / 3) * Math.PI * delta ** 3,
+    analyticPerTube: Math.PI * delta * delta * L + (4 / 3) * Math.PI * delta ** 3,
   }
 
   if (visRes > 0 && visRes <= res && res % visRes === 0) {

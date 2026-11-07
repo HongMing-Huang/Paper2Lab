@@ -6,7 +6,7 @@ import { useCell, useRuntime } from '../runtime/react'
 import {
   deltaCell,
   minSepCell,
-  tubesRunCell,  voxelCell,
+  tubesRunCell,  voxelCell,  materializeVisGrid,
   perronCell,
   sweepCell,
   pSweepOn,
@@ -290,7 +290,7 @@ export function Experiment3DNode() {
       <div onDoubleClick={() => setMicro(true)} title="双击进入 Microscope">
         <Tubes3DView
           tubes={tubes.value?.result ?? []}
-          visGrid={vox.value?.result?.visGrid}
+          visGrid={materializeVisGrid(vox.value?.result?.visGrid)}
           visMaxM={vox.value?.result?.maxMultiplicity}
           showVoxels={!!showVox.value}
           height={330}
@@ -396,8 +396,9 @@ export function ChartUnionNode() {
     setCppState('loading')
     try {
       await ensurePrecomputedRuns()
-    } finally {
-      setCppState('done')
+      setCppState('done') // only a successful import settles the badge
+    } catch {
+      setCppState('idle') // the button keeps its load label — no false "已载入"
     }
   }, [])
   // the high-scale series loads itself on first mount (idempotent) — evidence
@@ -512,15 +513,11 @@ export function ObservationNode() {
         </ul>
       </div>
       <div className="obs-block ai">
-        <Badge provenance="AI INFERENCE" />
+        <span className="badge">模型说明 · 预写说明，非实时 AI</span>
         <p className="card-note">
-          当前构型 <em>{regime}</em>
-          ：{regime === 'packed/sticky'
-            ? '所有管穿过中心，中心 multiplicity 峰值 ≈ N（本页实测即见）。方向仍 δ-分离，但管在凸集内聚集——正是 Theorem 1.2 用 Wolff 公理刻画的情形：这种聚集受制于非聚集条件，|⋃T| 的下降被 δ^ε 型因子限制。'
-            : regime === 'separated'
-              ? '管基本互不重叠，|⋃T| ≈ Σ|T| = N·πδ²（单管解析体积见公式卡）。这与"几乎最大体积"的直觉一致；继续加大 N 观察 |⋃T| 曲线的次线性拐点。'
-              : '介于两者之间：重叠率上升、直方图右尾延长。拖 packing 观察 |⋃T| 曲线与 max m 的同步响应。'}
-          （解释由 AI 生成；数值全部来自上方 CALCULATED；定理结论以论文原文为准。）
+          当前排布标签 <em>{regime}</em> 仅描述 packing 配置。改变排列会改变管束交叠；
+          体积和重数的变化以上方正式计算为准，不能从标签推断“几乎不重叠”。
+          当前展示方向分离检查，尚未完成论文全部 Wolff 非聚集假设的验证；有限尺度结果不证明定理。
         </p>
       </div>
     </Sheet>
@@ -883,7 +880,9 @@ export function ChallengeNode() {
   const nTubes = kakeya.get('kakeya.nTubes').value as number
   const res = kakeya.get('kakeya.voxelRes').value as number
   const run = exact.value
-  const current = run?.status === 'resolved' ? run : null
+  const current = exact.status === 'resolved' && run?.status === 'resolved' &&
+    run.spec.params.packing === packing.value && run.spec.params.deltaExp === deltaExp.value &&
+    run.spec.params.nTubes === nTubes && run.spec.res === res ? run : null
   const baseline = challengeStore.baseline
   const userBest = challengeStore.best('user')
   const agentBest = challengeStore.best('agent')
@@ -895,7 +894,7 @@ export function ChallengeNode() {
     <Sheet label="PACKING CHALLENGE" badge="CALCULATED" width={330}>
       <div className="card-note">
         规则：冻结 方向数 N 与 δ，拖动 3D 里的 tube 族（packing），
-        在有限尺度体素度量下尽量降低 |⋃T|。用户与 Agent 使用<b>完全相同的计算引擎</b>。
+        在有限尺度体素度量下尽量降低 |⋃T|。用户与自动搜索使用<b>完全相同的计算引擎</b>。
       </div>
       {!baseline ? (
         <div className="exp-actions">
@@ -928,7 +927,7 @@ export function ChallengeNode() {
               )}
             </li>
             <li>
-              BEST（Agent）= <b>{fmt(agentBest?.occupiedVolume)}</b>
+              BEST（确定性搜索）= <b>{fmt(agentBest?.occupiedVolume)}</b>
               {agentBest && (
                 <span className="dim">
                   {' '}
@@ -966,12 +965,12 @@ export function ChallengeNode() {
               className="link-btn nodrag"
               disabled={challengeStore.agentBusy}
               onClick={async () => {
-                setProgress('Agent 尝试中…')
-                await agentTry((done, total) => setProgress(`Agent 尝试中… ${done}/${total}`))
+                setProgress('自动搜索（非 AI）…')
+                await agentTry((done, total) => setProgress(`自动搜索（非 AI）… ${done}/${total}`))
                 setProgress(null)
               }}
             >
-              🤖 Let Agent Try（同一引擎搜索 packing）
+              同内核自动搜索（非 AI）
             </button>
           </div>
           {progress && <div className="card-caption">{progress}</div>}

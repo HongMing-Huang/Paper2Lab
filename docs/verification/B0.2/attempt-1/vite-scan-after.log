@@ -1,0 +1,36 @@
+12:46:11 AM [vite] (client) Forced re-optimization of dependencies
+2026-11-05T16:46:11.362Z vite:deps (client) removing old cache dir /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.vite/deps
+2026-11-05T16:46:11.367Z vite:deps scanning for dependencies...
+
+  VITE v7.3.6  ready in 112 ms
+
+  ➜  Local:   http://localhost:5199/
+  ➜  Network: http://192.168.33.4:5199/
+  ➜  Network: http://198.18.0.1:5199/
+2026-11-05T16:46:11.370Z vite:deps Crawling dependencies using entries: 
+  /Users/c14h14n3/Desktop/Paper2Lab/index.html
+2026-11-05T16:46:11.417Z vite:deps ✨ static imports crawl ended
+2026-11-05T16:46:11.422Z vite:deps Scan completed in 55.31ms: 
+  @cortex-js/compute-engine -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@cortex-js+compute-engine@0.142.0/node_modules/@cortex-js/compute-engine/dist/esm-min/compute-engine.js
+  @mujoco/mujoco -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@mujoco+mujoco@3.12.0/node_modules/@mujoco/mujoco/mujoco.js
+  @observablehq/plot -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@observablehq+plot@0.6.17/node_modules/@observablehq/plot/src/index.js
+  @observablehq/runtime -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@observablehq+runtime@6.0.1/node_modules/@observablehq/runtime/src/index.js
+  @react-three/drei -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@react-three+drei@10.7.9_@react-three+fiber@9.8.1_@types+react@19.3.0_react-dom@19.3.0__57f30cc1689007102dce44010e96cbaf/node_modules/@react-three/drei/index.js
+  @react-three/fiber -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@react-three+fiber@9.8.1_@types+react@19.3.0_react-dom@19.3.0_react@19.3.0__react@19.3.0_three@0.186.1/node_modules/@react-three/fiber/dist/react-three-fiber.esm.js
+  @tldraw/tldraw -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@tldraw+tldraw@5.5.0_@floating-ui+dom@1.8.0_@types+react-dom@19.3.0_@types+react@19.3.0_8db289fb06c6817eada0a6dcf873fba9/node_modules/@tldraw/tldraw/dist-esm/index.mjs
+  @xyflow/react -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@xyflow+react@12.12.0_@types+react-dom@19.3.0_@types+react@19.3.0__@types+react@19.3.0__1cb90ab7d1cf1770c5d6bdeb08bc880b/node_modules/@xyflow/react/dist/esm/index.js
+  comlink -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/comlink@4.4.2/node_modules/comlink/dist/esm/comlink.mjs
+  jsxgraph -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/jsxgraph@1.13.3/node_modules/jsxgraph/src/index.js
+  mathlive -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/mathlive@0.110.0/node_modules/mathlive/mathlive.mjs
+  pdfjs-dist -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/pdfjs-dist@4.10.38/node_modules/pdfjs-dist/build/pdf.mjs
+  react -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/react@19.3.0/node_modules/react/index.js
+  react-dom/client -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/client.js
+  react/jsx-dev-runtime -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/react@19.3.0/node_modules/react/jsx-dev-runtime.js
+  three -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/three@0.186.1/node_modules/three/build/three.module.js
+  three/examples/jsm/controls/OrbitControls.js -> /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/three@0.186.1/node_modules/three/examples/jsm/controls/OrbitControls.js
+2026-11-05T16:46:11.423Z vite:deps creating package.json in /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.vite/deps_temp_a9d85d86
+2026-11-05T16:46:12.127Z vite:deps Dependencies bundled in 703.57ms
+2026-11-05T16:46:12.136Z vite:deps ✨ using post-scan optimizer result, the scanner found every used dependency
+2026-11-05T16:46:12.136Z vite:deps creating _metadata.json in /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.vite/deps_temp_a9d85d86
+2026-11-05T16:46:12.137Z vite:deps renaming /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.vite/deps_temp_a9d85d86 to /Users/c14h14n3/Desktop/Paper2Lab/node_modules/.vite/deps
+2026-11-05T16:46:12.137Z vite:deps ✨ dependencies optimized

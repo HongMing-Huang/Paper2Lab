@@ -105,9 +105,26 @@ class TestOrchestration:
 
         monkeypatch.setattr(vlm_parse, "_extract_page", fake_extract)
         stages = []
-        doc = await parse_pdf_with_vlm(REAL_PDF, _provider(), on_stage=stages.append)
+        reported = []
+        doc = await parse_pdf_with_vlm(
+            REAL_PDF,
+            _provider(),
+            on_stage=stages.append,
+            on_page=lambda pn, items: reported.append((pn, len(items))),
+        )
         assert stages == ["vlm-reading"]
         assert calls and calls[0][1] > 1000  # a real rendered PNG
+        # CLI-151: every read page reports its fragments once, before settling
+        assert sorted(pn for pn, _ in reported) == [p["page"] for p in doc["pages"]]
+        assert all(n == len(FAKE_ITEMS) for _, n in reported)
+        assert doc["coverage"]["parsedPages"] == [p["page"] for p in doc["pages"]]
+        # a page slice keeps GLOBAL page numbers and never claims the whole file
+        two_pages = str(Path(REAL_PDF).parent / "sample-harmonic.pdf")
+        sliced = await parse_pdf_with_vlm(two_pages, _provider(), page_range=(2, 2))
+        assert [p["page"] for p in sliced["pages"]] == [2]
+        assert {i["page"] for i in sliced["items"]} == {2}
+        assert sliced["coverage"]["complete"] is False
+        assert [s["name"] for s in sliced["_timing"]["spans"]] == ["vlm.render", "vlm.infer"]
         assert doc["engine"] == "vlm"
         assert doc["doclingVersion"] == "vision-model@fast-path"
         assert doc["_vlm"]["model"] == "vision-model"
@@ -219,7 +236,7 @@ class TestEndpointRouting:
 
         captured = {}
 
-        async def fake_parse(pdf_path, provider, on_stage=None):
+        async def fake_parse(pdf_path, provider, on_stage=None, **_kwargs):
             captured["provider"] = provider
             if on_stage:
                 on_stage("vlm-reading")

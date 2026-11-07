@@ -1,0 +1,210 @@
+HOME Paper2Lab
+把一篇数学 PDF 变成可以操作的论文 — 公式里的参数直接拖动， 图与实验即时重算；每个数字都能追溯到它来自的那一行论文。
+⚡ 快速理解
+AI 读图 · 秒级
+🔍 精读定位
+Docling · 字符级锚点
+拖入一篇 PDF，或点击选择
+· 或 ·
+打开 Wang–Zahl Kakeya Lab（内置论文 · 3D 专用 Adapter）→
+· 或 ·
+打开 Physics Lab（MuJoCo · 17 场景 · 拖拽施力真物理）→
+· 或 ·
+打开 
+PDF uploaded
+ROUTE 200
+DESK sample-harmonic.pdf
+docling v2.131.0 · 18 items · 2 pages
+🧠 理解卡
+← 换一篇论文
+询问 Agent
+本地参数指令（非 AI）
+保存实验结果（JSON）
+Move focus to canvas
+100%
+Get a license for production
+PLAYBUTTONS [
+  '自由',
+  '并排',
+  '网格',
+  '聚焦',
+  '▸ Playable 1',
+  '▸ Playable 2',
+  '‹',
+  '›',
+  '🧠 理解卡',
+  '← 换一篇论文',
+  '询问 Agent',
+  '本地参数指令（非 AI）',
+  '保存实验结果（JSON）',
+  'Move focus to canvas',
+  '264%',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  'Get a license for production'
+]
+EXPERIMENTS [
+  {
+    id: 'explorer-mw4x1yoe-0',
+    params: { a: 1, b: 1 },
+    run: 'formula-curve-mw4x1yqf-tj3oa-0'
+  }
+]
+LOCAL INTERACTIVE FIGURE
+y(x) — 实验纸
+y=
+a
+2.00
+sin(
+b
+1.00
+x)
+2
+4
+−2
+−4
+0.5
+1
+1.5
+2
+−0.5
+−1
+−1.5
+−2
+A
+y(x) · run …bgoa-1 · Source
+LOCAL COMPUTE · 0ms → CALCULATED
+LOCAL CALC · 0 ms
+cortex-ce-js@0.142.0 · run bgoa-1
+peak |y| = 2.000 · ∫|y|dx = 16.985
+⑂ Fork
+⇄ Compare
+⌖ Source
+研究桌面
+聚焦 · 6
+自由
+并排
+网格
+聚焦
+sample-harmonic.pdf
+docling v2.131.0 · 18 items · 2 pages
+🧠 理解卡
+← 换一篇论文
+询问 Agent
+本地参数指令（非 AI）
+保存实验结果（JSON）
+本地指令（非 AI）：实验完成，结果引用 run formula-curve-mw4x1yqf-tj3oa-0 与 formula-curve-mw4x1zru-ybgoa-1。曲线与指标来自真实采样计算；不代表论文定理证明。
+LOCAL COMPUTE → CALCULATED · run …oa-1AI local-command/? 未验证
+将焦点移至画布
+264%
+tool.p2l-experiment. 0 / 1
+Get a license for production
+RUNS [{"id":"explorer-mw4x1yoe-0","params":{"a":1,"b":1},"runId":"formula-curve-mw4x1yqf-tj3oa-0","peak":0.9999766522434058,"integral":8.492380116406544,"source":{"docId":"doc-6a38800e7c","anchorId":"p1-i7","page":1,"bbox":{"x":0.44796,"y":0.49504,"w":0.42263,"h":0.01377},"latex":"y = a \\sin ( b x ) ."}},{"id":"explorer-mw4x1zqy-1","params":{"a":2,"b":1},"runId":"formula-curve-mw4x1zru-ybgoa-1","parentRunId":"formula-curve-mw4x1yqf-tj3oa-0","peak":1.9999533044868116,"integral":16.984760232813088,"source":{"docId":"doc-6a38800e7c","anchorId":"p1-i7","page":1,"bbox":{"x":0.44796,"y":0.49504,"w":0.42263,"h":0.01377},"latex":"y = a \\sin ( b x ) ."}}]
+INVALID INTERACTIVE FIGURE
+y(x) — 实验纸
+y=
+a
+2.00
+sin(
+b
+1.00
+x)
+2
+4
+−2
+−4
+0.5
+1
+1.5
+2
+−0.5
+−1
+−1.5
+−2
+A
+y(x) · run …bgoa-1 · Source
+ERROR
+LOCAL CALC · 0 ms
+cortex-ce-js@0.142.0 · run bgoa-1
+peak |y| = 2.000 · ∫|y|dx = 16.985
+⑂ Fork
+⇄ Compare
+⌖ Source
+研究桌面
+聚焦 · 6
+自由
+并排
+网格
+聚焦
+sample-harmonic.pdf
+docling v2.131.0 · 18 items · 2 pages
+🧠 理解卡
+← 换一篇论文
+询问 Agent
+本地参数指令（非 AI）
+保存实验结果（JSON）
+操作未完成：参数 a=99 超出当前模型允许范围 [-5, 5]；未创建分支或修改参数
+ERROR · 参数 a=99 超出当前模型允许范围 [-5, 5]；未创建分支或修改参数
+将焦点移至画布
+264%
+tool.p2l-experiment. 0 / 1
+Get a license for production
+AGENT INTERACTIVE FIGURE
+y(x) — 实验纸
+y=
+a
+2.00
+sin(
+b
+1.00
+x)
+2
+4
+−2
+−4
+0.5
+1
+1.5
+2
+−0.5
+−1
+−1.5
+−2
+A
+y(x) · run …bgoa-1 · Source
+ERROR
+LOCAL CALC · 0 ms
+cortex-ce-js@0.142.0 · run bgoa-1
+peak |y| = 2.000 · ∫|y|dx = 16.985
+⑂ Fork
+⇄ Compare
+⌖ Source
+研究桌面
+聚焦 · 6
+自由
+并排
+网格
+聚焦
+sample-harmonic.pdf
+docling v2.131.0 · 18 items · 2 pages
+🧠 理解卡
+← 换一篇论文
+询问 Agent
+本地参数指令（非 AI）
+保存实验结果（JSON）
+Agent 未完成：本回合缺少真实 Agent 后端声明；未执行任何预设工具操作。。未自动重试或执行本地替代；请先检查已有实验。
+ERROR · 本回合缺少真实 Agent 后端声明；未执行任何预设工具操作。
+将焦点移至画布
+264%
+tool.p2l-experiment. 0 / 1
+Get a license for production
+SAVED paper2lab-doc-6a38800e7c-runs.json

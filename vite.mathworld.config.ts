@@ -13,14 +13,14 @@ export default defineConfig({
   cacheDir: 'node_modules/.vite-mathworld',
   // the executor imports the voxel worker client (ES-module worker)
   worker: { format: 'es' },
-  server: { port: 5191, strictPort: true, host: '127.0.0.1' },
-  preview: { port: 5192, strictPort: true, host: '127.0.0.1' },
-  // the agent dock (CLI-151b) talks to the same research backend as the main
-  // app: /api/v1 → Node 8790, other /api → Python 8788
-  proxy: {
-    '/api/v1': { target: 'http://127.0.0.1:8790', changeOrigin: true },
-    '/api': { target: 'http://127.0.0.1:8788', changeOrigin: true },
+  server: {
+    port: 5191, strictPort: true, host: '127.0.0.1',
+    proxy: {
+      '/api/v1': { target: `http://127.0.0.1:${process.env.PAPER2LAB_NODE_PORT ?? '8790'}`, changeOrigin: true },
+      '/api': { target: `http://127.0.0.1:${process.env.PAPER2LAB_API_PORT ?? '8788'}`, changeOrigin: true },
+    },
   },
+  preview: { port: 5192, strictPort: true, host: '127.0.0.1' },
   build: {
     target: 'es2022',
     outDir: 'dist/mathworld',

@@ -1,0 +1,54 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ❯ src/skills/toolPort.test.ts (16 tests | 7 failed) 55ms
+   ✓ toolCatalog — the contract comes from the Registry, not a second list > lists every registered skill with aliases, version, evidence and BOTH schemas 2ms
+   ✓ toolCatalog — the contract comes from the Registry, not a second list > carries a port version so consumers can pin the contract 0ms
+   ✓ invokeScientificTool — identical semantics to the executor > same params through the port and the executor produce the same evidence 46ms
+   ✓ invokeScientificTool — identical semantics to the executor > a canonical alias resolves to the same implementation through the port 2ms
+   ✓ invokeScientificTool — identical semantics to the executor > unknown tool → terminal receipt with errorCode, never a run 0ms
+   ✓ invokeScientificTool — identical semantics to the executor > missing plan → needs_input receipt with missingFields 0ms
+   ✓ invokeScientificTool — identical semantics to the executor > invalid input → error receipt with errorCode invalid_input 0ms
+   ✓ invokeScientificTool — identical semantics to the executor > an execution failure keeps the error Run in the receipt (no silent drop) 1ms
+   ✓ invokeScientificTool — identical semantics to the executor > an invocationId set by the caller echoes back for correlation 0ms
+   × invokeScientificOperation — operation identity and idempotency (A1.2) > the same operationId + same payload replays the SAME receipt without re-executing 2ms
+     → (0 , resetOperationLedger) is not a function
+   × invokeScientificOperation — operation identity and idempotency (A1.2) > the same operationId + DIFFERENT payload is refused as a conflict, never executed 0ms
+     → (0 , resetOperationLedger) is not a function
+   × invokeScientificOperation — operation identity and idempotency (A1.2) > an unknown tool under an operationId is refused and NOT cached as the operation result 0ms
+     → (0 , resetOperationLedger) is not a function
+   × invokeScientificOperation — operation identity and idempotency (A1.2) > the idempotencyKey participates in identity: same operationId, different keys both execute 0ms
+     → (0 , resetOperationLedger) is not a function
+   × invokeScientificOperation — operation identity and idempotency (A1.2) > a failed execution IS cached: retrying the operation returns the same failure, no re-run 0ms
+     → (0 , resetOperationLedger) is not a function
+   × invokeScientificOperation — operation identity and idempotency (A1.2) > workspaces are isolated: the same operationId in two workspaces executes twice 0ms
+     → (0 , resetOperationLedger) is not a function
+   × invokeScientificOperation — operation identity and idempotency (A1.2) > the ledger is in-process only: reset clears it (J1 owns persistence) 0ms
+     → (0 , resetOperationLedger) is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/skills/toolPort.test.ts > invokeScientificOperation — operation identity and idempotency (A1.2) > the same operationId + same payload replays the SAME receipt without re-executing
+ FAIL  src/skills/toolPort.test.ts > invokeScientificOperation — operation identity and idempotency (A1.2) > the same operationId + DIFFERENT payload is refused as a conflict, never executed
+ FAIL  src/skills/toolPort.test.ts > invokeScientificOperation — operation identity and idempotency (A1.2) > an unknown tool under an operationId is refused and NOT cached as the operation result
+ FAIL  src/skills/toolPort.test.ts > invokeScientificOperation — operation identity and idempotency (A1.2) > the idempotencyKey participates in identity: same operationId, different keys both execute
+ FAIL  src/skills/toolPort.test.ts > invokeScientificOperation — operation identity and idempotency (A1.2) > a failed execution IS cached: retrying the operation returns the same failure, no re-run
+ FAIL  src/skills/toolPort.test.ts > invokeScientificOperation — operation identity and idempotency (A1.2) > workspaces are isolated: the same operationId in two workspaces executes twice
+ FAIL  src/skills/toolPort.test.ts > invokeScientificOperation — operation identity and idempotency (A1.2) > the ledger is in-process only: reset clears it (J1 owns persistence)
+TypeError: (0 , resetOperationLedger) is not a function
+ ❯ src/skills/toolPort.test.ts:102:20
+    100| 
+    101| describe('invokeScientificOperation — operation identity and idempoten…
+    102|   beforeEach(() => resetOperationLedger())
+       |                    ^
+    103| 
+    104|   const payload = { skill: 'formula.evaluate', input }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 9 passed (16)
+   Start at  03:24:35
+   Duration  608ms (transform 66ms, setup 0ms, collect 154ms, tests 55ms, environment 0ms, prepare 39ms)
+

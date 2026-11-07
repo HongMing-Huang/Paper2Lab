@@ -79,9 +79,38 @@ export function getExperimentRun(runId: string): ExperimentRun | undefined {
 }
 /** Register an imported (previously executed) run; immutable, id must be new. */
 export function registerImportedRun(run: ExperimentRun): void {
+  validateImportedRun(run)
   if (history.has(run.runId)) throw new Error(`Run already recorded: ${run.runId}`)
-  if (run.status === 'resolved' && run.result === undefined) throw new Error(`Imported run ${run.runId} has no result`)
   history.set(run.runId, freezeRecord(structuredClone(run)))
+}
+
+/**
+ * The import consistency gate (M1): status/result/errors must be coherent and
+ * any result must hold JSON evidence — a rejected output can never re-enter
+ * history through an import. Shared by registerImportedRun and importRuns so
+ * bundle validation is exactly entry validation (import atomicity).
+ */
+export function validateImportedRun(run: ExperimentRun): void {
+  if (!run || typeof run.runId !== 'string' || !run.spec || typeof run.status !== 'string' || !Array.isArray(run.errors)) {
+    throw new Error(`Imported run does not match the ExperimentRun protocol: ${String(run?.runId)}`)
+  }
+  if (!['stale', 'computing', 'resolved', 'error'].includes(run.status)) {
+    throw new Error(`Imported run ${run.runId} has illegal status '${run.status}'`)
+  }
+  if (run.status === 'error') {
+    if (run.result !== undefined) throw new Error(`Imported run ${run.runId} is an error run carrying a result — rejected output can never become evidence`)
+    if (run.errors.length === 0) throw new Error(`Imported run ${run.runId} is an error run without an error message`)
+    return
+  }
+  if (run.status !== 'resolved') {
+    // stale/computing are in-flight states — an import claiming one while
+    // carrying a result would smuggle unsealed numbers into history
+    if (run.result !== undefined) throw new Error(`Imported run ${run.runId} is '${run.status}' while carrying a result — only resolved runs carry evidence`)
+    return
+  }
+  if (run.result === undefined) throw new Error(`Imported run ${run.runId} has no result`)
+  if (run.errors.length > 0) throw new Error(`Imported run ${run.runId} is resolved but carries errors`)
+  sealResult(run.result)
 }
 /** Most recent runs (optionally filtered by kind), newest first. */
 export function listExperimentRuns(filter?: { kind?: ExperimentKind; parentRunId?: string; limit?: number }): ExperimentRun[] {
@@ -127,28 +156,86 @@ export function assertFiniteNumbers(value: unknown, path = 'result'): void {
   }
 }
 export class ExperimentExecutionError extends Error {
-  constructor(public readonly run: ExperimentRun) {
+  constructor(
+    public readonly run: ExperimentRun,
+    /** the kernel threw, or it finished with output that breaks the Run contract */
+    public readonly code: 'execution_failed' | 'output_invalid' = 'execution_failed',
+  ) {
     super(run.errors.join('; '))
   }
 }
+
+/**
+ * The evidence boundary (PLAN §3.3): a Run result holds finite numbers, strings,
+ * booleans, nulls, plain objects and arrays. Typed arrays and buffers stay mutable
+ * and lose dtype/shape in JSON, so binary data must go through artifacts.ts and
+ * appear here as a reference. Returns the copy that gets stored, so the producer
+ * keeps ownership of what it returned. Undefined object fields are dropped (JSON
+ * has no such value); undefined anywhere else has no faithful form and is refused.
+ */
+export function sealResult<T>(value: T, path = 'result'): T {
+  return sealValue(value, path) as T
+}
+
+function sealValue(value: unknown, path: string): unknown {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error(`non-finite number at ${path}: ${value}`)
+    return value
+  }
+  if (Array.isArray(value)) return Array.from(value, (item, i) => sealValue(item, `${path}[${i}]`))
+  if (typeof value === 'object') {
+    if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer || (typeof SharedArrayBuffer !== 'undefined' && value instanceof SharedArrayBuffer)) {
+      throw new Error(`binary value at ${path}: seal it with sealArray and store the reference`)
+    }
+    // plain means the prototype is the end of the chain (true across realms too):
+    // Map, Set, Date and class instances all have one more link
+    const proto = Object.getPrototypeOf(value)
+    if (proto !== null && Object.getPrototypeOf(proto) !== null) {
+      throw new Error(`non-JSON object at ${path}: ${Object.prototype.toString.call(value)}`)
+    }
+    const copy: Record<string, unknown> = {}
+    for (const [key, child] of Object.entries(value)) {
+      // a __proto__ key would swap the copy's prototype instead of adding a
+      // field — prototype pollution, not data
+      if (key === '__proto__') throw new Error(`prototype key at ${path}: refused`)
+      if (child !== undefined) copy[key] = sealValue(child, `${path}.${key}`)
+    }
+    return copy
+  }
+  throw new Error(`non-JSON value at ${path}: ${typeof value}`)
+}
+
+export type OutputValidator = (result: unknown) => string | null
 
 /** wrap a deterministic compute into a full ExperimentRun */
 export async function executeSpec<T>(
   spec: ExperimentSpec,
   engine: { engine: string; version: string },
   compute: () => Promise<T> | T,
-  lineage: { parentRunId?: string } = {},
+  lineage: { parentRunId?: string; validateOutput?: OutputValidator } = {},
 ): Promise<ExperimentRun<T>> {
   const t0 = performance.now()
   const startedAt = Date.now()
   const input = structuredClone(spec)
   let result: T | undefined
   let failure: string | undefined
+  let failureCode: 'execution_failed' | 'output_invalid' = 'execution_failed'
   try {
-    result = await compute()
-    // finite gate BEFORE the run can be stamped CALCULATED (Lane A contract)
-    assertFiniteNumbers(result)
-  } catch (err) { failure = err instanceof Error ? err.message : String(err) }
+    const computed = await compute()
+    // the boundary runs BEFORE the run can be stamped CALCULATED; on failure the
+    // output is discarded, so a rejected value can never reach a chart or a Goal
+    failureCode = 'output_invalid'
+    const sealedResult = sealResult(computed)
+    const invalid = lineage.validateOutput?.(sealedResult)
+    if (invalid) throw new Error(`output contract: ${invalid}`)
+    result = sealedResult
+  } catch (err) {
+    // a nested executeSpec (sweep child runs) rethrows its own classified
+    // failure — keep that classification instead of relabeling it
+    if (err instanceof ExperimentExecutionError) failureCode = err.code
+    failure = err instanceof Error ? err.message : String(err)
+  }
   const run: ExperimentRun<T> = {
     runId: nextRunId(spec.kind.replace(/\./g, '-')),
     spec: input,
@@ -165,6 +252,6 @@ export async function executeSpec<T>(
   }
   freezeRecord(run)
   history.set(run.runId, run)
-  if (failure !== undefined) throw new ExperimentExecutionError(run)
+  if (failure !== undefined) throw new ExperimentExecutionError(run, failureCode)
   return run
 }

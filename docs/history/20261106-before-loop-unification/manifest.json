@@ -1,0 +1,10 @@
+{
+  "scope": "Historical snapshot, not active instructions. Current root files override this archive. No production acceptance implied.",
+  "files": {
+    "AGENTS.md": "4db64fc317ac3c360c1090d6ccfd1a4af2a96a743813bd2943076c75bdf05d6d",
+    "STATE.md": "168074b528f2ae35054b6f81e510b0923cfd20c0347a53cef1f0f7e87d34c0fe",
+    "LOOP.md": "c072a59991b23f0a9c464e70aa93bf32baf78678c9357f0fd1733daef65fc07a",
+    "PLAN.md": "25cea3b4c6eb1c1c2b93897fd89a5f3d0b3332b582450b89b1ae8ba19c596cf6",
+    "DEVELOPMENT_PROMPT.md": "9aa5d55584c575c50fd3e0b7d5c85ed0d30e129f775738645db41f8b6c08e79b"
+  }
+}

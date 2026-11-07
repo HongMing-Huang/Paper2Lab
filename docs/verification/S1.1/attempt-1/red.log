@@ -1,0 +1,430 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ❯ src/skills/executorProof.test.ts (19 tests | 2 failed) 108ms
+   ✓ real-executor proof: the 19 historical assertions > evaluate analytic value 0ms
+   ✓ real-executor proof: the 19 historical assertions > evaluate parameter sensitivity 0ms
+   ✓ real-executor proof: the 19 historical assertions > plot grid and peak 0ms
+   ✓ real-executor proof: the 19 historical assertions > plot every point analytic oracle 0ms
+   ✓ real-executor proof: the 19 historical assertions > plot trapezoidal integral 0ms
+   ✓ real-executor proof: the 19 historical assertions > plot replay same result new id 0ms
+   ✓ real-executor proof: the 19 historical assertions > plot fork lineage and sensitivity 0ms
+   ✓ real-executor proof: the 19 historical assertions > plot fork source inheritance 0ms
+   ✓ real-executor proof: the 19 historical assertions > model build initial derivative 0ms
+   ✓ real-executor proof: the 19 historical assertions > model RK4 analytic endpoint 0ms
+   ✓ real-executor proof: the 19 historical assertions > model replay identical 0ms
+   ✓ real-executor proof: the 19 historical assertions > model fork lineage analytic endpoint 0ms
+   ✓ real-executor proof: the 19 historical assertions > missing PlayPlan rejected without run 0ms
+   ✓ real-executor proof: the 19 historical assertions > unregistered PlayPlan rejected 0ms
+   ✓ real-executor proof: the 19 historical assertions > unknown skill rejected 0ms
+   ✓ real-executor proof: the 19 historical assertions > nonfinite becomes error Run 0ms
+   ✓ real-executor proof: the 19 historical assertions > scalar fork numeric result 0ms
+   × real-executor proof: the 19 historical assertions > scalar fork lineage preserved 3ms
+     → expected undefined to be 'formula-value-mw3stqpw-tsb44-0' // Object.is equality
+   × real-executor proof: the 19 historical assertions > scalar source preserved 1ms
+     → expected undefined to deeply equal { …(3) }
+ ❯ src/skills/runProvenance.test.ts (59 tests | 27 failed) 432ms
+   × run provenance across every compute skill > 'scalar': the run records the caller source 62ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   ✓ run provenance across every compute skill > 'curve': the run records the caller source 2ms
+   ✓ run provenance across every compute skill > 'tubes': the run records the caller source 0ms
+   ✓ run provenance across every compute skill > 'voxels': the run records the caller source 3ms
+   ✓ run provenance across every compute skill > 'sweep over nTubes': the run records the caller source 1ms
+   ✓ run provenance across every compute skill > 'sweep over packing': the run records the caller source 4ms
+   × run provenance across every compute skill > 'perron tree': the run records the caller source 6ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   ✓ run provenance across every compute skill > 'needle sweep': the run records the caller source 1ms
+   ✓ run provenance across every compute skill > 'lv ode': the run records the caller source 1ms
+   × run provenance across every compute skill > 'phase ode': the run records the caller source 25ms
+     → phase ode: ode.phase: could not compile the paper's right-hand sides for states x, y: expected 'error' to be 'ok' // Object.is equality
+   ✓ run provenance across every compute skill > 'model build': the run records the caller source 2ms
+   ✓ run provenance across every compute skill > 'model solve': the run records the caller source 3ms
+   × run provenance across every compute skill > 'mujoco': the run records the caller source 75ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'challenge': the run records the caller source 57ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'scalar': a fork keeps parent and inherits source 2ms
+     → expected undefined to be 'formula-value-mw3stqvo-vgv32-17' // Object.is equality
+   ✓ run provenance across every compute skill > 'curve': a fork keeps parent and inherits source 1ms
+   ✓ run provenance across every compute skill > 'tubes': a fork keeps parent and inherits source 0ms
+   ✓ run provenance across every compute skill > 'voxels': a fork keeps parent and inherits source 2ms
+   ✓ run provenance across every compute skill > 'sweep over nTubes': a fork keeps parent and inherits source 1ms
+   ✓ run provenance across every compute skill > 'sweep over packing': a fork keeps parent and inherits source 0ms
+   × run provenance across every compute skill > 'perron tree': a fork keeps parent and inherits source 6ms
+     → perron tree: alpha must be in (0.5, 1]: expected 'error' to be 'ok' // Object.is equality
+   ✓ run provenance across every compute skill > 'needle sweep': a fork keeps parent and inherits source 1ms
+   ✓ run provenance across every compute skill > 'lv ode': a fork keeps parent and inherits source 2ms
+   × run provenance across every compute skill > 'phase ode': a fork keeps parent and inherits source 1ms
+     → phase ode: ode.phase: could not compile the paper's right-hand sides for states x, y: expected 'error' to be 'ok' // Object.is equality
+   ✓ run provenance across every compute skill > 'model build': a fork keeps parent and inherits source 2ms
+   ✓ run provenance across every compute skill > 'model solve': a fork keeps parent and inherits source 2ms
+   × run provenance across every compute skill > 'mujoco': a fork keeps parent and inherits source 3ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'challenge': a fork keeps parent and inherits source 57ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'scalar': a replay keeps source, matches numerically, and is not a fork 1ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'curve': a replay keeps source, matches numerically, and is not a fork 1ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'tubes': a replay keeps source, matches numerically, and is not a fork 0ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'voxels': a replay keeps source, matches numerically, and is not a fork 0ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'sweep over nTubes': a replay keeps source, matches numerically, and is not a fork 0ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'sweep over packing': a replay keeps source, matches numerically, and is not a fork 1ms
+     → sweep over packing: kakeya.sweep over 'packing' requires a baseline nTubes (the fixed tube family being swept): expected 'error' to be 'ok' // Object.is equality
+   × run provenance across every compute skill > 'perron tree': a replay keeps source, matches numerically, and is not a fork 4ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'needle sweep': a replay keeps source, matches numerically, and is not a fork 1ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'lv ode': a replay keeps source, matches numerically, and is not a fork 1ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'phase ode': a replay keeps source, matches numerically, and is not a fork 1ms
+     → phase ode: ode.phase: could not compile the paper's right-hand sides for states x, y: expected 'error' to be 'ok' // Object.is equality
+   × run provenance across every compute skill > 'model build': a replay keeps source, matches numerically, and is not a fork 1ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'model solve': a replay keeps source, matches numerically, and is not a fork 3ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'mujoco': a replay keeps source, matches numerically, and is not a fork 3ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × run provenance across every compute skill > 'challenge': a replay keeps source, matches numerically, and is not a fork 56ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   ✓ run provenance across every compute skill > 'scalar': no source is invented when the caller gives none 1ms
+   ✓ run provenance across every compute skill > 'curve': no source is invented when the caller gives none 0ms
+   ✓ run provenance across every compute skill > 'tubes': no source is invented when the caller gives none 0ms
+   ✓ run provenance across every compute skill > 'voxels': no source is invented when the caller gives none 0ms
+   ✓ run provenance across every compute skill > 'sweep over nTubes': no source is invented when the caller gives none 0ms
+   ✓ run provenance across every compute skill > 'sweep over packing': no source is invented when the caller gives none 0ms
+   ✓ run provenance across every compute skill > 'perron tree': no source is invented when the caller gives none 2ms
+   ✓ run provenance across every compute skill > 'needle sweep': no source is invented when the caller gives none 0ms
+   ✓ run provenance across every compute skill > 'lv ode': no source is invented when the caller gives none 0ms
+   × run provenance across every compute skill > 'phase ode': no source is invented when the caller gives none 1ms
+     → phase ode: ode.phase: could not compile the paper's right-hand sides for states x, y: expected 'error' to be 'ok' // Object.is equality
+   ✓ run provenance across every compute skill > 'model build': no source is invented when the caller gives none 1ms
+   ✓ run provenance across every compute skill > 'model solve': no source is invented when the caller gives none 1ms
+   ✓ run provenance across every compute skill > 'mujoco': no source is invented when the caller gives none 2ms
+   ✓ run provenance across every compute skill > 'challenge': no source is invented when the caller gives none 28ms
+   × failed runs keep their provenance > an error run records source and evaluates to no result 1ms
+     → expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+   × failed runs keep their provenance > a failed fork still points at its parent and inherits source 1ms
+     → expected undefined to be 'formula-value-mw3str0w-bmhpv-100' // Object.is equality
+   ✓ failed runs keep their provenance > sweep child runs carry the sweep source so each datapoint traces back 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 29 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/skills/executorProof.test.ts > real-executor proof: the 19 historical assertions > scalar fork lineage preserved
+AssertionError: expected undefined to be 'formula-value-mw3stqpw-tsb44-0' // Object.is equality
+
+- Expected: 
+"formula-value-mw3stqpw-tsb44-0"
+
++ Received: 
+undefined
+
+ ❯ src/skills/executorProof.test.ts:125:46
+    123|   })
+    124|   it('scalar fork lineage preserved', () => {
+    125|     expect(runOf(o.scalarFork)?.parentRunId).toBe(runOf(o.evaluate)?.r…
+       |                                              ^
+    126|   })
+    127|   it('scalar source preserved', () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/29]⎯
+
+ FAIL  src/skills/executorProof.test.ts > real-executor proof: the 19 historical assertions > scalar source preserved
+AssertionError: expected undefined to deeply equal { …(3) }
+
+- Expected: 
+{
+  "anchorId": "oracle-polynomial",
+  "docId": "synthetic-analytic-oracle",
+  "title": "Declared analytic test, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/executorProof.test.ts:128:44
+    126|   })
+    127|   it('scalar source preserved', () => {
+    128|     expect(runOf(o.evaluate)?.spec.source).toEqual(source)
+       |                                            ^
+    129|   })
+    130| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'scalar': the run records the caller source
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'perron tree': the run records the caller source
+AssertionError: expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+
+- Expected: 
+{
+  "anchorId": "anchor-1",
+  "docId": "provenance-test",
+  "title": "Declared test anchor, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/runProvenance.test.ts:56:29
+     54|   it.each(CASES)('$label: the run records the caller source', async (c…
+     55|     const run = await runCase(c, anchor)
+     56|     expect(run.spec.source).toEqual(anchor)
+       |                             ^
+     57|     expect(run.parentRunId).toBeUndefined()
+     58|   }, 120_000)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'phase ode': the run records the caller source
+AssertionError: phase ode: ode.phase: could not compile the paper's right-hand sides for states x, y: expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ runCase src/skills/runProvenance.test.ts:47:82
+     45| async function runCase(c: Case, source?: unknown): Promise<ExperimentR…
+     46|   const out = await executeSkill(c.skill, c.input, { ...planFor(c.skil…
+     47|   expect(out.status, `${c.label}: ${out.status === 'error' ? out.messa…
+       |                                                                                  ^
+     48|   if (out.status !== 'ok' || !out.run) throw new Error(`${c.label} pro…
+     49|   expect(out.run.spec.kind).toBe(c.kind)
+ ❯ src/skills/runProvenance.test.ts:55:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'mujoco': the run records the caller source
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'challenge': the run records the caller source
+AssertionError: expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+
+- Expected: 
+{
+  "anchorId": "anchor-1",
+  "docId": "provenance-test",
+  "title": "Declared test anchor, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/runProvenance.test.ts:56:29
+     54|   it.each(CASES)('$label: the run records the caller source', async (c…
+     55|     const run = await runCase(c, anchor)
+     56|     expect(run.spec.source).toEqual(anchor)
+       |                             ^
+     57|     expect(run.parentRunId).toBeUndefined()
+     58|   }, 120_000)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'scalar': a fork keeps parent and inherits source
+AssertionError: expected undefined to be 'formula-value-mw3stqvo-vgv32-17' // Object.is equality
+
+- Expected: 
+"formula-value-mw3stqvo-vgv32-17"
+
++ Received: 
+undefined
+
+ ❯ src/skills/runProvenance.test.ts:65:34
+     63|     expect(fork.status, `${c.label}: ${fork.status === 'error' ? fork.…
+     64|     if (fork.status !== 'ok' || !fork.run) throw new Error(`${c.label}…
+     65|     expect(fork.run.parentRunId).toBe(base.runId)
+       |                                  ^
+     66|     expect(fork.run.spec.source).toEqual(anchor)
+     67|     expect(fork.run.spec.kind).toBe(c.kind)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'perron tree': a fork keeps parent and inherits source
+AssertionError: perron tree: alpha must be in (0.5, 1]: expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ src/skills/runProvenance.test.ts:63:87
+     61|     const base = await runCase(c, anchor)
+     62|     const fork = await executeSkill('experiment.fork', { sourceRunId: …
+     63|     expect(fork.status, `${c.label}: ${fork.status === 'error' ? fork.…
+       |                                                                                       ^
+     64|     if (fork.status !== 'ok' || !fork.run) throw new Error(`${c.label}…
+     65|     expect(fork.run.parentRunId).toBe(base.runId)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'phase ode': a fork keeps parent and inherits source
+AssertionError: phase ode: ode.phase: could not compile the paper's right-hand sides for states x, y: expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ runCase src/skills/runProvenance.test.ts:47:82
+     45| async function runCase(c: Case, source?: unknown): Promise<ExperimentR…
+     46|   const out = await executeSkill(c.skill, c.input, { ...planFor(c.skil…
+     47|   expect(out.status, `${c.label}: ${out.status === 'error' ? out.messa…
+       |                                                                                  ^
+     48|   if (out.status !== 'ok' || !out.run) throw new Error(`${c.label} pro…
+     49|   expect(out.run.spec.kind).toBe(c.kind)
+ ❯ src/skills/runProvenance.test.ts:61:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'mujoco': a fork keeps parent and inherits source
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'challenge': a fork keeps parent and inherits source
+AssertionError: expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+
+- Expected: 
+{
+  "anchorId": "anchor-1",
+  "docId": "provenance-test",
+  "title": "Declared test anchor, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/runProvenance.test.ts:66:34
+     64|     if (fork.status !== 'ok' || !fork.run) throw new Error(`${c.label}…
+     65|     expect(fork.run.parentRunId).toBe(base.runId)
+     66|     expect(fork.run.spec.source).toEqual(anchor)
+       |                                  ^
+     67|     expect(fork.run.spec.kind).toBe(c.kind)
+     68|     // a parameter change must actually change the computation, not ju…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'scalar': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'curve': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'tubes': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'voxels': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'sweep over nTubes': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'perron tree': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'needle sweep': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'lv ode': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'model build': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'model solve': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'mujoco': a replay keeps source, matches numerically, and is not a fork
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'challenge': a replay keeps source, matches numerically, and is not a fork
+AssertionError: expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+
+- Expected: 
+{
+  "anchorId": "anchor-1",
+  "docId": "provenance-test",
+  "title": "Declared test anchor, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/runProvenance.test.ts:79:36
+     77|     expect(replay.run.runId).not.toBe(base.runId)
+     78|     expect(replay.run.parentRunId).toBeUndefined()
+     79|     expect(replay.run.spec.source).toEqual(anchor)
+       |                                    ^
+     80|     expect(stripIds(replay.run.result)).toBe(stripIds(base.result))
+     81|   }, 120_000)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'sweep over packing': a replay keeps source, matches numerically, and is not a fork
+AssertionError: sweep over packing: kakeya.sweep over 'packing' requires a baseline nTubes (the fixed tube family being swept): expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ src/skills/runProvenance.test.ts:75:93
+     73|     const base = await runCase(c, anchor)
+     74|     const replay = await replayRun(base.runId)
+     75|     expect(replay.status, `${c.label}: ${replay.status === 'error' ? r…
+       |                                                                                             ^
+     76|     if (replay.status !== 'ok' || !replay.run) throw new Error(`${c.la…
+     77|     expect(replay.run.runId).not.toBe(base.runId)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'phase ode': a replay keeps source, matches numerically, and is not a fork
+AssertionError: phase ode: ode.phase: could not compile the paper's right-hand sides for states x, y: expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ runCase src/skills/runProvenance.test.ts:47:82
+     45| async function runCase(c: Case, source?: unknown): Promise<ExperimentR…
+     46|   const out = await executeSkill(c.skill, c.input, { ...planFor(c.skil…
+     47|   expect(out.status, `${c.label}: ${out.status === 'error' ? out.messa…
+       |                                                                                  ^
+     48|   if (out.status !== 'ok' || !out.run) throw new Error(`${c.label} pro…
+     49|   expect(out.run.spec.kind).toBe(c.kind)
+ ❯ src/skills/runProvenance.test.ts:73:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > run provenance across every compute skill > 'phase ode': no source is invented when the caller gives none
+AssertionError: phase ode: ode.phase: could not compile the paper's right-hand sides for states x, y: expected 'error' to be 'ok' // Object.is equality
+
+Expected: "ok"
+Received: "error"
+
+ ❯ runCase src/skills/runProvenance.test.ts:47:82
+     45| async function runCase(c: Case, source?: unknown): Promise<ExperimentR…
+     46|   const out = await executeSkill(c.skill, c.input, { ...planFor(c.skil…
+     47|   expect(out.status, `${c.label}: ${out.status === 'error' ? out.messa…
+       |                                                                                  ^
+     48|   if (out.status !== 'ok' || !out.run) throw new Error(`${c.label} pro…
+     49|   expect(out.run.spec.kind).toBe(c.kind)
+ ❯ src/skills/runProvenance.test.ts:84:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > failed runs keep their provenance > an error run records source and evaluates to no result
+AssertionError: expected undefined to deeply equal { docId: 'provenance-test', …(2) }
+
+- Expected: 
+{
+  "anchorId": "anchor-1",
+  "docId": "provenance-test",
+  "title": "Declared test anchor, not a paper claim",
+}
+
++ Received: 
+undefined
+
+ ❯ src/skills/runProvenance.test.ts:98:30
+     96|     expect(run?.status).toBe('error')
+     97|     expect(run?.result).toBeUndefined()
+     98|     expect(run?.spec.source).toEqual(anchor)
+       |                              ^
+     99|   })
+    100| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/29]⎯
+
+ FAIL  src/skills/runProvenance.test.ts > failed runs keep their provenance > a failed fork still points at its parent and inherits source
+AssertionError: expected undefined to be 'formula-value-mw3str0w-bmhpv-100' // Object.is equality
+
+- Expected: 
+"formula-value-mw3str0w-bmhpv-100"
+
++ Received: 
+undefined
+
+ ❯ src/skills/runProvenance.test.ts:109:30
+    107|     const run = (fork as { run?: ExperimentRun }).run
+    108|     expect(run?.status).toBe('error')
+    109|     expect(run?.parentRunId).toBe(base.run.runId)
+       |                              ^
+    110|     expect(run?.spec.source).toEqual(anchor)
+    111|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/29]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  29 failed | 49 passed (78)
+   Start at  01:07:39
+   Duration  1.05s (transform 109ms, setup 0ms, collect 372ms, tests 540ms, environment 0ms, prepare 131ms)
+

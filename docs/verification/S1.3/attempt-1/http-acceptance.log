@@ -1,0 +1,19 @@
+== S1.3 HTTP acceptance (attempt-2, 2026-11-05T18:31:57Z) ==
+== payload: plan s13-http-check2 (inputs a=2,x=3) + source http-anchor ==
+-- positive --
+        "status": "ok",
+                "kind": "formula.value",
+                    "docId": "s13-verify",
+                    "anchorId": "http-anchor",
+            "status": "resolved",
+                "value": 6
+-- negative: tampered input a=9 --
+        "status": "needs_input",
+        "missing": [
+-- idempotency: same requestId twice --
+run1=formula-value-mw3vu59i-e392g-0
+run2=formula-value-mw3vu59i-e392g-0
+IDEMPOTENT: yes
+-- no source: spec lacks the key --
+source in spec: False
+-- plan op resubmission (same content, no createdAt) stays idempotent over bridge --

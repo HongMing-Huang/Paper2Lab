@@ -1,0 +1,10 @@
+........................................................................ [ 51%]
+...................................................................      [100%]
+=============================== warnings summary ===============================
+test_api.py::test_health_is_alive_and_ready_checks_dependencies
+  /Users/c14h14n3/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/events.py:88: RuntimeWarning: The executor did not finishing joining its threads within 300 seconds.
+    self._context.run(self._callback, *self._args)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+139 passed, 1 warning in 491.33s (0:08:11)
+env PAPER2LAB_DATA_DIR=/tmp/p2l-pytest-data server/.venv/bin/python -m pytest  288.73s user 6.16s system 59% cpu 8:12.20 total

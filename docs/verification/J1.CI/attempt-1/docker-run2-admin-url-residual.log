@@ -1,0 +1,311 @@
+........................................................................ [ 32%]
+.............................EEEEE...................................... [ 64%]
+........................................................................ [ 96%]
+.........                                                                [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestWorkspaceIdentity.test_ensure_workspace_is_idempotent __
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-141/test_ensure_workspace_is_idemp0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str | None = None) -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+    
+        admin_url defaults to the ADMIN database of the SAME server the target
+        points at (host/port from the target URL, database "postgres") — the
+        historical per-file admin literals only worked because they lived on the
+        same host as the default target.
+        """
+        import psycopg
+    
+        target = test_database()
+        if admin_url is None:
+            # same server AND same role as the target; credentials (if any) stay
+            # with libpq (PGPASSWORD / .pgpass) — never copied into a URL here
+            parts = urlsplit(target)
+            user = f"{parts.username}@" if parts.username else ""
+            admin_url = f"postgresql://{user}{parts.hostname or 'localhost'}:{parts.port or 5432}/postgres"
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:125: RuntimeError
+_ ERROR at setup of TestContentAddressedRoundTrip.test_upload_stores_artifact_paper_version_and_reads_back _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-141/test_upload_stores_artifact_pa0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str | None = None) -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+    
+        admin_url defaults to the ADMIN database of the SAME server the target
+        points at (host/port from the target URL, database "postgres") — the
+        historical per-file admin literals only worked because they lived on the
+        same host as the default target.
+        """
+        import psycopg
+    
+        target = test_database()
+        if admin_url is None:
+            # same server AND same role as the target; credentials (if any) stay
+            # with libpq (PGPASSWORD / .pgpass) — never copied into a URL here
+            parts = urlsplit(target)
+            user = f"{parts.username}@" if parts.username else ""
+            admin_url = f"postgresql://{user}{parts.hostname or 'localhost'}:{parts.port or 5432}/postgres"
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:125: RuntimeError
+_ ERROR at setup of TestContentAddressedRoundTrip.test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-141/test_same_file_twice_dedups_to0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str | None = None) -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+    
+        admin_url defaults to the ADMIN database of the SAME server the target
+        points at (host/port from the target URL, database "postgres") — the
+        historical per-file admin literals only worked because they lived on the
+        same host as the default target.
+        """
+        import psycopg
+    
+        target = test_database()
+        if admin_url is None:
+            # same server AND same role as the target; credentials (if any) stay
+            # with libpq (PGPASSWORD / .pgpass) — never copied into a URL here
+            parts = urlsplit(target)
+            user = f"{parts.username}@" if parts.username else ""
+            admin_url = f"postgresql://{user}{parts.hostname or 'localhost'}:{parts.port or 5432}/postgres"
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:125: RuntimeError
+_ ERROR at setup of TestContentAddressedRoundTrip.test_different_workspaces_keep_separate_papers_for_the_same_bytes _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-141/test_different_workspaces_keep0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str | None = None) -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+    
+        admin_url defaults to the ADMIN database of the SAME server the target
+        points at (host/port from the target URL, database "postgres") — the
+        historical per-file admin literals only worked because they lived on the
+        same host as the default target.
+        """
+        import psycopg
+    
+        target = test_database()
+        if admin_url is None:
+            # same server AND same role as the target; credentials (if any) stay
+            # with libpq (PGPASSWORD / .pgpass) — never copied into a URL here
+            parts = urlsplit(target)
+            user = f"{parts.username}@" if parts.username else ""
+            admin_url = f"postgresql://{user}{parts.hostname or 'localhost'}:{parts.port or 5432}/postgres"
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:125: RuntimeError
+___ ERROR at setup of TestMigration.test_migrate_is_idempotent_and_versioned ___
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-141/test_migrate_is_idempotent_and0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str | None = None) -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+    
+        admin_url defaults to the ADMIN database of the SAME server the target
+        points at (host/port from the target URL, database "postgres") — the
+        historical per-file admin literals only worked because they lived on the
+        same host as the default target.
+        """
+        import psycopg
+    
+        target = test_database()
+        if admin_url is None:
+            # same server AND same role as the target; credentials (if any) stay
+            # with libpq (PGPASSWORD / .pgpass) — never copied into a URL here
+            parts = urlsplit(target)
+            user = f"{parts.username}@" if parts.username else ""
+            admin_url = f"postgresql://{user}{parts.hostname or 'localhost'}:{parts.port or 5432}/postgres"
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:125: RuntimeError
+=============================== warnings summary ===============================
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy
+  test_agent_a02.py:24: PytestWarning: The test <Function test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_an_error_batch_keeps_its_semantics_in_the_degraded_summary
+  test_agent_a02.py:40: PytestWarning: The test <Function test_an_error_batch_keeps_its_semantics_in_the_degraded_summary> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_an_error_batch_keeps_its_semantics_in_the_degraded_summary(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_small_result_is_verbatim_and_registers_nothing
+  test_agent_a02.py:47: PytestWarning: The test <Function test_a_small_result_is_verbatim_and_registers_nothing> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_small_result_is_verbatim_and_registers_nothing(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_huge_comparison_never_busts_the_budget
+  test_agent_a02.py:53: PytestWarning: The test <Function test_a_huge_comparison_never_busts_the_budget> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_huge_comparison_never_busts_the_budget(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_metrics_tier_is_actually_reachable_when_it_fits
+  test_agent_a02.py:63: PytestWarning: The test <Function test_the_metrics_tier_is_actually_reachable_when_it_fits> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_metrics_tier_is_actually_reachable_when_it_fits(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_every_degradation_level_stays_within_budget_and_valid
+  test_agent_a02.py:75: PytestWarning: The test <Function test_every_degradation_level_stays_within_budget_and_valid> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_every_degradation_level_stays_within_budget_and_valid(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_artifact_registry_is_bounded_and_evicts_oldest
+  test_agent_a02.py:97: PytestWarning: The test <Function test_the_artifact_registry_is_bounded_and_evicts_oldest> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_artifact_registry_is_bounded_and_evicts_oldest(self):
+
+test_api.py::test_health_is_alive_and_ready_checks_dependencies
+  /Users/c14h14n3/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/events.py:88: RuntimeWarning: The executor did not finishing joining its threads within 300 seconds.
+    self._context.run(self._callback, *self._args)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR server/tests/test_db_d1.py::TestWorkspaceIdentity::test_ensure_workspace_is_idempotent
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_upload_stores_artifact_paper_version_and_reads_back
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_different_workspaces_keep_separate_papers_for_the_same_bytes
+ERROR server/tests/test_db_d1.py::TestMigration::test_migrate_is_idempotent_and_versioned
+220 passed, 4 deselected, 8 warnings, 5 errors in 363.74s (0:06:03)

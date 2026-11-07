@@ -1,0 +1,17 @@
+
+==================================== ERRORS ====================================
+___________________ ERROR collecting test_ci_targets_j1ci.py ___________________
+ImportError while importing test module '/Users/c14h14n3/Desktop/Paper2Lab/server/tests/test_ci_targets_j1ci.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+server/tests/test_ci_targets_j1ci.py:26: in <module>
+    from server.tests import testtargets  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ImportError: cannot import name 'testtargets' from 'server.tests' (unknown location)
+=========================== short test summary info ============================
+ERROR server/tests/test_ci_targets_j1ci.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.07s

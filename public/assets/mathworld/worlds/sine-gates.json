@@ -1,0 +1,50 @@
+{
+  "schema": "paper2lab.mathworld/v1",
+  "id": "sine-gates",
+  "title": "正弦闸道 · 让光轨穿过四道闸门",
+  "origin": {
+    "kind": "dev-sample",
+    "note": "开发样例：手写教科书函数 y = a·sin(b·x) + c 与闸门布局；不是 PDF 解析结果，也不是 Qwen 生成"
+  },
+  "premise": "一条由 y = a·sin(b·x) + c 定义的光轨从左向右穿过实验场。a 是振幅、b 是角频率、c 是整体偏移；曲线上的铜色控制点可以直接拖动。",
+  "objective": "让光轨同时穿过四道闸门的开口，并且不碰到悬挂的禁区方块。",
+  "model": {
+    "kind": "formula",
+    "expression": "a\\sin(b x)+c",
+    "independent": "x",
+    "output": "y",
+    "range": [-6, 6],
+    "samples": 481,
+    "params": [
+      { "name": "a", "label": "振幅 a", "initial": 1, "min": -3, "max": 3, "step": 0.01, "operable": true },
+      { "name": "b", "label": "角频率 b", "initial": 1, "min": 0.2, "max": 3, "step": 0.005, "operable": true },
+      { "name": "c", "label": "偏移 c", "initial": 0, "min": -2, "max": 2, "step": 0.01, "operable": true }
+    ]
+  },
+  "controls": [
+    { "kind": "curve-handle", "id": "h-c", "param": "c", "atX": 0, "label": "c" },
+    { "kind": "curve-handle", "id": "h-a", "param": "a", "atX": -1.6, "label": "a" },
+    { "kind": "curve-handle", "id": "h-b", "param": "b", "atX": 4.5, "label": "b" }
+  ],
+  "goal": {
+    "attempts": 8,
+    "constraints": [
+      { "kind": "gate", "id": "g1", "label": "闸门 1", "x": -4, "min": 0.8, "max": 1.5 },
+      { "kind": "gate", "id": "g2", "label": "闸门 2", "x": -1, "min": -1.3, "max": -0.5 },
+      { "kind": "gate", "id": "g3", "label": "闸门 3", "x": 2, "min": 1.6, "max": 2.4 },
+      { "kind": "gate", "id": "g4", "label": "闸门 4", "x": 5, "min": -1.6, "max": -0.8 },
+      { "kind": "avoid-box", "id": "block", "label": "悬挂禁区", "xMin": 3, "xMax": 3.6, "yMin": 1.2, "yMax": 3.2 }
+    ]
+  },
+  "scene": {
+    "axes": {
+      "x": { "source": "x", "min": -6, "max": 6, "length": 12, "label": "x" },
+      "y": { "source": "y", "min": -3.2, "max": 3.2, "length": 6.4, "label": "y" }
+    }
+  },
+  "rules": [
+    "拖动控制点或参数芯片时只做预览（同一表达式、粗网格），不计分。",
+    "松手才提交一次正式计算：formula.plot 采样整条光轨，闸门处用 formula.evaluate 单点精确求值。",
+    "控制点只反解它绑定的一个参数，并沿当前连续分支；无解或病态时保持最后合法值。"
+  ]
+}

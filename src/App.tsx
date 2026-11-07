@@ -8,17 +8,22 @@ import { Home } from './desk/Home'
 import type { DeskPayload } from './desk/context'
 import type { IngestedDoc } from './ingest/doclingSchema'
 import type { AdapterDecision } from './skills/adapterRouter'
+import type { StudyPayload } from './study/types'
 
 const DeskCanvas = lazy(() => import('./canvas/DeskCanvas').then((m) => ({ default: m.DeskCanvas })))
 const PaperDesk = lazy(() => import('./desk/PaperDesk').then((m) => ({ default: m.PaperDesk })))
 const PhysicsLab = lazy(() => import('./physics/view/PhysicsLab').then((m) => ({ default: m.PhysicsLab })))
 const ChallengesLab = lazy(() => import('./challenges/ChallengesLab').then((m) => ({ default: m.ChallengesLab })))
+const ResearchConsole = lazy(() => import('./research/ResearchConsole').then((m) => ({ default: m.ResearchConsole })))
+const PaperStudy = lazy(() => import('./study/PaperStudy').then((m) => ({ default: m.PaperStudy })))
 
 type Route =
   | { kind: 'home' }
   | { kind: 'kakeya' }
   | { kind: 'physics' }
   | { kind: 'challenges' }
+  | { kind: 'research' }
+  | { kind: 'study'; payload: StudyPayload }
   | { kind: 'desk'; payload: DeskPayload }
 
 function LabLoading({ label }: { label: string }) {
@@ -30,7 +35,8 @@ function LabLoading({ label }: { label: string }) {
 }
 
 export function App() {
-  const [route, setRoute] = useState<Route>({ kind: 'home' })
+  const demo = new URLSearchParams(location.search).get('demo') === 'kakeya'
+  const [route, setRoute] = useState<Route>(() => ({ kind: demo ? 'kakeya' : 'home' }))
 
   const onDesk = useCallback(
     (file: File, pdfUrl: string, doc: IngestedDoc, decision: AdapterDecision) => {
@@ -44,13 +50,36 @@ export function App() {
   const onKakeya = useCallback(() => setRoute({ kind: 'kakeya' }), [])
   const onPhysics = useCallback(() => setRoute({ kind: 'physics' }), [])
   const onChallenges = useCallback(() => setRoute({ kind: 'challenges' }), [])
+  const onResearch = useCallback(() => setRoute({ kind: 'research' }), [])
+  const onStudy = useCallback((p: StudyPayload) => setRoute({ kind: 'study', payload: p }), [])
   const onHome = useCallback(() => setRoute({ kind: 'home' }), [])
 
-  if (route.kind === 'home') return <Home onDesk={onDesk} onKakeya={onKakeya} onPhysics={onPhysics} onChallenges={onChallenges} />
+  if (route.kind === 'home')
+    return (
+      <Home
+        onStudy={onStudy}
+        onKakeya={onKakeya}
+        onPhysics={onPhysics}
+        onChallenges={onChallenges}
+        onResearch={onResearch}
+      />
+    )
+  if (route.kind === 'study')
+    return (
+      <Suspense fallback={<LabLoading label="论文研究空间" />}>
+        <PaperStudy payload={route.payload} onExit={onHome} onDesk={onDesk} />
+      </Suspense>
+    )
+  if (route.kind === 'research')
+    return (
+      <Suspense fallback={<LabLoading label="研究控制台" />}>
+        <ResearchConsole onExit={onHome} />
+      </Suspense>
+    )
   if (route.kind === 'kakeya')
     return (
       <Suspense fallback={<LabLoading label="Kakeya " />}>
-        <DeskCanvas onExit={onHome} />
+        <DeskCanvas onExit={onHome} demo={demo} />
       </Suspense>
     )
   if (route.kind === 'physics')

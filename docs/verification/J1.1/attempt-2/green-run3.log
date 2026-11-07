@@ -1,0 +1,6 @@
+..........                                                               [100%]
+============================= slowest 3 durations ==============================
+2.23s call     test_jobs_j11.py::TestWorkerConsumes::test_timeout_really_terminates_the_conversion
+0.68s call     test_jobs_j11.py::TestWorkerConsumes::test_api_only_queues_and_a_separate_worker_process_consumes
+0.26s call     test_jobs_j11.py::TestWorkerConsumes::test_a_failed_parse_is_recorded_by_the_worker
+10 passed in 6.53s

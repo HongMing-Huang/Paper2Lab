@@ -20,12 +20,14 @@ Sessions are held server-side (one Agent / SOP history per sessionId).
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import math
 import os
 import re
 import uuid
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, AsyncGenerator
@@ -1004,6 +1006,41 @@ def _evt_type(chunk: Any) -> str:
     return str(getattr(t, "value", t) or "").lower()
 
 
+# ---------------------------------------------------------------------------
+# A0.1 — session-scoped turn state. The ok-summary and the turn lock belong to
+# ONE session: concurrent sessions never read each other's numbers, turns on
+# the same session serialize (the shared agentscope agent is not concurrency
+# safe), and both release when the turn ends — normally OR on an exception.
+# ---------------------------------------------------------------------------
+_session_summaries: dict[str, str] = {}
+_session_locks: dict[str, asyncio.Lock] = {}
+
+
+def set_session_summary(session_id: str, text: str) -> None:
+    _session_summaries[session_id] = text
+
+
+def get_session_summary(session_id: str) -> str | None:
+    return _session_summaries.get(session_id)
+
+
+@asynccontextmanager
+async def session_turn(session_id: str) -> AsyncGenerator[None, None]:
+    """serialize the turns of ONE session and scope its summary state.
+
+    The lock map itself lives for the process (dropping entries would break
+    waiters queued on the old object); J1's session lifecycle owns real GC.
+    An abandoned SSE consumer closes the generator → GeneratorExit → the
+    async-with still releases the lock."""
+    lock = _session_locks.setdefault(session_id, asyncio.Lock())
+    async with lock:
+        _session_summaries.pop(session_id, None)  # every turn starts clean
+        try:
+            yield
+        finally:
+            _session_summaries.pop(session_id, None)  # and leaves clean
+
+
 async def agentscope_stream(
     session_id: str,
     inputs: Any,
@@ -1014,7 +1051,22 @@ async def agentscope_stream(
     """stream one agent interaction. With server_execute=True the tool call
     the REAL model just made is run through the ENGINE BRIDGE headlessly and
     the result is fed back into the same agent — the turn completes without
-    a browser (#30/#29 real-model integration)."""
+    a browser (#30/#29 real-model integration). A0.1: the whole turn runs
+    under the session's serial lock with session-scoped summary state."""
+    async with session_turn(session_id):
+        agen = _agentscope_stream_locked(session_id, inputs, server_execute, intent, context)
+        async for event in agen:
+            yield event
+
+
+async def _agentscope_stream_locked(
+    session_id: str,
+    inputs: Any,
+    server_execute: bool = False,
+    intent: str = "",
+    context: dict | None = None,
+) -> AsyncGenerator[dict, None]:
+    """the turn body — runs INSIDE session_turn (lock held, summary scoped)."""
     from agentscope.event import ExternalExecutionResultEvent
     from agentscope.message import ToolResultBlock, ToolResultState
 
@@ -1024,9 +1076,10 @@ async def agentscope_stream(
         _agentscope_sessions[session_id] = agent
 
     final_text = ""
-    global _last_ok_summary
-    _last_ok_summary = None
     rounds = 0
+    # A1.3: chain state for THIS turn — round 2+ tool calls continue from the
+    # turn's latest run instead of re-reading the original base (R8)
+    turn_state: dict = {}
     while True:
         rounds += 1
         if rounds > _MAX_AGENT_SERVER_ROUNDS:
@@ -1063,7 +1116,7 @@ async def agentscope_stream(
                         tool=call.name,
                         mode="server",
                     )
-                    ok, payload = await _server_run_tool_call(call, args, intent, context or {})
+                    ok, payload = await _server_run_tool_call(call, args, intent, context or {}, turn_state)
                     yield ev("tool_result", toolCallId=call.id, status="ok" if ok else "error",
                              **({"summary": payload} if ok else {"error": payload}))
                     if ok and isinstance(payload, dict):
@@ -1073,12 +1126,12 @@ async def agentscope_stream(
                         if cmp_:
                             bits.append(f"comparison={json.dumps(cmp_, ensure_ascii=False)[:200]}")
                         if bits:
-                            _last_ok_summary = "；".join(bits)
+                            set_session_summary(session_id, "；".join(bits))
                     state = ToolResultState.SUCCESS if ok else ToolResultState.ERROR
                     out = payload if ok else {"error": payload}
                     resume_blocks.append(
                         ToolResultBlock(id=call.id, name=call.name or "scientific_execute",
-                                        output=json.dumps(out, ensure_ascii=False)[:8000], state=state)
+                                        output=_tool_output_json(out), state=state)
                     )
             elif etype == "reply_end" and not saw_external:
                 reason = getattr(chunk, "finished_reason", "completed")
@@ -1096,46 +1149,117 @@ async def agentscope_stream(
         )
     if final_text:
         yield ev("observation_ready", text=final_text, evidence="AI_INFERENCE")
-    elif server_execute and _last_ok_summary is not None:
-        # reasoning models sometimes end without plain content — surface the
-        # REAL run numbers as the observation instead of nothing (labeled)
-        yield ev(
-            "observation_ready",
-            text=f"模型未给出文字结论；真实计算结果：{_last_ok_summary}",
-            evidence="AI_INFERENCE",
-        )
+    else:
+        summary = get_session_summary(session_id)
+        if server_execute and summary is not None:
+            # reasoning models sometimes end without plain content — surface
+            # the REAL run numbers as the observation instead of nothing
+            # (labeled). A0.1: this reads THIS session's summary only.
+            yield ev(
+                "observation_ready",
+                text=f"模型未给出文字结论；真实计算结果：{summary}",
+                evidence="AI_INFERENCE",
+            )
 
 
-_last_ok_summary: str | None = None
+# A0.2: oversized tool results degrade to STRUCTURED summaries — the full
+# authorized result is retained server-side behind an artifactRef (bounded,
+# in-process until J1 persists it) with a sha256 integrity mark, so nothing
+# silently evaporates and the copy is verifiable against the summary.
+_RESULT_ARTIFACT_LIMIT = 32
+_result_artifacts: dict[str, str] = {}  # ref → full JSON (insertion-ordered)
 
 
-async def _server_run_tool_call(call: Any, args: dict, intent: str, context: dict) -> tuple[bool, Any]:
+def get_result_artifact(ref: str) -> Any | None:
+    """the FULL retained result behind a slim summary's artifactRef (parsed),
+    or None when the ref is unknown/evicted — the durable record is always
+    the engine's run history; this is the in-process fast copy."""
+    raw = _result_artifacts.get(ref)
+    return None if raw is None else json.loads(raw)
+
+
+def _retain_result_artifact(out: Any) -> tuple[str, str]:
+    """store the full result, evicting oldest past the limit; returns (ref, sha)."""
+    raw = json.dumps(out, ensure_ascii=False)
+    ref = f"artifact-{uuid.uuid4().hex[:12]}"
+    _result_artifacts[ref] = raw
+    while len(_result_artifacts) > _RESULT_ARTIFACT_LIMIT:
+        oldest = next(iter(_result_artifacts))
+        _result_artifacts.pop(oldest)
+    return ref, f"sha256:{hashlib.sha256(raw.encode()).hexdigest()}"
+
+
+def _tool_output_json(out: Any, budget: int = 8000) -> str:
+    """A0.2: the tool-result JSON fed back to the model is VALID JSON; an
+    oversized result degrades through a richness ladder (comparison+metrics →
+    comparison → selectors-only) — each level is tried largest-first, so the
+    richest summary that FITS wins and every output is ≤budget. artifactRef +
+    sha256 address the retained full copy; runIds are the durable selectors
+    into the engine's run history."""
+    s = json.dumps(out, ensure_ascii=False)
+    if len(s) <= budget:
+        return s
+    ref, sha = _retain_result_artifact(out)
+    runs = out.get("runs") or [] if isinstance(out, dict) else []
+    run_ids = [r.get("runId") for r in runs if isinstance(r, dict) and r.get("runId")]
+    base: dict = {
+        "truncated": True,
+        "note": f"full result exceeded the {budget}-char tool-output budget — retained in full behind artifactRef; run records are durable in the engine run history by runId",
+        "artifactRef": ref,
+        "artifactSha256": sha,
+    }
+    # failure semantics ride along at EVERY level — a truncation that
+    # swallows the error would read as success
+    if isinstance(out, dict) and out.get("status") == "error":
+        base["status"] = "error"
+        base["message"] = str(out.get("message", ""))[:200]
+    comparison = out.get("comparison") if isinstance(out, dict) else None
+    metrics = [r.get("metrics") for r in runs[-4:] if isinstance(r, dict)]
+    # richest first; each candidate strictly ⊂ the previous by whole fields
+    candidates: list[dict] = [{**base, "runIds": run_ids, "metrics": metrics}]
+    if comparison is not None:
+        candidates.insert(0, {**base, "runIds": run_ids, "metrics": metrics, "comparison": comparison})
+        candidates.append({**base, "runIds": run_ids, "comparison": comparison})
+    candidates.append({**base, "runIds": run_ids})
+    for candidate in candidates:
+        j = json.dumps(candidate, ensure_ascii=False)
+        if len(j) <= budget:
+            return j
+    # floor: selectors (capped) + integrity + error semantics always fit
+    return json.dumps({**base, "runIds": run_ids[:4]}, ensure_ascii=False)
+
+
+async def _server_run_tool_call(
+    call: Any, args: dict, intent: str, context: dict, turn_state: dict | None = None,
+) -> tuple[bool, Any]:
     """execute a model-proposed tool call through the engine bridge (#29/#30):
     scientific_execute → agent_steps (plan registered engine-side per #32);
-    canvas_apply → no headless surface in 0.1, answered honestly."""
+    canvas_apply → no headless surface in 0.1, answered honestly.
+
+    A1.3: turn_state carries the chain within ONE agent turn — round 2+ calls
+    continue from the turn's LATEST run (baseRunId) instead of re-reading the
+    original base (the R8 wrong-baseline defect). Desk mismatches are an
+    EXPLICIT error the model can see and retry on; ops are never silently
+    rewritten. Identical retried batches derive one deterministic operationId,
+    so the engine-side ledger replays instead of double-forking."""
     tool = str(getattr(call, "name", "") or args.get("tool") or "scientific_execute")
     if tool == "canvas_apply":
         return False, "canvas_apply has no headless surface in 0.1 — answer from the run results"
-    # #51/P0-C: the LLM may NOT pick its own desk — the base input belongs to
-    # the experiment the user is looking at (context.deskKind). A model-chosen
-    # mismatched desk ran the WRONG kernel against the base ("ode.solve:
-    # missing field system" ×6 blind rounds, bit for real on the cloud). When
-    # they disagree, pin the context desk and translate the op prefix — one
-    # instructive retry beat six failing rounds.
     ctx_desk = str(context.get("deskKind") or "formula")
     desk = str(args.get("deskKind") or ctx_desk)
     if desk != ctx_desk:
-        # rewrite step op prefixes to the ACTUAL desk's vocabulary (the shapes
-        # set/scale/terminal are identical across desks; only the prefix differs)
-        fixed_steps = []
-        for s in steps_raw(args):
-            op = str(s.get("op", ""))
-            rest = op.split(".", 1)[1] if "." in op else op
-            fixed_steps.append({**s, "op": f"{ctx_desk}.{rest}"} if rest else s)
-        steps = fixed_steps
-        desk = ctx_desk
-    else:
-        steps = args.get("steps") if isinstance(args.get("steps"), list) else []
+        # #51 taught us the model picks wrong desks when it may; the fix that
+        # worked was naming the pinned desk and the correct op prefix — as an
+        # ERROR the model reads and retries on. Silently rewriting the ops
+        # would execute a different program than the one the model proposed.
+        return False, (
+            f"desk mismatch: the experiment lives on desk '{ctx_desk}' "
+            f"(context.deskKind), not '{desk}'. Restate the steps with "
+            f"'{ctx_desk}.*' ops (e.g. {ctx_desk}.set / {ctx_desk}.scale / "
+            f"a {ctx_desk} terminal) — or, if the question really is about "
+            f"another desk, say so and the experiment must be opened there first."
+        )
+    steps = args.get("steps") if isinstance(args.get("steps"), list) else []
     meta = {
         "kakeya": "kakeya.measure", "ode": "ode.solve", "geometry": "geometry.2d",
         "mujoco": "mujoco.simulate", "challenge": "challenge.attempt",
@@ -1151,22 +1275,51 @@ async def _server_run_tool_call(call: Any, args: dict, intent: str, context: dic
     }
     from server.engine_bridge import bridge
 
-    base = context.get("base") if isinstance(context.get("base"), dict) else {}
-    if not base and isinstance(context.get("current"), dict):
-        # current carries the live experiment spec when the browser sends it
-        # (expression/parameters/values); a bare values map only works for
-        # desks whose base is parameter-only
-        base = context["current"]
+    # chain: after a successful round, continue from the turn's latest run
+    chain_run_id = (turn_state or {}).get("latestRunId")
+    if chain_run_id:
+        base_kwargs = {"baseRunId": chain_run_id}
+        identity_source = {"desk": desk, "steps": steps, "baseRunId": chain_run_id}
+    else:
+        base = context.get("base") if isinstance(context.get("base"), dict) else {}
+        if not base and isinstance(context.get("current"), dict):
+            # current carries the live experiment spec when the browser sends it
+            # (expression/parameters/values); a bare values map only works for
+            # desks whose base is parameter-only
+            base = context["current"]
+        base_kwargs = {"base": base}
+        identity_source = {"desk": desk, "steps": steps, "base": base}
+    # one deterministic operationId per semantic batch: an identical retry
+    # (timeout → model re-proposes the same steps) replays in the engine
+    # ledger instead of forking the same experiment twice
+    digest = hashlib.sha256(
+        json.dumps(identity_source, ensure_ascii=False, sort_keys=True).encode()
+    ).hexdigest()[:16]
+    operation_id = f"asteps-{digest}"
     try:
         resp = await bridge.call(
-            "agent_steps", deskKind=desk, steps=steps, base=base,
+            "agent_steps", deskKind=desk, steps=steps,
             planId=plan["planId"], plan=plan,
+            operationId=operation_id,
+            **base_kwargs,
         )
     except TimeoutError:
         return False, "engine timed out"
     if not resp.get("ok"):
         return False, resp.get("error", "engine error")
-    return True, resp.get("result")
+    result = resp.get("result")
+    # a batch that ran but FAILED internally keeps its error envelope: the
+    # tool_result event and the ToolResultBlock must not report "ok" while
+    # the engine says status=error (envelope fidelity)
+    if isinstance(result, dict) and result.get("status") == "error":
+        return False, result
+    # record the chain head for the NEXT round of THIS turn
+    if turn_state is not None and isinstance(result, dict):
+        runs = result.get("runs") or []
+        latest = result.get("targetRunId") or (runs[-1].get("runId") if runs else None)
+        if resp.get("replayed") is not True and latest:
+            turn_state["latestRunId"] = latest
+    return True, result
 
 
 # --------------------------------------------------------------------------
@@ -1192,6 +1345,11 @@ def _sse(events: AsyncGenerator[dict, None]) -> StreamingResponse:
                 yield f"data: {json.dumps(e, ensure_ascii=False)}\n\n".encode()
         except Exception as exc:  # noqa: BLE001 — surface stream errors to client
             yield f"data: {json.dumps(ev('error', message=str(exc)))}\n\n".encode()
+        finally:
+            # A0.1 follow-up: close the INNER generator deterministically on
+            # client disconnect — relying on GC's asyncgen finalizer releases
+            # the session lock only eventually; an explicit aclose is immediate
+            await events.aclose()
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 

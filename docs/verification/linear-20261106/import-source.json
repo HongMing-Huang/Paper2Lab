@@ -1,0 +1,1012 @@
+{
+  "format": "Executed import source snapshot; not a live tracker",
+  "connection": "verified",
+  "createdRemoteIssues": 86,
+  "team": "Clion",
+  "project": "P-CLI-3",
+  "snapshotDate": "2026-11-06",
+  "sourcePlanSha256": "1328a1cddfb95ec58e266c01743afdbfe0556840f33d8c3cf1cb93e301a317fb",
+  "sourceStateSha256": "18c08040160b8dec6e7bbdf02a5870e391317a5960868f3cbcf1d64ad5d3f11d",
+  "importProtocol": "Read latest STATE and existing remote project/issues; resolve actual team/status/IDs; upsert taskKey without duplicates; parents then children then blockedBy; read back. No automatic claims, guessed URLs or stale Done imports.",
+  "notes": [
+    "Done B0/S1/A1/D1/P1 retain legacy scope; new DSH/Node/TS consumer gates remain in J1/A0.3/A2.1.",
+    "A0.3 Q-A03-1 is a human blocker, not an invented dependency issue.",
+    "86 issue identities/parent/state/dependencies actually read back; subsequent state only in Linear."
+  ],
+  "workPackages": 21,
+  "slices": 65,
+  "items": [
+    {
+      "taskKey": "B0",
+      "title": "[B0] 基线与工具链",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [],
+      "statusAtSnapshot": "done",
+      "description": "范围：核对HEAD/脏文件/工具链/实际依赖版本，冻结锁安装，建立现有测试和构建基线\n\n验收：命令、退出码、版本及旧失败分类；网络/环境缺失如实记录。历史计数不作本机结果\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "B0.1",
+      "title": "[B0.1] 基线与工具链：按代码地图核对HEAD/脏文件、锁/工具、PDF与Agent/Run/UI链、源码/once/bundle选择，列受保护修改；完成",
+      "kind": "slice",
+      "parentTaskKey": "B0",
+      "blockedByTaskKeys": [],
+      "statusAtSnapshot": "done",
+      "description": "B0.1 按代码地图核对HEAD/脏文件、锁/工具、PDF与Agent/Run/UI链、源码/once/bundle选择，列受保护修改；完成研究导读与现状差异，形成基线清单\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/B0.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "B0.2",
+      "title": "[B0.2] 基线与工具链：冻结锁安装Node依赖；先核对收集范围，排除研究归档的上游测试且保留全部现有产品测试，再跑vitest/build记录退出码/旧失",
+      "kind": "slice",
+      "parentTaskKey": "B0",
+      "blockedByTaskKeys": [
+        "B0.1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "B0.2 冻结锁安装Node依赖；先核对收集范围，排除研究归档的上游测试且保留全部现有产品测试，再跑vitest/build记录退出码/旧失败；不升级锁或缩测试躲错误\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/B0.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "B0.3",
+      "title": "[B0.3] 基线与工具链：历史Python消费者基线保留；新增Node/DSH及CI版本在J1.CI/J1.2校准，固定相关测试/工件/服务与供应商存在性。",
+      "kind": "slice",
+      "parentTaskKey": "B0",
+      "blockedByTaskKeys": [
+        "B0.2"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "B0.3历史Python消费者基线保留；新增Node/DSH及CI版本在J1.CI/J1.2校准，固定相关测试/工件/服务与供应商存在性。缺服务仅影响相关门，不输出秘密\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/B0.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "S1",
+      "title": "[S1] 科学执行合同",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "B0"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "范围：修既有executor/registry/protocol来源、parent、runKind、nullable period漂移，补输出校验和现有Spec的PlayPlan输入绑定（模型revision绑定归N1）。**2026-11-06 Q-S13-1裁定**：执行预算归J1；来源/模型/skillVersion一致性核对与幽灵parent归N1+D1；fork/replay的内部深核对（Run真伪）归D1；空种子计划（不写inputs的族合同）为S1合法语义、N1收紧为修订绑定；once跨请求同planId冲突检测归D1持久计划层\n\n验收：先复现历史来源/血缘失败再修复；全部技能输出形状可校验，数值不变；错误/输入不匹配不放行（异源/幽灵parent/错版本按裁定移N1+D1，作为已登记缺口不阻塞S1）。15章19断言复验并保留旧失败材料\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "S1.1",
+      "title": "[S1.1] 科学执行合同：用现有真实求值/fork复现source与parent丢失，最小修正透传；验证数值不变、来源和血缘一致",
+      "kind": "slice",
+      "parentTaskKey": "S1",
+      "blockedByTaskKeys": [
+        "B0"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "S1.1 用现有真实求值/fork复现source与parent丢失，最小修正透传；验证数值不变、来源和血缘一致\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/S1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "S1.2",
+      "title": "[S1.2] 科学执行合同：校准registry的runKind/nullable字段与JSON/二进制制品边界；验证NaN TypedArray拒绝、返回后",
+      "kind": "slice",
+      "parentTaskKey": "S1",
+      "blockedByTaskKeys": [
+        "S1.1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "S1.2 校准registry的runKind/nullable字段与JSON/二进制制品边界；验证NaN TypedArray拒绝、返回后改原buffer不影响证据，序列化保留dtype/shape/hash；错误输出不得进入图表/Goal\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/S1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "S1.3",
+      "title": "[S1.3] 科学执行合同：绑定当前Spec的规范输入、source/parent和预算；拒同plan异输入、公共replay绕门；复跑历史19断言及受影响主",
+      "kind": "slice",
+      "parentTaskKey": "S1",
+      "blockedByTaskKeys": [
+        "S1.2"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "S1.3 绑定当前Spec的规范输入、source/parent和预算；拒同plan异输入、公共replay绕门；复跑历史19断言及受影响主路；源码修复须覆盖实际选中的once/bundle制品，不能只验src\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/S1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A1",
+      "title": "[A1] 统一工具端口",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "B0"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "范围：保留已完成框架无关工具端口和旧SSE兼容；新DSH适配在J1.2b/A0.3复用它，工具目录引用Registry，清理重复分发只做等价部分\n\n验收：同一科学调用通过端口和原执行器得到一致Run；错误、批次完整回填、未知工具、晚回执负例通过；不扩张agent.py意图正则\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "A1.1",
+      "title": "[A1.1] 统一工具端口：从现有Registry导出科学工具合同，保留原API调用；同参数经工具端口与原executor的结果语义一致",
+      "kind": "slice",
+      "parentTaskKey": "A1",
+      "blockedByTaskKeys": [
+        "B0"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "A1.1 从现有Registry导出科学工具合同，保留原API调用；同参数经工具端口与原executor的结果语义一致\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A1.2",
+      "title": "[A1.2] 统一工具端口：接统一invocation/operation/回执；当前单用户部署使用服务端命名空间，拒同键异payload/未知工具；持久化延",
+      "kind": "slice",
+      "parentTaskKey": "A1",
+      "blockedByTaskKeys": [
+        "A1.1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "A1.2 接统一invocation/operation/回执；当前单用户部署使用服务端命名空间，拒同键异payload/未知工具；持久化延后J1，不能宣称跨重启幂等\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A1.3",
+      "title": "[A1.3] 统一工具端口：已完成旧回填/SSE与baseRunId/expectedExperimentRevision；DSH适配在J1.2b/A0.3增",
+      "kind": "slice",
+      "parentTaskKey": "A1",
+      "blockedByTaskKeys": [
+        "A1.2"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "A1.3已完成旧回填/SSE与baseRunId/expectedExperimentRevision；DSH适配在J1.2b/A0.3增量验收；拒绝技能错配，不暗改op，错误批次完整返回；同调用不重复Fork，晚响应不改目标\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A0",
+      "title": "[A0] 早期真实Agent回合",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "S1",
+        "A1"
+      ],
+      "statusAtSnapshot": "active",
+      "description": "范围：用现有已解析文档/注册PlayPlan完成最小真实Qwen→科学工具→Run→继续决策，无需新数据库/检索服务；修会话隔离、回填关联与结果读取\n\n验收：两个不同session并发不串摘要；同session串行；工具输出保持有效结构并按引用读取大结果；真实供应商trace及结果依赖成立。凭据缺失只阻塞真实验收，不能用fixture签收\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "A0.1",
+      "title": "[A0.1] 早期真实Agent回合：消除全局摘要，session串行锁随生命周期释放；两session交错执行不串结果，异常后锁可再次取得",
+      "kind": "slice",
+      "parentTaskKey": "A0",
+      "blockedByTaskKeys": [
+        "S1",
+        "A1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "A0.1 消除全局摘要，session串行锁随生命周期释放；两session交错执行不串结果，异常后锁可再次取得\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A0.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A0.2",
+      "title": "[A0.2] 早期真实Agent回合：大结果用结构化摘要/制品选择器，保留完整受权结果；覆盖超过旧8000字符的输出，JSON有效且有完整性标记",
+      "kind": "slice",
+      "parentTaskKey": "A0",
+      "blockedByTaskKeys": [
+        "A0.1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "A0.2 大结果用结构化摘要/制品选择器，保留完整受权结果；覆盖超过旧8000字符的输出，JSON有效且有完整性标记\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A0.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A0.3",
+      "title": "[A0.3] 早期真实Agent回合：额外依赖已集成J1.2b的DSH工具适配（不要求整个J1完成）；经DSH官方TS SDK/产品白名单工具的有限预算真Qwen多回合",
+      "kind": "slice",
+      "parentTaskKey": "A0",
+      "blockedByTaskKeys": [
+        "A0.2",
+        "J1.2b"
+      ],
+      "statusAtSnapshot": "blocked-human",
+      "description": "A0.3额外依赖已集成J1.2b的DSH工具适配（不要求整个J1完成）；经DSH官方TS SDK/产品白名单工具的有限预算真Qwen多回合（旧AgentScope协议成果保留，不替代DSH验证）：a=1→设3→选该Run乘2得6，显式选原Run则得2且parent正确；“连续研究”仍真调用模型，固定扫描显式工具化；无key仅真实验收blocked\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A0.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "D1",
+      "title": "[D1] 领域数据与导入",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "B0"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "范围：最小PostgreSQL迁移、内容寻址制品、Paper/Version/Parse/Anchor/Model/Run索引与workspace身份。**新增（Q-S13-1自S1移入）**：持久计划注册（once跨请求同planId异内容冲突检测）；engine侧落库校验（导入Run的技能级schema门）；fork/replay内部深核对所需的Run真伪账本（幽灵parent封死）\n\n验收：一个真实上传消费者可写读；JSON/JSONL快照只读导入数量/hash可校验；切换单一写权威，回滚路径明确，无双向双写\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "D1.1",
+      "title": "[D1.1] 领域数据与导入：为现有上传消费者接内容hash、Paper/Version与workspace索引，实际数据库往返与同文件去重；不提前建全部未来表",
+      "kind": "slice",
+      "parentTaskKey": "D1",
+      "blockedByTaskKeys": [
+        "B0"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "D1.1 为现有上传消费者接内容hash、Paper/Version与workspace索引，实际数据库往返与同文件去重；不提前建全部未来表\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/D1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "D1.2",
+      "title": "[D1.2] 领域数据与导入：只读导入旧doc/Run快照，保留ID与legacy来源精度，核对数量/hash/断链，迁移可重复执行且不造新Run",
+      "kind": "slice",
+      "parentTaskKey": "D1",
+      "blockedByTaskKeys": [
+        "D1.1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "D1.2 只读导入旧doc/Run快照，保留ID与legacy来源精度，核对数量/hash/断链，迁移可重复执行且不造新Run\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/D1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "D1.3",
+      "title": "[D1.3] 领域数据与导入：切换该消费者唯一写入路径，演练中断和切换后数据导出恢复；确认旧JSONL不再承担同数据的写权威",
+      "kind": "slice",
+      "parentTaskKey": "D1",
+      "blockedByTaskKeys": [
+        "D1.2"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "D1.3 切换该消费者唯一写入路径，演练中断和切换后数据导出恢复；确认旧JSONL不再承担同数据的写权威\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/D1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "P1",
+      "title": "[P1] 论文入库解析",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "D1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "范围：包装现有PDF上传/Docling/VLM为版本化论文入库、解析重试、来源锚点与列表/打开接口\n\n验收：同文件去重但保留来源；同论文新版本并存；重新解析不破坏旧anchor；解析失败PDF仍能读；VLM页级精度明确\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "P1.1",
+      "title": "[P1.1] 论文入库解析：上传与打开复用现有入口，建立版本列表/来源；解析尚未完成或失败时仍能读取原PDF",
+      "kind": "slice",
+      "parentTaskKey": "P1",
+      "blockedByTaskKeys": [
+        "D1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "P1.1 上传与打开复用现有入口，建立版本列表/来源；解析尚未完成或失败时仍能读取原PDF\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/P1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "P1.2",
+      "title": "[P1.2] 论文入库解析：Docling/VLM产物带parser版本与锚点精度，重解析产生新artifact；旧anchor可打开，不将页级来源升级成字符",
+      "kind": "slice",
+      "parentTaskKey": "P1",
+      "blockedByTaskKeys": [
+        "P1.1"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "P1.2 Docling/VLM产物带parser版本与锚点精度，重解析产生新artifact；旧anchor可打开，不将页级来源升级成字符级\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/P1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "P1.3",
+      "title": "[P1.3] 论文入库解析：校验重复PDF、同DOI不同版本、失败重试、缺全文；接入一份真实PDF并完整trace，不以fixture声称新解析验收",
+      "kind": "slice",
+      "parentTaskKey": "P1",
+      "blockedByTaskKeys": [
+        "P1.2"
+      ],
+      "statusAtSnapshot": "done",
+      "description": "P1.3 校验重复PDF、同DOI不同版本、失败重试、缺全文；接入一份真实PDF并完整trace，不以fixture声称新解析验收\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/P1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "J1",
+      "title": "[J1] 持久执行与恢复",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "P1",
+        "S1",
+        "A1"
+      ],
+      "statusAtSnapshot": "active",
+      "description": "范围：持久ResearchTask/JobAttempt/ToolInvocation/事件outbox；J1.1保留legacy RQ真实解析，J1.CI补隔离；J1.2a/b新科学与DSH用Node+pg-boss和现有SQL/端口，资源分道、租约/幂等。**新增（Q-S13-1自S1移入）**：执行预算（限额、预留与结算）随持久任务体系实现\n\n验收：API/worker分别kill重启、重复投递、取消、队列丢消息重投不多产Run；超时真正终止工作；断线事件续读。不是仅保存一条queued记录\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "J1.1",
+      "title": "[J1.1] 持久执行与恢复：用一个真实解析任务落task/attempt/outbox；实际worker消费，queued状态可重启重建；先不上全部队列",
+      "kind": "slice",
+      "parentTaskKey": "J1",
+      "blockedByTaskKeys": [
+        "P1",
+        "S1",
+        "A1"
+      ],
+      "statusAtSnapshot": "verifying",
+      "description": "J1.1 用一个真实解析任务落task/attempt/outbox；实际worker消费，queued状态可重启重建；先不上全部队列\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/J1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "J1.3",
+      "title": "[J1.3] 持久执行与恢复：接有界Agent activation与waiting_input检查点、资源分道/取消/reconcile；等待不占worker",
+      "kind": "slice",
+      "parentTaskKey": "J1",
+      "blockedByTaskKeys": [
+        "J1.2b"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "J1.3 接有界Agent activation与waiting_input检查点、资源分道/取消/reconcile；等待不占worker，旧attempt不可提交，事件cursor可续读；共享解析按消费者关系复用，单tab退出只解除该消费者，不能误杀其他订阅者的任务\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/J1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "L1",
+      "title": "[L1] 文献和证据工具",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "P1",
+        "A1",
+        "J1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：有预算的标识解析、外部搜索/合法全文获取、已有文本证据检索、引用边；接入上一节最小工具链\n\n验收：真检索→身份→来源片段→可打开PDF锚点；限流/无全文/重复/来源缺边诚实处理；PAPER引用和AI推测关系区分。可选PaperQA/GROBID不阻塞基础链\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "L1.1",
+      "title": "[L1.1] 文献和证据工具：先接一个可用检索provider与标识解析，按需补其他服务；返回身份/检索来源/限额，429不是空搜索结果",
+      "kind": "slice",
+      "parentTaskKey": "L1",
+      "blockedByTaskKeys": [
+        "P1",
+        "A1",
+        "J1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "L1.1 先接一个可用检索provider与标识解析，按需补其他服务；返回身份/检索来源/限额，429不是空搜索结果\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/L1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "L1.2",
+      "title": "[L1.2] 文献和证据工具：合法获取全文→P1解析→已有文本证据检索；同一片段可定位原文，错误/不完整覆盖明确；先不引入额外向量服务",
+      "kind": "slice",
+      "parentTaskKey": "L1",
+      "blockedByTaskKeys": [
+        "L1.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "L1.2 合法获取全文→P1解析→已有文本证据检索；同一片段可定位原文，错误/不完整覆盖明确；先不引入额外向量服务\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/L1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "L1.3",
+      "title": "[L1.3] 文献和证据工具：明确引用边与AI关系分开；用小语料正例/干扰项评估相关片段是否被找到，保存漏检，决定PaperQA/GROBID是否真有接入必要",
+      "kind": "slice",
+      "parentTaskKey": "L1",
+      "blockedByTaskKeys": [
+        "L1.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "L1.3 明确引用边与AI关系分开；用小语料正例/干扰项评估相关片段是否被找到，保存漏检，决定PaperQA/GROBID是否真有接入必要\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/L1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "N1",
+      "title": "[N1] 数学模型/能力/质量",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "S1",
+        "P1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：从paperSpec/Cortex扩展有来源Math IR：量、域、单位/无量纲声明、条件、未知、能力、可操作自由度，修订到PlayPlan映射。**新增（Q-S13-1自S1移入）**：模型修订与来源/skillVersion一致性绑定（异源fork拒绝）；空种子族计划收紧为修订级输入绑定\n\n验收：非预制公式与N态系统/约束对象可表达；来源冲突/缺初值/奇点/非法域不执行；确认不是LLM一句“合法”，原文可回查；检查逐模型scope与AST Error节点，当前model.solve只接受已支持的自主系统，显含时间/刚性等先拒绝或匹配经验证的其他能力\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "N1.1",
+      "title": "[N1.1] 数学模型/能力/质量：扩展paperSpec候选工具合同，支持域内未预装专属模型的PDF可由解析或已有工具产候选，不要求A0/A2先完成；方程/角色/条",
+      "kind": "slice",
+      "parentTaskKey": "N1",
+      "blockedByTaskKeys": [
+        "S1",
+        "P1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "N1.1 扩展paperSpec候选工具合同，支持域内未预装专属模型的PDF可由解析或已有工具产候选，不要求A0/A2先完成；方程/角色/条件绑定来源或用户选择，人工纠正留before/after；完整Agent链归A2/C1\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/N1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "N1.2",
+      "title": "[N1.2] 数学模型/能力/质量：确认记录绑定PDF版本/原文区域/转写/核对方法/差异；负号或上下标误识别但AST合法的候选不得自动确认，修订留痕；再匹配能力/P",
+      "kind": "slice",
+      "parentTaskKey": "N1",
+      "blockedByTaskKeys": [
+        "N1.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "N1.2 确认记录绑定PDF版本/原文区域/转写/核对方法/差异；负号或上下标误识别但AST合法的候选不得自动确认，修订留痕；再匹配能力/Plan与输入，缺条件或不支持能力拒绝\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/N1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "N1.3",
+      "title": "[N1.3] 数学模型/能力/质量：普通合法调参保持modelRevision，仅更新Runtime参数/计划/Run；方程、假设或允许域改变才建模型修订并复用内核，",
+      "kind": "slice",
+      "parentTaskKey": "N1",
+      "blockedByTaskKeys": [
+        "N1.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "N1.3 普通合法调参保持modelRevision，仅更新Runtime参数/计划/Run；方程、假设或允许域改变才建模型修订并复用内核，验证旧Run可追溯、缓存不串模型、模型缺条件时能提出准确问题\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/N1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A2",
+      "title": "[A2] DSH论文研究循环",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "A0",
+        "J1",
+        "L1",
+        "N1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：真实Qwen研究循环，来源/模型/实验工具选择与真实结果回填；任务检查点、人工问题、取消、预算与续跑\n\n验收：给中间结果不同的真实输入，后续工具/参数随之改变；至少一轮主动查证与科学执行。provider中途失败不假SOP成功；缺凭据实测不得签收\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "A2.1",
+      "title": "[A2.1] DSH论文研究循环：在Node新默认路径接通PDF页图/转写/锚点质量门（同真实PDF比legacy，扫描/公式/表格/失败留痕，未过不称替代）；把L",
+      "kind": "slice",
+      "parentTaskKey": "A2",
+      "blockedByTaskKeys": [
+        "A0",
+        "J1",
+        "L1",
+        "N1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "A2.1 在Node新默认路径接通PDF页图/转写/锚点质量门（同真实PDF比legacy，扫描/公式/表格/失败留痕，未过不称替代）；把L1/N1/J1接入DSH工具端口，按研究/生成/导演权限配置上下文，来源与科学结果分区；论文文本不能注入工具权限\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A2.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A2.2",
+      "title": "[A2.2] DSH论文研究循环：真Qwen查源→实验→读结果→改变下一动作；用事先定义的可观察结果依赖判定自主性，不要求随机模型每次生成同一句话/同序列",
+      "kind": "slice",
+      "parentTaskKey": "A2",
+      "blockedByTaskKeys": [
+        "A2.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "A2.2 真Qwen查源→实验→读结果→改变下一动作；用事先定义的可观察结果依赖判定自主性，不要求随机模型每次生成同一句话/同序列\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A2.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A2.3",
+      "title": "[A2.3] DSH论文研究循环：持久消息/工具批次检查点；批次未执行、部分完成、完成未回填三处kill后无孤立tool result/重复副作用；必要时批次边界重",
+      "kind": "slice",
+      "parentTaskKey": "A2",
+      "blockedByTaskKeys": [
+        "A2.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "A2.3 持久消息/工具批次检查点；批次未执行、部分完成、完成未回填三处kill后无孤立tool result/重复副作用；必要时批次边界重建activation；等待释放槽、回答验revision，provider失败不伪装完成\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A2.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "U1",
+      "title": "[U1] 研究桌面恢复",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "J1",
+        "N1",
+        "A1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：论文库入口→真实PDF/模型/实验纸；三模式共享引用；Agent过程与问题入口；持久CanvasCommand+ack及研究时间线\n\n验收：单浏览器实际上传、选对象、执行/对比/trace、刷新恢复；离线重连无重复Fork/纸；source定位、pending/失败明确；无聊天墙/新万能Store\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "U1.1",
+      "title": "[U1.1] 研究桌面恢复：论文库与原PDF进入既有桌面，参数在公式/对象内操作；所有科学组件按runId投影，显示preview/正式结果区别；修run3d",
+      "kind": "slice",
+      "parentTaskKey": "U1",
+      "blockedByTaskKeys": [
+        "J1",
+        "N1",
+        "A1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "U1.1 论文库与原PDF进入既有桌面，参数在公式/对象内操作；所有科学组件按runId投影，显示preview/正式结果区别；修run3dStore输入快照/generation及几何-指标同代发布，measure失败不可假resolved\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/U1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "U1.2",
+      "title": "[U1.2] 研究桌面恢复：Agent状态/问题/历史与CanvasCommand接通，收到浏览器应用ack才标应用完成；失联命令保留，冲突展示具体对象",
+      "kind": "slice",
+      "parentTaskKey": "U1",
+      "blockedByTaskKeys": [
+        "U1.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "U1.2 Agent状态/问题/历史与CanvasCommand接通，收到浏览器应用ack才标应用完成；失联命令保留，冲突展示具体对象\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/U1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "U1.3",
+      "title": "[U1.3] 研究桌面恢复：真指针操作、Fork/Compare/Trace、刷新重连/重复事件去重；三模式恢复同一实验，Console与资源释放检查",
+      "kind": "slice",
+      "parentTaskKey": "U1",
+      "blockedByTaskKeys": [
+        "U1.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "U1.3 真指针操作、Fork/Compare/Trace、刷新重连/重复事件去重；三模式恢复同一实验，Console与资源释放检查\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/U1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "C1",
+      "title": "[C1] 完整论文研究验收",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "A2",
+        "U1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：首个完整论文研究切片：入库→必要检索→模型→自主实验→画布→刷新/续研究\n\n验收：一套真实来源、供应商、工具调用、Run、应用ack和恢复证据；旧Kakeya/公式主路不回退。这里还不能称游戏产品完成\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "C1.1",
+      "title": "[C1.1] 完整论文研究验收：选择支持域内未预装专属模型的真实PDF，冻结来源/问题；必须展示parseArtifact→Agent候选→校验/纠正→确认rev",
+      "kind": "slice",
+      "parentTaskKey": "C1",
+      "blockedByTaskKeys": [
+        "A2",
+        "U1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "C1.1 选择支持域内未预装专属模型的真实PDF，冻结来源/问题；必须展示parseArtifact→Agent候选→校验/纠正→确认revision→Plan→Run，不以手工paperSpec替代；遗漏条件不得擅补，含合法AST误转写的忠实性负例\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/C1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "C1.2",
+      "title": "[C1.2] 完整论文研究验收：单浏览器完成上传→研究→Run→画布→trace；保存同一task下的工具回执与UI ack，不能拼接不同运行截图",
+      "kind": "slice",
+      "parentTaskKey": "C1",
+      "blockedByTaskKeys": [
+        "C1.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "C1.2 单浏览器完成上传→研究→Run→画布→trace；保存同一task下的工具回执与UI ack，不能拼接不同运行截图\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/C1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "C1.3",
+      "title": "[C1.3] 完整论文研究验收：刷新/重启后继续同研究，再验旧Kakeya/公式主路；所有必需证据和独立review具备后收口C1",
+      "kind": "slice",
+      "parentTaskKey": "C1",
+      "blockedByTaskKeys": [
+        "C1.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "C1.3 刷新/重启后继续同研究，再验旧Kakeya/公式主路；所有必需证据和独立review具备后收口C1\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/C1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W1",
+      "title": "[W1] MathWorld Host/ABI",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "S1",
+        "N1",
+        "A1",
+        "J1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：World程序/Blueprint/Action/Goal ABI；Host转换、Gameplay与受保护状态、revision/权限/配额/幂等；沿用科学执行器\n\n验收：伪Run/事件、他人实体、旧revision、guest改预算/Assessment均拒绝；合法动作产Run并原子提交。生成Goal冻结后独立只读执行\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "W1.1",
+      "title": "[W1.1] MathWorld Host/ABI：明确World/Action/Goal/事件DTO、Host与guest写权限，先用已有科学Skill接一个事务消费者，不等SPD",
+      "kind": "slice",
+      "parentTaskKey": "W1",
+      "blockedByTaskKeys": [
+        "S1",
+        "N1",
+        "A1",
+        "J1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W1.1 明确World/Action/Goal/事件DTO、Host与guest写权限，先用已有科学Skill接一个事务消费者，不等SPD新runner\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W1.2",
+      "title": "[W1.2] MathWorld Host/ABI：候选转换/只读Goal/预留/提交接通；新revision竞争拒旧回包，失败Run/伪回执不能计分，资源实际消耗不回滚",
+      "kind": "slice",
+      "parentTaskKey": "W1",
+      "blockedByTaskKeys": [
+        "W1.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W1.2 候选转换/只读Goal/预留/提交接通；新revision竞争拒旧回包，失败Run/伪回执不能计分，资源实际消耗不回滚\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W1.3",
+      "title": "[W1.3] MathWorld Host/ABI：状态/事件/Run引用落入D1/J1同一持久回执链，按revision恢复；一个attempt一个权威Host，受权读取不泄漏私有",
+      "kind": "slice",
+      "parentTaskKey": "W1",
+      "blockedByTaskKeys": [
+        "W1.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W1.3 状态/事件/Run引用落入D1/J1同一持久回执链，按revision恢复；一个attempt一个权威Host，受权读取不泄漏私有实例\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W2",
+      "title": "[W2] 受控程序执行",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "W1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：TS完整诊断→guest JS→QuickJS专用Worker，锁实际包/variant、资源与输入输出限额、同步step显式状态\n\n验收：实际WASM/Worker/CSP运行；新状态机可执行；死循环/内存/消息爆炸有界退出，释放资源，恢复重放一致；不许任意宿主引用/fs/net/timer\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "W2.1",
+      "title": "[W2.1] 受控程序执行：锁QuickJS制品并复用同ABI：本地探索用浏览器Worker；严格盲测由服务端可终止隔离单元执行冻结step/Goal，客户端",
+      "kind": "slice",
+      "parentTaskKey": "W2",
+      "blockedByTaskKeys": [
+        "W1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W2.1 锁QuickJS制品并复用同ABI：本地探索用浏览器Worker；严格盲测由服务端可终止隔离单元执行冻结step/Goal，客户端仅发Action；拒伪造state/解锁，验context/执行单元释放\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W2.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W2.2",
+      "title": "[W2.2] 受控程序执行：显式guest DTO+seed/tick+有界意图接W1；新VM重建可回放，不依赖闭包/Date/环境随机",
+      "kind": "slice",
+      "parentTaskKey": "W2",
+      "blockedByTaskKeys": [
+        "W2.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W2.2 显式guest DTO+seed/tick+有界意图接W1；新VM重建可回放，不依赖闭包/Date/环境随机\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W2.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W2.3",
+      "title": "[W2.3] 受控程序执行：死循环/内存/深层消息/事件风暴/伪回执负例有界失败，CSP与实际构建可用；记录开销而非许诺实时帧率",
+      "kind": "slice",
+      "parentTaskKey": "W2",
+      "blockedByTaskKeys": [
+        "W2.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W2.3 死循环/内存/深层消息/事件风暴/伪回执负例有界失败，CSP与实际构建可用；记录开销而非许诺实时帧率\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W2.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W3",
+      "title": "[W3] SPD科学能力/Solver",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "W1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：注册SPD几何/support/变形/整段动作检查与PlayPlan；同一transition驱动Host、有限Solver、独立Goal和Replay\n\n验收：代数/几何oracle、途中碰撞、非法动作、错误Run/假通关负例；solver有见证或unknown，不伪称证明无解；盲测私有Q/mesh不泄漏。此项先验纯Host，不依赖VM\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "W3.1",
+      "title": "[W3.1] SPD科学能力/Solver：从确认SPD模型注册几何/support/合法变形能力，经同一executor产Run；独立代数oracle校验，拒非正定/病态超",
+      "kind": "slice",
+      "parentTaskKey": "W3",
+      "blockedByTaskKeys": [
+        "W1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W3.1 从确认SPD模型注册几何/support/合法变形能力，经同一executor产Run；独立代数oracle校验，拒非正定/病态超限输入\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W3.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W3.2",
+      "title": "[W3.2] SPD科学能力/Solver：先纯Host验证整段动作与Goal/失败轨迹，确定游戏额外机制；私有Q由服务器持有，公开接口仅返回合法观测",
+      "kind": "slice",
+      "parentTaskKey": "W3",
+      "blockedByTaskKeys": [
+        "W3.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W3.2 先纯Host验证整段动作与Goal/失败轨迹，确定游戏额外机制；私有Q由服务器持有，公开接口仅返回合法观测\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W3.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "W3.3",
+      "title": "[W3.3] SPD科学能力/Solver：有限搜索与同transition纯Host回放给见证或unknown，生成程序新VM重放归W2/A3；盲测另验只读公开历史的基准策",
+      "kind": "slice",
+      "parentTaskKey": "W3",
+      "blockedByTaskKeys": [
+        "W3.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "W3.3 有限搜索与同transition纯Host回放给见证或unknown，生成程序新VM重放归W2/A3；盲测另验只读公开历史的基准策略，不可区分且答案互斥的实例拒发布；Replay覆盖动作/预算/时钟/待决状态\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/W3.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A3",
+      "title": "[A3] AI生成与游戏导演",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "A2",
+        "W2",
+        "W3"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：Qwen生成→compile→playtest→诊断→revise；导演读玩家公开历史给提示和验证下一关\n\n验收：同一SPD生成“变形通闸/探针盲测”不同状态机，不给完成脚本；至少一次真实错误修复；VM完整Replay与独立Goal过；下一挑战发布前重新验证、当前规则不变\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "A3.1",
+      "title": "[A3.1] AI生成与游戏导演：给真实Qwen模型/能力/任务约束而非完成程序，生成版本化源码，经compile→playtest取得诊断",
+      "kind": "slice",
+      "parentTaskKey": "A3",
+      "blockedByTaskKeys": [
+        "A2",
+        "W2",
+        "W3"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "A3.1 给真实Qwen模型/能力/任务约束而非完成程序，生成版本化源码，经compile→playtest取得诊断\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A3.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A3.2",
+      "title": "[A3.2] AI生成与游戏导演：修复诊断并新VM重放；同SPD两种机制trace不同；如果自然生成无错，可对真实生成制品做标注故障注入验修复，不伪称模型自己犯错",
+      "kind": "slice",
+      "parentTaskKey": "A3",
+      "blockedByTaskKeys": [
+        "A3.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "A3.2 修复诊断并新VM重放；同SPD两种机制trace不同；如果自然生成无错，可对真实生成制品做标注故障注入验修复，不伪称模型自己犯错\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A3.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "A3.3",
+      "title": "[A3.3] AI生成与游戏导演：导演只读公开行为与Run给提示/提出下一关；下一关重新验证后发布，当前规则冻结；提示不能漏私有答案",
+      "kind": "slice",
+      "parentTaskKey": "A3",
+      "blockedByTaskKeys": [
+        "A3.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "A3.3 导演只读公开行为与Run给提示/提出下一关；下一关重新验证后发布，当前规则冻结；提示不能漏私有答案\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/A3.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "U2",
+      "title": "[U2] 动态游戏空间",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "U1",
+        "W2",
+        "W3"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：R3F/Koota单一动态世界投影、输入/相机/对象操作、反馈/重试/回放；tldraw论文进入/退出及资源回收\n\n验收：单浏览器真输入完成观察→猜测→操作→响应→判定→反馈；参数/公式/几何同Run、返回原文历史；无重复实体/订阅/旧回执覆盖。开发夹具不代替真实生成\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "U2.1",
+      "title": "[U2.1] 动态游戏空间：同R3F页面按Run几何与程序实体投影，Koota有界owner、相机/输入归属明确；试运行时可用标注夹具",
+      "kind": "slice",
+      "parentTaskKey": "U2",
+      "blockedByTaskKeys": [
+        "U1",
+        "W2",
+        "W3"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "U2.1 同R3F页面按Run几何与程序实体投影，Koota有界owner、相机/输入归属明确；试运行时可用标注夹具\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/U2.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "U2.2",
+      "title": "[U2.2] 动态游戏空间：对象抓取/公式编辑→Action→真实Run→反馈；新几何与碰撞代理版本一起生效，拒绝回到最后合法状态",
+      "kind": "slice",
+      "parentTaskKey": "U2",
+      "blockedByTaskKeys": [
+        "U2.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "U2.2 对象抓取/公式编辑→Action→真实Run→反馈；新几何与碰撞代理版本一起生效，拒绝回到最后合法状态\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/U2.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "U2.3",
+      "title": "[U2.3] 动态游戏空间：完成重试/回放/进入退出/返回来源，验证两玩法同页面；StrictMode/切换/销毁不留实体或GPU资源；夹具不替代A3",
+      "kind": "slice",
+      "parentTaskKey": "U2",
+      "blockedByTaskKeys": [
+        "U2.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "U2.3 完成重试/回放/进入退出/返回来源，验证两玩法同页面；StrictMode/切换/销毁不留实体或GPU资源；夹具不替代A3\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/U2.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "E1",
+      "title": "[E1] 生成游戏验收",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "C1",
+        "A3",
+        "U2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：贯通真实PDF→模型→生成修复→玩→提示→下一挑战→Replay/论文历史\n\n验收：两种同模型程序有机制不同的trace；删除关键行为改变可达/可观测结果；版本/动作/Run/Goal可复现；代码独立复核与实际操作均通过\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "E1.1",
+      "title": "[E1.1] 生成游戏验收：固定来源模型与预算，使用A3真实生成的两份程序创建attempt；输入与目标不同机制可辨识",
+      "kind": "slice",
+      "parentTaskKey": "E1",
+      "blockedByTaskKeys": [
+        "C1",
+        "A3",
+        "U2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "E1.1 固定来源模型与预算，使用A3真实生成的两份程序创建attempt；输入与目标不同机制可辨识\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/E1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "E1.2",
+      "title": "[E1.2] 生成游戏验收：真操作经历观察/猜测/动作/响应/判定/提示/重试及下一关；独立Goal和实际Run逐次关联",
+      "kind": "slice",
+      "parentTaskKey": "E1",
+      "blockedByTaskKeys": [
+        "E1.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "E1.2 真操作经历观察/猜测/动作/响应/判定/提示/重试及下一关；独立Goal和实际Run逐次关联\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/E1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "E1.3",
+      "title": "[E1.3] 生成游戏验收：回放/断线恢复/论文历史及关键行为删除负例，收口整链；证明机制可运行，不宣称已证明趣味或教学效果",
+      "kind": "slice",
+      "parentTaskKey": "E1",
+      "blockedByTaskKeys": [
+        "E1.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "E1.3 回放/断线恢复/论文历史及关键行为删除负例，收口整链；证明机制可运行，不宣称已证明趣味或教学效果\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/E1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "X1",
+      "title": "[X1] 函数/动力系统复用",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "E1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：同协议扩到函数与动力系统，各自拆子项；复用编译/Host/UI/导演，注册所缺能力\n\n验收：各有一例非新专属页面：公式改变真实轨道/地形；原ODE只改合法初值/参数不暗加力。奇点/穿越/误差与unknown受检；跨论文可比性及新行为Replay\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "X1.1",
+      "title": "[X1.1] 函数/动力系统复用：函数世界：复用ABI生成新行为，曲线/轨道来自Run；限制域、奇点与采样误差，附加运动规则单独声明",
+      "kind": "slice",
+      "parentTaskKey": "X1",
+      "blockedByTaskKeys": [
+        "E1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "X1.1 函数世界：复用ABI生成新行为，曲线/轨道来自Run；限制域、奇点与采样误差，附加运动规则单独声明\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/X1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "X1.2",
+      "title": "[X1.2] 函数/动力系统复用：ODE世界：只改允许初值/参数，短时轨迹事件经误差检查；未经确认不加控制力，unknown不通关",
+      "kind": "slice",
+      "parentTaskKey": "X1",
+      "blockedByTaskKeys": [
+        "X1.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "X1.2 ODE世界：只改允许初值/参数，短时轨迹事件经误差检查；未经确认不加控制力，unknown不通关\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/X1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "X1.3",
+      "title": "[X1.3] 函数/动力系统复用：各选有来源案例，经同编译/Host/UI/导演与Replay；跨论文比较先查共同条件，新增专属页面不能签收复用",
+      "kind": "slice",
+      "parentTaskKey": "X1",
+      "blockedByTaskKeys": [
+        "X1.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "X1.3 各选有来源案例，经同编译/Host/UI/导演与Replay；跨论文比较先查共同条件，新增专属页面不能签收复用\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/X1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "O1",
+      "title": "[O1] 可靠性和发布前检查",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "E1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：发布前收口：旧主路回归、现有鉴权加workspace归属、输入/预算限制、故障恢复、备份恢复、依赖许可、生产bundle/模型工件与启动说明\n\n验收：新旧API实际真算；重启/恢复演练；前端无秘密、越权拒绝；构建产物与源码能力一致；恢复Run/来源可查；单目标本机生产包验收，不执行云部署/多端电池\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "O1.1",
+      "title": "[O1.1] 可靠性和发布前检查：用实际构建产物复验新旧引擎入口、WASM/解析工件及启动；前端无密钥、资源读取与workspace权限实际拒绝越界",
+      "kind": "slice",
+      "parentTaskKey": "O1",
+      "blockedByTaskKeys": [
+        "E1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "O1.1 用实际构建产物复验新旧引擎入口、WASM/解析工件及启动；前端无密钥、资源读取与workspace权限实际拒绝越界\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/O1.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "O1.2",
+      "title": "[O1.2] 可靠性和发布前检查：数据库/制品备份与恢复、队列/worker/API失效演练；验证取消/费用/幂等/历史完整，失败可定位",
+      "kind": "slice",
+      "parentTaskKey": "O1",
+      "blockedByTaskKeys": [
+        "O1.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "O1.2 数据库/制品备份与恢复、队列/worker/API失效演练；验证取消/费用/幂等/历史完整，失败可定位\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/O1.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "O1.3",
+      "title": "[O1.3] 可靠性和发布前检查：固定生产构建与版本、许可/配置/回滚说明，单目标本机验收；实际部署独立授权，不借此开多端电池",
+      "kind": "slice",
+      "parentTaskKey": "O1",
+      "blockedByTaskKeys": [
+        "O1.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "O1.3 固定生产构建与版本、许可/配置/回滚说明，单目标本机验收；实际部署独立授权，不借此开多端电池\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/O1.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "E2",
+      "title": "[E2] 完整产品交付",
+      "kind": "workPackage",
+      "parentTaskKey": null,
+      "blockedByTaskKeys": [
+        "X1",
+        "O1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "范围：产品验收与交接：公开支持范围、剩余限制、运维/开发恢复入口；有证据替换的旧路径清理\n\n验收：C1/E1及跨模型与恢复证据可定位；文档和实现一致；没有伪造进度、无限修复环或只靠fixture通过的必需能力；发布待授权不冒充已上线\n\n合同：PLAN §4/§4.1。旧框架done只证明原消费者，不能签DSH/Node/新TS解析链；导入前重读最新STATE，证据在docs/verification。"
+    },
+    {
+      "taskKey": "E2.1",
+      "title": "[E2.1] 完整产品交付：逐项核对C1/E1/X1/O1证据与支持能力表，标出known limits/unsupported；缺必需项不降级成完成",
+      "kind": "slice",
+      "parentTaskKey": "E2",
+      "blockedByTaskKeys": [
+        "X1",
+        "O1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "E2.1 逐项核对C1/E1/X1/O1证据与支持能力表，标出known limits/unsupported；缺必需项不降级成完成\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/E2.1/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "E2.2",
+      "title": "[E2.2] 完整产品交付：在确认替代和无消费者后清理旧路径，跑对应回归；按实际实现更新入口和恢复说明",
+      "kind": "slice",
+      "parentTaskKey": "E2",
+      "blockedByTaskKeys": [
+        "E2.1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "E2.2 在确认替代和无消费者后清理旧路径，跑对应回归；按实际实现更新入口和恢复说明\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/E2.2/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "E2.3",
+      "title": "[E2.3] 完整产品交付：交付可复现产物/证据索引/恢复点与剩余问题；本地验收、可发布、已部署三个状态分别报告",
+      "kind": "slice",
+      "parentTaskKey": "E2",
+      "blockedByTaskKeys": [
+        "E2.2"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "E2.3 交付可复现产物/证据索引/恢复点与剩余问题；本地验收、可发布、已部署三个状态分别报告\n\n输入：PLAN当前工作包直接依赖及最新已验代码/锁。协调者补ownerSession、scope、baseCommit、branch/worktree、隔离资源。\n完成：真实正负例/代码身份/独立review/集成复验，分支过保持verifying，仅集成者签Done。\n证据：docs/verification/E2.3/。导入状态须重读最新STATE/Linear，不使用过期快照。"
+    },
+    {
+      "taskKey": "J1.CI",
+      "title": "[J1.CI] 数据库/队列测试隔离与CI必需服务",
+      "kind": "slice",
+      "parentTaskKey": "J1",
+      "blockedByTaskKeys": [
+        "B0",
+        "D1",
+        "P1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "可配置专用PG/Redis目标，固定DB15和FLUSHDB未消除前仅集成者串行。GitHub Actions补services/healthcheck，指定集成job缺必要服务fail而非skip绿。活跃test_jobs_j11.py变更须协调。J1.2产物接入后再补Node队列实际集成门，不先造fixture冒充实现。\n\n合同：PLAN §4.1a与COORDINATION。先补owner/base/worktree/scope/隔离资源；独立review与集成复验后才Done。"
+    },
+    {
+      "taskKey": "J1.2a",
+      "title": "[J1.2a] Node科学worker和原子Run提交",
+      "kind": "slice",
+      "parentTaskKey": "J1",
+      "blockedByTaskKeys": [
+        "J1.1",
+        "J1.CI"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "Fastify/pg/pg-boss接HTTP科学执行，复用SQL/ID/Registry/executor；独占引擎只返回候选，不先写正式JSONL。Run/receipt/task/outbox按lease/fencing短事务提交。校准once优先和bridge回退，验长算健康检查、旧attempt、取消互不影响、提交前后崩溃/重试不重复。\n\n合同：PLAN §4.1a与COORDINATION。先补owner/base/worktree/scope/隔离资源；独立review与集成复验后才Done。"
+    },
+    {
+      "taskKey": "J1.2b",
+      "title": "[J1.2b] DSH官方TS SDK接同一科学端口",
+      "kind": "slice",
+      "parentTaskKey": "J1",
+      "blockedByTaskKeys": [
+        "J1.2a",
+        "A1"
+      ],
+      "statusAtSnapshot": "todo",
+      "description": "DSH产品profile/白名单、SDK/runtime/plugin同系列；插件调既有toolPort/Registry/schema，有界activation及错误/批次回填/取消退出。不得扩AgentScope/SOP或造第二执行器；真实Qwen与结果依赖归A0.3/A2，缺凭据不能fixture签收。\n\n合同：PLAN §4.1a与COORDINATION。先补owner/base/worktree/scope/隔离资源；独立review与集成复验后才Done。"
+    }
+  ],
+  "sourceArchive": "docs/verification/linear-20261106/source-PLAN.md and source-STATE.md"
+}

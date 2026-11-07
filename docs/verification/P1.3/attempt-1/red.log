@@ -1,0 +1,81 @@
+.F.FF                                                                    [100%]
+=================================== FAILURES ===================================
+_ TestIdentifierVersions.test_same_identifier_different_bytes_coexist_as_two_versions _
+
+self = <test_papers_p13.TestIdentifierVersions object at 0x12d9d4740>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-83/test_same_identifier_different0')
+
+    def test_same_identifier_different_bytes_coexist_as_two_versions(self, env):
+        with TestClient(app) as client:
+            v1 = _upload(client, "v1.pdf", V1, identifier="doi:10.1/p1.3")
+            _wait(client, v1["jobId"])
+            v2 = _upload(client, "v2.pdf", V2, identifier="doi:10.1/p1.3")
+            _wait(client, v2["jobId"])
+            papers = client.get("/api/papers").json()["papers"]
+>       assert len(papers) == 1  # ONE paper under the identifier
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert 2 == 1
+E        +  where 2 = len([{'paper_id': 'paper-9fb0404eac2b', 'title_hint': 'v1', 'versions': [{'version_id': 'pv-9fb0404eac2b6008', 'sha256': '...50374d02', 'size_bytes': 95, 'uploads': [{'filename': 'v2.pdf', 'uploaded_at': '2026-11-06T12:27:25.417410+08:00'}]}]}])
+
+server/tests/test_papers_p13.py:115: AssertionError
+_ TestFailedRetryKeepsOldAnchor.test_crashed_v2_parse_leaves_v1_parse_intact_then_retry_adds _
+
+self = <test_papers_p13.TestFailedRetryKeepsOldAnchor object at 0x12d9d4e90>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-83/test_crashed_v2_parse_leaves_v0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12daaa210>
+
+    def test_crashed_v2_parse_leaves_v1_parse_intact_then_retry_adds(self, tmp_path, monkeypatch):
+        _env(tmp_path, monkeypatch, "ok")
+        with TestClient(app) as client:
+            v1 = _upload(client, "v1.pdf", V1, identifier="doi:10.1/retry")
+            _wait(client, v1["jobId"])
+            paper_id = v1["repo"]["paper_id"]
+            parses1 = client.get(f"/api/papers/{paper_id}/parses").json()["parses"]
+            assert len(parses1) == 1
+            old_id = parses1[0]["parse_id"]
+    
+        # v2 upload whose parse CRASHES
+        _env(tmp_path, monkeypatch, "crash")
+        with TestClient(app) as client:
+            v2 = _upload(client, "v2.pdf", V2, identifier="doi:10.1/retry")
+            done = _wait(client, v2["jobId"], timeout=60.0)
+            assert done["status"] in ("error", "timeout")
+            # old anchor untouched and openable
+            parses = client.get(f"/api/papers/{paper_id}/parses").json()["parses"]
+>           assert len(parses) == 1  # the crashed parse left NO artifact
+            ^^^^^^^^^^^^^^^^^^^^^^^
+E           assert 0 == 1
+E            +  where 0 = len([])
+
+server/tests/test_papers_p13.py:158: AssertionError
+_ TestNoFulltextHonesty.test_a_paper_with_only_failed_parses_has_no_document_but_keeps_pdf _
+
+self = <test_papers_p13.TestNoFulltextHonesty object at 0x12d9d6540>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-83/test_a_paper_with_only_failed_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12daabdd0>
+
+    def test_a_paper_with_only_failed_parses_has_no_document_but_keeps_pdf(self, tmp_path, monkeypatch):
+        _env(tmp_path, monkeypatch, "crash")
+        with TestClient(app) as client:
+            up = _upload(client, "nope.pdf", V1)
+            done = _wait(client, up["jobId"], timeout=60.0)
+            assert done["status"] in ("error", "timeout")
+            paper_id = up["repo"]["paper_id"]
+            # honest absence: zero parses, and /api/document has nothing
+            parses = client.get(f"/api/papers/{paper_id}/parses").json()["parses"]
+            assert parses == []
+>           assert "docId" not in (done or {})
+E           AssertionError: assert 'docId' not in (({'jobId': '1980e6fe08ed', 'filename': 'nope.pdf', 'status': 'error', 'stage': None, ...}))
+
+server/tests/test_papers_p13.py:184: AssertionError
+=============================== warnings summary ===============================
+server/tests/test_papers_p13.py:190
+  /Users/c14h14n3/Desktop/Paper2Lab/server/tests/test_papers_p13.py:190: PytestUnknownMarkWarning: Unknown pytest.mark.real_pdf_trace - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.real_pdf_trace
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED server/tests/test_papers_p13.py::TestIdentifierVersions::test_same_identifier_different_bytes_coexist_as_two_versions
+FAILED server/tests/test_papers_p13.py::TestFailedRetryKeepsOldAnchor::test_crashed_v2_parse_leaves_v1_parse_intact_then_retry_adds
+FAILED server/tests/test_papers_p13.py::TestNoFulltextHonesty::test_a_paper_with_only_failed_parses_has_no_document_but_keeps_pdf
+3 failed, 2 passed, 1 deselected, 1 warning in 4.44s

@@ -21,6 +21,7 @@ tsconfig.tsbuildinfo
 
 # runtime state (server auto-creates the dir)
 server/data/
+server/server/
 
 # local agent-tool scratch
 .video_agent/

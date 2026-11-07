@@ -260,8 +260,16 @@ async function productPhase(browser, failures) {
     //    imports real ExperimentRuns, and the series/button reflect them
     await page.waitForFunction(() => (window.__P2L_CPP_RUNS__?.() ?? []).length >= 63, null, { timeout: 30000 })
       .catch(() => null)
+    // the button flips to 已载入 only after the chart node re-renders post-import
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent?.includes('高规模已载入')), null, { timeout: 20000 })
+      .catch(() => null)
     const cppIds = await page.evaluate(() => window.__P2L_CPP_RUNS__?.() ?? [])
-    const cppBtn = await page.evaluate(() => document.querySelector('.cpp-load-btn')?.textContent ?? '(no button)')
+    // the sweep toggle and the C++ load button share .cpp-load-btn styling;
+    // select by the DONE label itself (stable across builds) and wait for it
+    const cppBtn = await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('button')]
+      return (btns.find((b) => b.textContent?.includes('高规模已载入')) ?? btns.find((b) => b.title?.includes('C++ 高规模')) ?? { textContent: '(no button)' }).textContent ?? '(no button)'
+    })
     console.log(`[product] cpp runs imported: ${cppIds.length}${cppIds.length ? ` (${cppIds[0]} …)` : ''}`)
     console.log(`[product] cpp button: ${cppBtn}`)
     if (cppIds.length < 63) failures.push(`C++ high-scale runs did not import on the product path (${cppIds.length})`)

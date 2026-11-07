@@ -40,7 +40,15 @@ export interface SpecClaim {
 }
 
 export interface PaperModelSpec {
-  docId: string
+  /** the parsed document this comprehension is GROUNDED in — every field
+   * below traces back to it via anchor ids (source) or item text */
+  paperId: string
+  /** comprehension schema version — bumps when extraction semantics change;
+   * consumers can safely cache/migrate by (paperId, version) */
+  version: 1
+  /** epoch ms of extraction — a re-parse produces a NEW spec, the old one's
+   * runs keep pointing at the old anchors (spec is immutable per version) */
+  extractedAt: number
   /** the paper's research question: title + first abstract-ish sentence */
   question: string
   quantities: SpecQuantity[]
@@ -52,6 +60,25 @@ export interface PaperModelSpec {
 
 /** \dot{q} / \dot q / q' / dq/dt → the state name being differentiated */
 const DERIVATIVE_STATE = /\\dot\s*\{\s*([a-zA-Z])\s*\}|\\dot\s+([a-zA-Z])\b|([a-zA-Z])\s*'/g
+/** LaTeX commands that are NOT symbols (never parameter names) */
+const TEX_COMMANDS = new Set([
+  'dot', 'ddot', 'frac', 'dfrac', 'sqrt', 'sin', 'cos', 'tan', 'exp', 'log', 'ln',
+  'mathrm', 'mathit', 'text', 'operatorname', 'left', 'right', 'cdot', 'times',
+  'alpha', 'cdot', 'pm', 'mp', 'approx', 'sim', 'propto',
+])
+/** free symbols of a latex right-hand side (paper-spec parameter candidates;
+ *  also reused by the paper-study candidate check — CLI-151) */
+export const freeOf = (latex: string): string[] => {
+  const rhs = latex.slice(latex.indexOf('=') + 1)
+  const out = new Set<string>()
+  // bare single letters (products like x y)
+  for (const m of rhs.matchAll(/\b([a-zA-Z])\b/g)) out.add(m[1])
+  // greek/symbol macros (\beta, \gamma — but never commands like \sin)
+  for (const m of rhs.matchAll(/\\([a-zA-Z]+)/g)) {
+    if (!TEX_COMMANDS.has(m[1])) out.add(m[1])
+  }
+  return [...out]
+}
 /** q(0) = v / q_0 = v — paper-stated initial conditions (PAPER evidence) */
 const INITIAL = /([a-zA-Z])\s*(?:\(\s*0\s*\)|_0)\s*=\s*(-?\d+(?:\.\d+)?)/g
 /** sentences that state a RESULT the experiments can be compared against */
@@ -129,23 +156,6 @@ export function buildPaperSpec(doc: IngestedDoc): PaperModelSpec {
   // rhs); for definition-only papers (fit class) from EVERY definition rhs
   const known = new Set<string>([...governingStates, 't'])
   const paramNames = new Set<string>()
-/** LaTeX commands that are NOT symbols (never parameter names) */
-const TEX_COMMANDS = new Set([
-  'dot', 'ddot', 'frac', 'dfrac', 'sqrt', 'sin', 'cos', 'tan', 'exp', 'log', 'ln',
-  'mathrm', 'mathit', 'text', 'operatorname', 'left', 'right', 'cdot', 'times',
-  'alpha', 'cdot', 'pm', 'mp', 'approx', 'sim', 'propto',
-])
-const freeOf = (latex: string): string[] => {
-  const rhs = latex.slice(latex.indexOf('=') + 1)
-  const out = new Set<string>()
-  // bare single letters (products like x y)
-  for (const m of rhs.matchAll(/\b([a-zA-Z])\b/g)) out.add(m[1])
-  // greek/symbol macros (\beta, \gamma — but never commands like \sin)
-  for (const m of rhs.matchAll(/\\([a-zA-Z]+)/g)) {
-    if (!TEX_COMMANDS.has(m[1])) out.add(m[1])
-  }
-  return [...out]
-}
   if (governingStates.size > 0) {
     for (const eq of equations) {
       if (eq.role !== 'governing') continue
@@ -211,7 +221,9 @@ const freeOf = (latex: string): string[] => {
   // question: title + first substantive text sentence
   const firstSentence = docText(doc).split(/(?<=[.。!?])\s+/).find((s) => s.trim().length > 20) ?? ''
   return {
-    docId: doc.docId,
+    paperId: doc.docId,
+    version: 1,
+    extractedAt: Date.now(),
     question: `${doc.title} — ${firstSentence.trim().slice(0, 160)}`,
     quantities,
     equations,
@@ -251,7 +263,7 @@ export function observableTable(doc: IngestedDoc): IngestedItem | null {
 /** unicode greek (docling renders `\beta` as β) → macro symbol name.
  * NOTE: LaTeX `\mu` frequently comes back as the MICRO SIGN µ (U+00B5), not
  * the greek letter μ (U+03BC) — both are mapped. */
-const GREEK_TO_NAME: Record<string, string> = {
+export const GREEK_TO_NAME: Record<string, string> = {
   β: 'beta', γ: 'gamma', α: 'alpha', δ: 'delta', ω: 'omega', λ: 'lambda', μ: 'mu',
   µ: 'mu', σ: 'sigma', ρ: 'rho', κ: 'kappa', ε: 'epsilon', θ: 'theta', τ: 'tau',
   φ: 'phi', ψ: 'psi', π: 'pi', ϕ: 'phi', ϰ: 'kappa', ϵ: 'epsilon',

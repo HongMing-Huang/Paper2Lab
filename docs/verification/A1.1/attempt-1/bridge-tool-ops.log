@@ -1,0 +1,4 @@
+tools op: true | portVersion: tool-port@1.0 | tools: 15 | schemas present: true
+tool_execute: completed | value: 6 | src: bridge | inv: inv-a11
+unknown tool: error unknown_skill
+mismatched input through port: needs_input [ 'plan.inputs' ]

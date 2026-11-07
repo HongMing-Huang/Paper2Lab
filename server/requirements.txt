@@ -13,5 +13,10 @@ agentscope>=2.0.9,<3
 apscheduler>=3.10,<4
 httpx[socks]>=0.27,<1
 asgi-lifespan>=2.1,<3
+# D1.1 repository layer: PostgreSQL (content-addressed artifacts + Paper/Version)
+psycopg[binary]>=3.2,<4
+# J1.1 parse queue: Redis/RQ delivers ledger tasks to server.parse_worker
+# (opt-in via PAPER2LAB_REDIS_URL; the PG ledger stays the authority)
+rq>=2.0,<4
 pytest>=8,<9
 pytest-asyncio>=1.0,<2

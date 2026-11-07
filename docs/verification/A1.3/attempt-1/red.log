@@ -1,0 +1,115 @@
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+_ TestDeskMismatchIsExplicit.test_mismatched_desk_is_an_error_the_model_sees_and_the_engine_is_not_called _
+
+self = <test_agent_a13.TestDeskMismatchIsExplicit object at 0x10bcf5700>
+bridge_spy = <function bridge_spy.<locals>.install at 0x10beb8680>
+
+    async def test_mismatched_desk_is_an_error_the_model_sees_and_the_engine_is_not_called(self, bridge_spy):
+>       spy = bridge_spy()
+              ^^^^^^^^^^^^
+
+server/tests/test_agent_a13.py:60: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = None
+
+    def install(result: dict | None = None):
+        spy = _BridgeSpy(result)
+>       mod = sys.modules["server.engine_bridge"]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'server.engine_bridge'
+
+server/tests/test_agent_a13.py:52: KeyError
+_ TestBaseChain.test_round_two_continues_from_the_turns_latest_run_not_the_original_base _
+
+self = <test_agent_a13.TestBaseChain object at 0x10be69c40>
+bridge_spy = <function bridge_spy.<locals>.install at 0x10bf2eb60>
+
+    async def test_round_two_continues_from_the_turns_latest_run_not_the_original_base(self, bridge_spy):
+>       spy = bridge_spy()
+              ^^^^^^^^^^^^
+
+server/tests/test_agent_a13.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = None
+
+    def install(result: dict | None = None):
+        spy = _BridgeSpy(result)
+>       mod = sys.modules["server.engine_bridge"]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'server.engine_bridge'
+
+server/tests/test_agent_a13.py:52: KeyError
+_________ TestBaseChain.test_a_failed_round_does_not_poison_the_chain __________
+
+self = <test_agent_a13.TestBaseChain object at 0x10be69fa0>
+bridge_spy = <function bridge_spy.<locals>.install at 0x10bf2e980>
+
+    async def test_a_failed_round_does_not_poison_the_chain(self, bridge_spy):
+        # round 1 fails → nothing recorded → round 2 still seeds from the base
+>       spy = bridge_spy({"ok": False, "error": "boom"})
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_agent_a13.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = {'ok': False, 'error': 'boom'}
+
+    def install(result: dict | None = None):
+        spy = _BridgeSpy(result)
+>       mod = sys.modules["server.engine_bridge"]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'server.engine_bridge'
+
+server/tests/test_agent_a13.py:52: KeyError
+_ TestOperationIdentity.test_identical_retried_batches_carry_one_deterministic_operationId _
+
+self = <test_agent_a13.TestOperationIdentity object at 0x10bd308f0>
+bridge_spy = <function bridge_spy.<locals>.install at 0x10bf2f420>
+
+    async def test_identical_retried_batches_carry_one_deterministic_operationId(self, bridge_spy):
+>       spy = bridge_spy()
+              ^^^^^^^^^^^^
+
+server/tests/test_agent_a13.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = None
+
+    def install(result: dict | None = None):
+        spy = _BridgeSpy(result)
+>       mod = sys.modules["server.engine_bridge"]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'server.engine_bridge'
+
+server/tests/test_agent_a13.py:52: KeyError
+____ TestOperationIdentity.test_different_steps_get_different_operationIds _____
+
+self = <test_agent_a13.TestOperationIdentity object at 0x10be69d60>
+bridge_spy = <function bridge_spy.<locals>.install at 0x10bf2f880>
+
+    async def test_different_steps_get_different_operationIds(self, bridge_spy):
+>       spy = bridge_spy()
+              ^^^^^^^^^^^^
+
+server/tests/test_agent_a13.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = None
+
+    def install(result: dict | None = None):
+        spy = _BridgeSpy(result)
+>       mod = sys.modules["server.engine_bridge"]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'server.engine_bridge'
+
+server/tests/test_agent_a13.py:52: KeyError
+=========================== short test summary info ============================
+FAILED server/tests/test_agent_a13.py::TestDeskMismatchIsExplicit::test_mismatched_desk_is_an_error_the_model_sees_and_the_engine_is_not_called
+FAILED server/tests/test_agent_a13.py::TestBaseChain::test_round_two_continues_from_the_turns_latest_run_not_the_original_base
+FAILED server/tests/test_agent_a13.py::TestBaseChain::test_a_failed_round_does_not_poison_the_chain
+FAILED server/tests/test_agent_a13.py::TestOperationIdentity::test_identical_retried_batches_carry_one_deterministic_operationId
+FAILED server/tests/test_agent_a13.py::TestOperationIdentity::test_different_steps_get_different_operationIds
+5 failed in 0.18s

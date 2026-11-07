@@ -1,0 +1,11 @@
+B0.2 attempt-1 exit codes, as printed by the commands at run time (Node 25.4.0, pnpm 10.30.2)
+
+pnpm install --frozen-lockfile        install_exit=0   (log: pnpm-install-frozen.log)
+pnpm exec vitest list --filesOnly     list_exit=0      (before and after isolation)
+pnpm test                             test_exit=0      (log: vitest-baseline.log)
+pnpm build                            build_exit=0     (log: build-baseline.log)
+
+The logs themselves do not contain the exit codes; they were echoed by the invoking shell.
+pnpm-lock.yaml mtime 00:34 came from an earlier read-only probe in this session
+(pnpm install --frozen-lockfile --offline --lockfile-only); its sha256 is unchanged
+(ed5c8afe...) and matches HEAD, so the lock was rewritten with identical content.

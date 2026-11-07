@@ -1,0 +1,89 @@
+
+> paper2lab@0.1.0 test /Users/c14h14n3/Desktop/Paper2Lab
+> vitest run
+
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+(node:80099) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:80100) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/runtime/cell.test.ts (8 tests) 345ms
+ ✓ src/skills/agentSteps.test.ts (11 tests) 436ms
+ ✓ src/skills/outputContract.test.ts (25 tests) 536ms
+ ✓ src/skills/runProvenance.test.ts (59 tests) 719ms
+ ✓ src/skills/paperSpec.test.ts (4 tests) 195ms
+ ✓ src/paper/kakeyaGraph.test.ts (2 tests) 1005ms
+   ✓ kakeya.sweep on-demand (#23) > off → resolves to [] with no grid points; on → full SWEEP_NS series; off again → []  842ms
+ ✓ src/challenges/challenges.test.ts (17 tests) 1033ms
+ ✓ src/desk/odePhaseStore.test.ts (3 tests) 266ms
+ ✓ src/skills/contract.test.ts (13 tests) 244ms
+ ✓ src/skills/llmPlanner.test.ts (4 tests) 866ms
+   ✓ llmPlanner > LLM output is schema-validated: invalid JSON/skills rejected → null  862ms
+ ✓ src/skills/protocolClient.test.ts (7 tests) 181ms
+ ✓ src/skills/odePhase.test.ts (10 tests) 197ms
+ ✓ src/skills/executorProof.test.ts (19 tests) 120ms
+ ✓ src/skills/modelPapers.test.ts (3 tests) 211ms
+ ✓ src/skills/reviewFixes.test.ts (12 tests) 155ms
+ ✓ src/skills/sirPaper.test.ts (3 tests) 186ms
+ ✓ src/desk/asyncConsistency.test.ts (4 tests) 167ms
+ ✓ src/formula/formula.test.ts (10 tests) 171ms
+ ✓ src/desk/uploadFlow.test.ts (3 tests) 2253ms
+   ✓ PDF-first flow: failure never blocks the original paper (#15) > real paper A (ODE): blob URL exists IMMEDIATELY; parse error keeps it; retry (real fixture) reaches the desk  1237ms
+   ✓ PDF-first flow: failure never blocks the original paper (#15) > real paper B (fit): same chain, fit-table decision on retry success  1015ms
+ ✓ src/physics/mujoco.test.ts (27 tests) 2070ms
+   ✓ Stage A — vendored scenes run real MuJoCo physics (headless) > 22_humanoids.xml — compiles and 100 steps stay finite  827ms
+   ✓ Stage A — vendored scenes run real MuJoCo physics (headless) > agility_cassie/scene.xml — compiles and 100 steps stay finite  349ms
+ ✓ src/skills/realPdfs.test.ts (4 tests) 236ms
+ ✓ src/skills/adapterRouter.test.ts (14 tests) 117ms
+ ✓ src/skills/vlmPdfs.test.ts (2 tests) 146ms
+ ✓ src/runtime/concurrency.test.ts (5 tests) 115ms
+ ✓ src/skills/playPlan.test.ts (2 tests) 88ms
+ ✓ src/desk/explorerStore.test.ts (3 tests) 137ms
+ ✓ src/skills/formulaExecutor.test.ts (2 tests) 139ms
+ ✓ src/skills/executor.test.ts (17 tests) 113ms
+ ✓ src/physics/contract.test.ts (8 tests) 193ms
+ ✓ src/kakeya/voxels3d.test.ts (5 tests) 38ms
+ ✓ src/desk/run3dStore.test.ts (5 tests) 58ms
+ ✓ src/skills/geoKakeyaPaper.test.ts (3 tests) 48ms
+ ✓ src/skills/planBinding.test.ts (13 tests) 79ms
+ ✓ src/kakeya/perron.test.ts (5 tests) 26ms
+ ✓ src/desk/boardLayout.test.ts (5 tests) 2ms
+ ✓ src/kakeya/tubes.test.ts (4 tests) 14ms
+ ✓ src/skills/adapters.test.ts (8 tests) 34ms
+ ✓ src/experiments/artifacts.test.ts (15 tests) 15ms
+(node:80244) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/paper/precomputedRuns.test.ts (5 tests) 50ms
+ ✓ src/skills/registry.test.ts (5 tests) 4ms
+ ✓ src/kakeya/directions.test.ts (3 tests) 6ms
+ ✓ src/ingest/ingest.test.ts (6 tests) 5ms
+(node:80282) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/desk/agentBridge.test.ts (6 tests) 14ms
+ ✓ src/skills/skills.test.ts (13 tests) 15ms
+ ✓ src/kakeya/handcomputed.test.ts (5 tests) 6ms
+ ✓ src/experiments/protocol.test.ts (33 tests) 9ms
+ ✓ src/paper/challengeStore.test.ts (3 tests) 5ms
+ ✓ src/canvas/grouping.test.ts (4 tests) 4ms
+stderr | scripts/engine_persist.test.ts > engine_persist JSONL corrupt-tail tolerance (#31) > a half-written tail line loses ONLY itself — intact runs all restore
+[engine-persist] skipped 1 corrupt line(s) in engine-runs.jsonl (crashed append tail?) — intact runs restored
+[engine-persist] skipped 1 corrupt line(s) in engine-runs.jsonl (crashed append tail?) — intact runs restored
+
+stderr | scripts/engine_persist.test.ts > engine_persist JSONL corrupt-tail tolerance (#31) > a log that is ONLY a corrupt line restores zero and does not throw
+[engine-persist] skipped 1 corrupt line(s) in engine-runs.jsonl (crashed append tail?) — intact runs restored
+
+ ✓ scripts/engine_persist.test.ts (2 tests) 3ms
+ ✓ src/skills/planner.test.ts (11 tests) 4ms
+ ✓ src/skills/toolSchema.test.ts (5 tests) 4ms
+ ✓ src/desk/agentActions.test.ts (6 tests) 2ms
+ ✓ src/ingest/upload.test.ts (4 tests) 13039ms
+   ✓ ingestPdf progress + failure contracts (#15 UX) > streams stage/elapsed/queue from every poll to onProgress  3021ms
+   ✓ ingestPdf progress + failure contracts (#15 UX) > a POLL transport failure does NOT re-upload the PDF (no second POST)  10014ms
+
+ Test Files  53 passed (53)
+      Tests  475 passed (475)
+   Start at  02:50:28
+   Duration  13.58s (transform 998ms, setup 0ms, collect 6.89s, tests 26.13s, environment 6ms, prepare 2.83s)
+

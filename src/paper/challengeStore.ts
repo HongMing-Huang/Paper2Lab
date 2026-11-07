@@ -81,7 +81,10 @@ export async function runChallengeMeasurement(
       skill: 'kakeya.measure',
       goal: 'Packing Challenge：同一 worker/seed/res 下比较用户与 Agent 的管束排布',
       metrics: ['occupiedVolume', 'maxMultiplicity'],
-      inputs: { challenge: 'packing' },
+      // S1.3: this plan governs a FAMILY — deltaExp/nTubes/res arrive from
+      // start() and packing is the manipulable, so nothing is seed-fixed here;
+      // the full input binding lands with N1's model revisions
+      inputs: {},
     })
     ;(globalThis as { __p2lChallengePlan?: ReturnType<typeof buildPlan> }).__p2lChallengePlan = challengePlan
   }

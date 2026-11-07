@@ -290,3 +290,34 @@ li.replaying .mw-log-replay { background: #2f5d8a; color: #fff; border-color: #2
   color: #23405e;
 }
 .mw-timeplayer-note { color: #a39685; font-family: inherit; }
+
+/* Play first: the scene gets the space previously reserved for run details. */
+.mw-scene { top: 76px; left: 336px; right: 12px; bottom: 0; }
+.mw-scene-inspecting { left: 384px; right: 404px; }
+.mw-playing .mw-left { width: 310px; top: 82px; bottom: 20px; }
+.mw-play-card h1 { font-size: 22px; line-height: 1.4; margin: 0 0 12px; }
+.mw-play-gesture { font-size: 15px; line-height: 1.6; color: var(--blue); }
+.mw-play-small { font-size: 12px; line-height: 1.5; color: var(--ink-soft); }
+.mw-play-result { border-left: 3px solid var(--blue); background: var(--paper-deep); padding: 10px; margin: 12px 0; }
+.mw-play-result p { font-size: 13px; line-height: 1.6; margin: 5px 0 0; }
+.mw-play-result-fail { border-color: var(--vermilion); }
+.mw-play-result-unknown { border-color: var(--amber); }
+.mw-play-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.mw-play-actions button, .mw-close-details { border: 1px solid var(--rule); background: #fffdf8; border-radius: 7px; padding: 8px 10px; cursor: pointer; }
+.mw-play-actions button:disabled { opacity: .45; cursor: default; }
+.mw-details-link { background: none; border: 0; padding: 8px 0 0; font-size: 12px; color: var(--blue); cursor: pointer; text-align: left; }
+.mw-playing .mw-notice { bottom: 70px; max-width: min(560px, calc(100vw - 370px)); }
+.mw-playing .mw-timeplayer { left: auto; right: 24px; bottom: 80px; transform: none; width: min(400px, calc(100vw - 380px)); }
+@media (max-width: 900px) {
+  .mw-top { gap: 5px; }
+  .mw-top select { max-width: 170px; }
+  .mw-scene, .mw-scene-inspecting { left: 0; right: 0; top: 115px; bottom: 35%; }
+  .mw-playing .mw-left, .mw-inspecting .mw-left { top: auto; bottom: 65px; left: 10px; width: min(320px, calc(100vw - 20px)); max-height: 32vh; }
+  .mw-right { top: 120px; bottom: 90px; width: min(380px, calc(100vw - 24px)); }
+  .mw-playing .mw-timeplayer { right: 12px; bottom: 38%; width: min(350px, calc(100vw - 48px)); }
+  .mw-playing .mw-notice { max-width: calc(100vw - 50px); bottom: 70px; }
+}
+.mw-chip-step { border: 0; border-radius: 50%; background: rgba(201,138,43,.15); min-width: 25px; min-height: 25px; cursor: pointer; font-weight: 700; }
+.mw-chip-step:hover:not(:disabled) { background: var(--brass); color: white; }
+.mw-chip-step:disabled { opacity: .35; cursor: default; }
+.mw-chip-step:focus-visible, .mw-play-actions button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }

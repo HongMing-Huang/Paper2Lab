@@ -30,6 +30,7 @@ import { runSkill } from '../skills/types'
 import { agentStore } from '../skills/agentStore'
 import type { ExperimentPlan } from '../skills/planner'
 import '../skills'
+import { DemoGuide } from './DemoGuide'
 
 kakeya.param('desk.showVoxels', 0)
 
@@ -104,7 +105,7 @@ async function awaitSettled(cellId: string, timeoutMs = 8000): Promise<boolean> 
   return kakeya.get(cellId).status === 'resolved'
 }
 
-export function DeskCanvas({ onExit }: { onExit?: () => void }) {
+export function DeskCanvas({ onExit, demo = false }: { onExit?: () => void; demo?: boolean }) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
   const [edges, setEdges] = useState<Edge[]>(initialEdges)
   const [note, setNote] = useState<string | null>(null)
@@ -116,7 +117,7 @@ export function DeskCanvas({ onExit }: { onExit?: () => void }) {
   const runPlan = useCallback(
     async (plan: ExperimentPlan) => {
       agentStore.start(plan)
-      message(`Agent 运行中：${plan.title}`)
+      message(`本地实验指令执行中：${plan.title}`)
       let forkA: ForkSnapshot | null = null
       try {
         for (let i = 0; i < plan.actions.length; i++) {
@@ -160,9 +161,9 @@ export function DeskCanvas({ onExit }: { onExit?: () => void }) {
           }
           agentStore.setStatus(i, 'done')
         }
-        message(`Agent 完成：${plan.title}（实验纸与对比卡已生长）`)
+        message(`本地实验指令完成：${plan.title}（实验纸与对比卡已生长）`)
       } catch (err) {
-        message(`Agent 出错：${String((err as Error).message).slice(0, 80)}`)
+        message(`本地实验指令出错：${String((err as Error).message).slice(0, 80)}`)
         agentStore.finish(null)
       }
     },
@@ -240,6 +241,7 @@ export function DeskCanvas({ onExit }: { onExit?: () => void }) {
           />
           <Controls showInteractive={false} position="bottom-right" />
           <FocusListener />
+          {demo && <DemoGuide />}
           <DeskToolbar
             message={message}
             selectMode={selectMode}

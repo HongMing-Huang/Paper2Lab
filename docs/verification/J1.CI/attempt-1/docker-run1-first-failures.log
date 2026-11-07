@@ -1,0 +1,2203 @@
+........................................................................ [ 32%]
+..........FF............EEE.EEEEEEE.EEEEEEEEEE.......................... [ 64%]
+..........EEEEEEEEEEEEEEEEEE.FFEEEEFF...EEEE............................ [ 96%]
+........                                                                 [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestConsumerRoundTrip.test_upload_writes_artifact_paper_version_and_job_carries_the_record _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_upload_writes_artifact_pa0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c3c37d0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        """isolated DATA_DIR + the repository configured + a clean schema"""
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_consumer_d1.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestConsumerRoundTrip.test_same_file_reupload_dedups_to_one_version_with_two_events _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_same_file_reupload_dedups0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c3c3890>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        """isolated DATA_DIR + the repository configured + a clean schema"""
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_consumer_d1.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestConsumerRoundTrip.test_repository_failure_is_recorded_not_silent _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_repository_failure_is_rec0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c3c3170>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        """isolated DATA_DIR + the repository configured + a clean schema"""
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_consumer_d1.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWorkspaceIdentity.test_ensure_workspace_is_idempotent __
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_ensure_workspace_is_idemp0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestContentAddressedRoundTrip.test_upload_stores_artifact_paper_version_and_reads_back _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_upload_stores_artifact_pa0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestContentAddressedRoundTrip.test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_same_file_twice_dedups_to0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestContentAddressedRoundTrip.test_different_workspaces_keep_separate_papers_for_the_same_bytes _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_different_workspaces_keep0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+___ ERROR at setup of TestMigration.test_migrate_is_idempotent_and_versioned ___
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_migrate_is_idempotent_and0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database(ADMIN_URL)
+
+server/tests/test_db_d1.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWriteAuthoritySwitch.test_doc_lands_in_pg_only_no_json_dual_write _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_doc_lands_in_pg_only_no_j0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c3a9b80>
+
+    @pytest.fixture()
+    def db_env(tmp_path, monkeypatch):
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_d13.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWriteAuthoritySwitch.test_legacy_json_docs_remain_readable_read_only_fallback _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_legacy_json_docs_remain_r0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c5b28a0>
+
+    @pytest.fixture()
+    def db_env(tmp_path, monkeypatch):
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_d13.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWriteAuthoritySwitch.test_pg_failure_at_persist_does_not_fallback_to_json _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_pg_failure_at_persist_doe0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c36c590>
+
+    @pytest.fixture()
+    def db_env(tmp_path, monkeypatch):
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_d13.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestExportRecoveryDrill.test_export_wipe_restore_verifies_counts_and_serves_docs _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_export_wipe_restore_verif0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c5cede0>
+
+    @pytest.fixture()
+    def db_env(tmp_path, monkeypatch):
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_d13.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestDocImport.test_imports_every_doc_preserving_ids_and_legacy_provenance _
+
+    @pytest.fixture()
+    def db():
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_import_d12.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestDocImport.test_reimport_is_idempotent_zero_duplicates __
+
+    @pytest.fixture()
+    def db():
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_import_d12.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestDocImport.test_a_changed_file_under_a_known_id_is_reported_not_overwritten _
+
+    @pytest.fixture()
+    def db():
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_import_d12.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+___ ERROR at setup of TestDocImport.test_malformed_json_is_counted_not_fatal ___
+
+    @pytest.fixture()
+    def db():
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_import_d12.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestRunImport.test_imports_runs_by_original_id_without_recomputing _
+
+    @pytest.fixture()
+    def db():
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_import_d12.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestRunImport.test_reimport_is_idempotent_and_error_runs_import_too _
+
+    @pytest.fixture()
+    def db():
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_import_d12.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+___ ERROR at setup of TestRunImport.test_corrupt_tail_line_loses_only_itself ___
+
+    @pytest.fixture()
+    def db():
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_import_d12.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+____ ERROR at setup of TestReport.test_the_report_carries_verifiable_hashes ____
+
+    @pytest.fixture()
+    def db():
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_db_import_d12.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWorkerConsumes.test_api_only_queues_and_a_separate_worker_process_consumes _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_api_only_queues_and_a_sep0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc52450>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWorkerConsumes.test_a_failed_parse_is_recorded_by_the_worker _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_a_failed_parse_is_recorde0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c3c0890>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWorkerConsumes.test_timeout_really_terminates_the_conversion _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_timeout_really_terminates0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc16570>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWorkerConsumes.test_duplicate_delivery_runs_the_parse_once _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_duplicate_delivery_runs_t0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc17d70>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestWorkerConsumes.test_a_failed_artifact_write_leaves_no_orphan_document _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_a_failed_artifact_write_l0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc40260>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestRebuildAndRestart.test_lost_queue_messages_are_rebuilt_from_pg_when_the_worker_starts _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_lost_queue_messages_are_r0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc40f20>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestRebuildAndRestart.test_api_restart_requeues_lost_tasks_exactly_once _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_api_restart_requeues_lost0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c3aafc0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestRebuildAndRestart.test_one_bad_queue_record_cannot_abort_the_reconcile_pass _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_one_bad_queue_record_cann0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc17230>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestRebuildAndRestart.test_api_restart_keeps_queue_backed_jobs_alive _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_api_restart_keeps_queue_b0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc40260>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestRebuildAndRestart.test_an_in_process_queued_job_is_interrupted_by_a_restart _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_an_in_process_queued_job_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc43f80>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestSupersedeAndFallback.test_a_superseded_queued_task_is_cancelled_and_never_parsed _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_a_superseded_queued_task_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc495b0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestSupersedeAndFallback.test_a_finished_but_never_polled_task_is_not_relabelled_superseded _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_a_finished_but_never_poll0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc49f10>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestSupersedeAndFallback.test_queue_depth_counts_ledger_tasks_ahead _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_queue_depth_counts_ledger0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc41df0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestSupersedeAndFallback.test_without_redis_the_in_process_path_is_unchanged _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_without_redis_the_in_proc0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12c3c1e50>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestSupersedeAndFallback.test_the_worker_refuses_to_start_without_a_queue _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_the_worker_refuses_to_sta0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc16720>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        import redis as _redis
+    
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_jobs_j11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestPaperVersionList.test_upload_lands_in_the_version_list_with_provenance _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_upload_lands_in_the_versi0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc4b8f0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _fixture_env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:43: in _fixture_env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestPaperVersionList.test_same_file_twice_one_paper_two_uploads_in_the_list _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_same_file_twice_one_paper0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc4a840>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _fixture_env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:43: in _fixture_env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestPaperVersionList.test_two_different_papers_list_separately _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_two_different_papers_list0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc492e0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _fixture_env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:43: in _fixture_env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+___ ERROR at setup of TestOriginalPdfReadable.test_unknown_paper_pdf_is_404 ____
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_unknown_paper_pdf_is_4040')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc15910>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _fixture_env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:62: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:43: in _fixture_env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestDuplicateDedup.test_same_bytes_twice_one_paper_one_version_two_uploads _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_same_bytes_twice_one_pape0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc43fe0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p13.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p13.py:44: in _env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestIdentifierVersions.test_same_identifier_different_bytes_coexist_as_two_versions _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_same_identifier_different0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc50950>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p13.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p13.py:44: in _env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestIdentifierVersions.test_no_identifier_stays_sha_keyed __
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_no_identifier_stays_sha_k0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc51790>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p13.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p13.py:44: in _env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestParseArtifacts.test_a_parse_lands_with_parser_identity_and_precision _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_a_parse_lands_with_parser0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc53f50>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_parse_artifacts_p12.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestParseArtifacts.test_reparse_adds_a_new_artifact_and_the_old_stays_openable _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_reparse_adds_a_new_artifa0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc534d0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_parse_artifacts_p12.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ ERROR at setup of TestParseArtifacts.test_old_precision_is_never_upgraded_on_reparse _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_old_precision_is_never_up0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cb9dc70>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_parse_artifacts_p12.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+______ ERROR at setup of TestParseArtifacts.test_unknown_parse_id_is_404 _______
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_unknown_parse_id_is_4040')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12ccd7da0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        # J1.CI: the dedicated target must exist (CI creates it via POSTGRES_DB;
+        # locally via createdb) — a loud, actionable error instead of a wedge
+>       testtargets.ensure_database()
+
+server/tests/test_parse_artifacts_p12.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+=================================== FAILURES ===================================
+___ TestDefaultsUnchanged.test_default_pg_database_is_the_historical_test_db ___
+
+self = <test_ci_targets_j1ci.TestDefaultsUnchanged object at 0x1290baba0>
+
+    def test_default_pg_database_is_the_historical_test_db(self):
+>       assert testtargets.TEST_DATABASE == "postgresql://localhost:5432/paper2lab_d11_test"
+E       AssertionError: assert 'postgresql:/...r2lab_ci_test' == 'postgresql:/...2lab_d11_test'
+E         
+E         - postgresql://localhost:5432/paper2lab_d11_test
+E         ?                                       ^^^
+E         + postgresql://postgres@localhost:55432/paper2lab_ci_test
+E         ?              +++++++++          +               ^^
+
+server/tests/test_ci_targets_j1ci.py:41: AssertionError
+_______________ TestDefaultsUnchanged.test_default_redis_is_db15 _______________
+
+self = <test_ci_targets_j1ci.TestDefaultsUnchanged object at 0x1290baed0>
+
+    def test_default_redis_is_db15(self):
+>       assert testtargets.TEST_REDIS_URL == "redis://127.0.0.1:6379/15"
+E       AssertionError: assert 'redis://127.0.0.1:56379/15' == 'redis://127.0.0.1:6379/15'
+E         
+E         - redis://127.0.0.1:6379/15
+E         + redis://127.0.0.1:56379/15
+E         ?                   +
+
+server/tests/test_ci_targets_j1ci.py:44: AssertionError
+___ TestOriginalPdfReadable.test_pdf_serves_while_the_parse_is_still_running ___
+
+self = <test_papers_p11.TestOriginalPdfReadable object at 0x12b264830>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_pdf_serves_while_the_pars0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc4a9f0>
+
+    def test_pdf_serves_while_the_parse_is_still_running(self, tmp_path, monkeypatch):
+>       _fixture_env(tmp_path, monkeypatch, "hang")
+
+server/tests/test_papers_p11.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:43: in _fixture_env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+________ TestOriginalPdfReadable.test_pdf_serves_after_the_parse_failed ________
+
+self = <test_papers_p11.TestOriginalPdfReadable object at 0x12af17860>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_pdf_serves_after_the_pars0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc496a0>
+
+    def test_pdf_serves_after_the_parse_failed(self, tmp_path, monkeypatch):
+>       _fixture_env(tmp_path, monkeypatch, "crash")
+
+server/tests/test_papers_p11.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:43: in _fixture_env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ TestFailedRetryKeepsOldAnchor.test_crashed_v2_parse_leaves_v1_parse_intact_then_retry_adds _
+
+self = <test_papers_p13.TestFailedRetryKeepsOldAnchor object at 0x12b284f80>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_crashed_v2_parse_leaves_v0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc42570>
+
+    def test_crashed_v2_parse_leaves_v1_parse_intact_then_retry_adds(self, tmp_path, monkeypatch):
+>       _env(tmp_path, monkeypatch, "ok")
+
+server/tests/test_papers_p13.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p13.py:44: in _env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+_ TestNoFulltextHonesty.test_a_paper_with_only_failed_parses_has_no_document_but_keeps_pdf _
+
+self = <test_papers_p13.TestNoFulltextHonesty object at 0x12b284b60>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-137/test_a_paper_with_only_failed_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12cc4bf50>
+
+    def test_a_paper_with_only_failed_parses_has_no_document_but_keeps_pdf(self, tmp_path, monkeypatch):
+>       _env(tmp_path, monkeypatch, "crash")
+
+server/tests/test_papers_p13.py:171: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p13.py:44: in _env
+    testtargets.ensure_database()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+admin_url = 'postgresql://localhost:5432/postgres'
+
+    def ensure_database(admin_url: str = "postgresql://localhost:5432/postgres") -> None:
+        """fail LOUDLY when the dedicated test database does not exist yet.
+    
+        Deliberately no CREATE DATABASE here: DDL identifiers cannot be bound as
+        query parameters, and dynamic DDL composition is what this project's
+        security scanning (rightly) refuses. Dedicated targets are created by
+        the ENVIRONMENT, not by the tests: CI's postgres service declares
+        POSTGRES_DB (the image's entrypoint creates it); a local isolated run
+        creates it once with createdb. This check is a plain parameterized query.
+        """
+        import psycopg
+    
+        target = test_database()
+        name = (urlsplit(target).path or "/").lstrip("/").split("?")[0]
+        with psycopg.connect(admin_url, connect_timeout=5) as admin:
+            exists = admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone()
+        if exists is None:
+>           raise RuntimeError(
+                f"the dedicated test database '{name}' does not exist. CI creates it via the "
+                "postgres service's POSTGRES_DB; locally create it once with: "
+                f"createdb {name}"
+            )
+E           RuntimeError: the dedicated test database 'paper2lab_ci_test' does not exist. CI creates it via the postgres service's POSTGRES_DB; locally create it once with: createdb paper2lab_ci_test
+
+server/tests/testtargets.py:114: RuntimeError
+=============================== warnings summary ===============================
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy
+  test_agent_a02.py:24: PytestWarning: The test <Function test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_an_error_batch_keeps_its_semantics_in_the_degraded_summary
+  test_agent_a02.py:40: PytestWarning: The test <Function test_an_error_batch_keeps_its_semantics_in_the_degraded_summary> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_an_error_batch_keeps_its_semantics_in_the_degraded_summary(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_small_result_is_verbatim_and_registers_nothing
+  test_agent_a02.py:47: PytestWarning: The test <Function test_a_small_result_is_verbatim_and_registers_nothing> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_small_result_is_verbatim_and_registers_nothing(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_huge_comparison_never_busts_the_budget
+  test_agent_a02.py:53: PytestWarning: The test <Function test_a_huge_comparison_never_busts_the_budget> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_huge_comparison_never_busts_the_budget(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_metrics_tier_is_actually_reachable_when_it_fits
+  test_agent_a02.py:63: PytestWarning: The test <Function test_the_metrics_tier_is_actually_reachable_when_it_fits> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_metrics_tier_is_actually_reachable_when_it_fits(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_every_degradation_level_stays_within_budget_and_valid
+  test_agent_a02.py:75: PytestWarning: The test <Function test_every_degradation_level_stays_within_budget_and_valid> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_every_degradation_level_stays_within_budget_and_valid(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_artifact_registry_is_bounded_and_evicts_oldest
+  test_agent_a02.py:97: PytestWarning: The test <Function test_the_artifact_registry_is_bounded_and_evicts_oldest> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_artifact_registry_is_bounded_and_evicts_oldest(self):
+
+test_api.py::test_health_is_alive_and_ready_checks_dependencies
+  /Users/c14h14n3/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/events.py:88: RuntimeWarning: The executor did not finishing joining its threads within 300 seconds.
+    self._context.run(self._callback, *self._args)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED server/tests/test_ci_targets_j1ci.py::TestDefaultsUnchanged::test_default_pg_database_is_the_historical_test_db
+FAILED server/tests/test_ci_targets_j1ci.py::TestDefaultsUnchanged::test_default_redis_is_db15
+FAILED server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_pdf_serves_while_the_parse_is_still_running
+FAILED server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_pdf_serves_after_the_parse_failed
+FAILED server/tests/test_papers_p13.py::TestFailedRetryKeepsOldAnchor::test_crashed_v2_parse_leaves_v1_parse_intact_then_retry_adds
+FAILED server/tests/test_papers_p13.py::TestNoFulltextHonesty::test_a_paper_with_only_failed_parses_has_no_document_but_keeps_pdf
+ERROR server/tests/test_db_consumer_d1.py::TestConsumerRoundTrip::test_upload_writes_artifact_paper_version_and_job_carries_the_record
+ERROR server/tests/test_db_consumer_d1.py::TestConsumerRoundTrip::test_same_file_reupload_dedups_to_one_version_with_two_events
+ERROR server/tests/test_db_consumer_d1.py::TestConsumerRoundTrip::test_repository_failure_is_recorded_not_silent
+ERROR server/tests/test_db_d1.py::TestWorkspaceIdentity::test_ensure_workspace_is_idempotent
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_upload_stores_artifact_paper_version_and_reads_back
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_different_workspaces_keep_separate_papers_for_the_same_bytes
+ERROR server/tests/test_db_d1.py::TestMigration::test_migrate_is_idempotent_and_versioned
+ERROR server/tests/test_db_d13.py::TestWriteAuthoritySwitch::test_doc_lands_in_pg_only_no_json_dual_write
+ERROR server/tests/test_db_d13.py::TestWriteAuthoritySwitch::test_legacy_json_docs_remain_readable_read_only_fallback
+ERROR server/tests/test_db_d13.py::TestWriteAuthoritySwitch::test_pg_failure_at_persist_does_not_fallback_to_json
+ERROR server/tests/test_db_d13.py::TestExportRecoveryDrill::test_export_wipe_restore_verifies_counts_and_serves_docs
+ERROR server/tests/test_db_import_d12.py::TestDocImport::test_imports_every_doc_preserving_ids_and_legacy_provenance
+ERROR server/tests/test_db_import_d12.py::TestDocImport::test_reimport_is_idempotent_zero_duplicates
+ERROR server/tests/test_db_import_d12.py::TestDocImport::test_a_changed_file_under_a_known_id_is_reported_not_overwritten
+ERROR server/tests/test_db_import_d12.py::TestDocImport::test_malformed_json_is_counted_not_fatal
+ERROR server/tests/test_db_import_d12.py::TestRunImport::test_imports_runs_by_original_id_without_recomputing
+ERROR server/tests/test_db_import_d12.py::TestRunImport::test_reimport_is_idempotent_and_error_runs_import_too
+ERROR server/tests/test_db_import_d12.py::TestRunImport::test_corrupt_tail_line_loses_only_itself
+ERROR server/tests/test_db_import_d12.py::TestReport::test_the_report_carries_verifiable_hashes
+ERROR server/tests/test_jobs_j11.py::TestWorkerConsumes::test_api_only_queues_and_a_separate_worker_process_consumes
+ERROR server/tests/test_jobs_j11.py::TestWorkerConsumes::test_a_failed_parse_is_recorded_by_the_worker
+ERROR server/tests/test_jobs_j11.py::TestWorkerConsumes::test_timeout_really_terminates_the_conversion
+ERROR server/tests/test_jobs_j11.py::TestWorkerConsumes::test_duplicate_delivery_runs_the_parse_once
+ERROR server/tests/test_jobs_j11.py::TestWorkerConsumes::test_a_failed_artifact_write_leaves_no_orphan_document
+ERROR server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_lost_queue_messages_are_rebuilt_from_pg_when_the_worker_starts
+ERROR server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_api_restart_requeues_lost_tasks_exactly_once
+ERROR server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_one_bad_queue_record_cannot_abort_the_reconcile_pass
+ERROR server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_api_restart_keeps_queue_backed_jobs_alive
+ERROR server/tests/test_jobs_j11.py::TestRebuildAndRestart::test_an_in_process_queued_job_is_interrupted_by_a_restart
+ERROR server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_a_superseded_queued_task_is_cancelled_and_never_parsed
+ERROR server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_a_finished_but_never_polled_task_is_not_relabelled_superseded
+ERROR server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_queue_depth_counts_ledger_tasks_ahead
+ERROR server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_without_redis_the_in_process_path_is_unchanged
+ERROR server/tests/test_jobs_j11.py::TestSupersedeAndFallback::test_the_worker_refuses_to_start_without_a_queue
+ERROR server/tests/test_papers_p11.py::TestPaperVersionList::test_upload_lands_in_the_version_list_with_provenance
+ERROR server/tests/test_papers_p11.py::TestPaperVersionList::test_same_file_twice_one_paper_two_uploads_in_the_list
+ERROR server/tests/test_papers_p11.py::TestPaperVersionList::test_two_different_papers_list_separately
+ERROR server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_unknown_paper_pdf_is_404
+ERROR server/tests/test_papers_p13.py::TestDuplicateDedup::test_same_bytes_twice_one_paper_one_version_two_uploads
+ERROR server/tests/test_papers_p13.py::TestIdentifierVersions::test_same_identifier_different_bytes_coexist_as_two_versions
+ERROR server/tests/test_papers_p13.py::TestIdentifierVersions::test_no_identifier_stays_sha_keyed
+ERROR server/tests/test_parse_artifacts_p12.py::TestParseArtifacts::test_a_parse_lands_with_parser_identity_and_precision
+ERROR server/tests/test_parse_artifacts_p12.py::TestParseArtifacts::test_reparse_adds_a_new_artifact_and_the_old_stays_openable
+ERROR server/tests/test_parse_artifacts_p12.py::TestParseArtifacts::test_old_precision_is_never_upgraded_on_reparse
+ERROR server/tests/test_parse_artifacts_p12.py::TestParseArtifacts::test_unknown_parse_id_is_404
+6 failed, 172 passed, 4 deselected, 8 warnings, 46 errors in 357.35s (0:05:57)

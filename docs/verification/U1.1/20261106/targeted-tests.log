@@ -1,0 +1,15 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+(node:89906) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/desk/agentBridge.test.ts (8 tests) 10ms
+ ✓ src/skills/adapterRouter.test.ts (14 tests) 124ms
+ ✓ src/skills/formulaExecutor.test.ts (2 tests) 105ms
+ ✓ src/desk/agentActions.test.ts (6 tests) 2ms
+
+ Test Files  4 passed (4)
+      Tests  30 passed (30)
+   Start at  19:56:16
+   Duration  879ms (transform 217ms, setup 0ms, collect 987ms, tests 241ms, environment 1ms, prepare 249ms)
+

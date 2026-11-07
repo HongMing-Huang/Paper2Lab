@@ -1,0 +1,253 @@
+FFFFFFF                                                                  [100%]
+=================================== FAILURES ===================================
+__ TestPaperVersionList.test_upload_lands_in_the_version_list_with_provenance __
+
+self = <test_papers_p11.TestPaperVersionList object at 0x12888a510>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-72/test_upload_lands_in_the_versi0')
+
+    def test_upload_lands_in_the_version_list_with_provenance(self, env):
+        with TestClient(app) as client:
+            submit = _upload(client, "list-me.pdf")
+            _wait_status(client, submit["jobId"])
+>           listing = client.get("/api/papers").json()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/.venv/lib/python3.12/site-packages/httpx2/_models.py:830: in json
+    return jsonlib.loads(self.content, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:338: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.decoder.JSONDecoder object at 0x1012f76b0>
+s = '<!doctype html>\n<html lang="zh-CN">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="widt..." crossorigin href="/assets/index-Chx8wPqn.css">\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n'
+idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+    
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+    
+        """
+        try:
+            obj, end = self.scan_once(s, idx)
+        except StopIteration as err:
+>           raise JSONDecodeError("Expecting value", s, err.value) from None
+E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:356: JSONDecodeError
+_ TestPaperVersionList.test_same_file_twice_one_paper_two_uploads_in_the_list __
+
+self = <test_papers_p11.TestPaperVersionList object at 0x129841c40>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-72/test_same_file_twice_one_paper0')
+
+    def test_same_file_twice_one_paper_two_uploads_in_the_list(self, env):
+        with TestClient(app) as client:
+            first = _upload(client, "one.pdf")
+            _wait_status(client, first["jobId"])
+            second = _upload(client, "two.pdf", PDF)
+            _wait_status(client, second["jobId"])
+>           listing = client.get("/api/papers").json()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:115: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/.venv/lib/python3.12/site-packages/httpx2/_models.py:830: in json
+    return jsonlib.loads(self.content, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:338: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.decoder.JSONDecoder object at 0x1012f76b0>
+s = '<!doctype html>\n<html lang="zh-CN">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="widt..." crossorigin href="/assets/index-Chx8wPqn.css">\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n'
+idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+    
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+    
+        """
+        try:
+            obj, end = self.scan_once(s, idx)
+        except StopIteration as err:
+>           raise JSONDecodeError("Expecting value", s, err.value) from None
+E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:356: JSONDecodeError
+________ TestPaperVersionList.test_two_different_papers_list_separately ________
+
+self = <test_papers_p11.TestPaperVersionList object at 0x129841fd0>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-72/test_two_different_papers_list0')
+
+    def test_two_different_papers_list_separately(self, env):
+        with TestClient(app) as client:
+            a = _upload(client, "a.pdf", PDF)
+            _wait_status(client, a["jobId"])
+            b = _upload(client, "b.pdf", PDF_B)
+            _wait_status(client, b["jobId"])
+>           listing = client.get("/api/papers").json()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:127: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/.venv/lib/python3.12/site-packages/httpx2/_models.py:830: in json
+    return jsonlib.loads(self.content, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:338: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.decoder.JSONDecoder object at 0x1012f76b0>
+s = '<!doctype html>\n<html lang="zh-CN">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="widt..." crossorigin href="/assets/index-Chx8wPqn.css">\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n'
+idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+    
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+    
+        """
+        try:
+            obj, end = self.scan_once(s, idx)
+        except StopIteration as err:
+>           raise JSONDecodeError("Expecting value", s, err.value) from None
+E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:356: JSONDecodeError
+___ TestPaperVersionList.test_no_repository_configured_lists_empty_honestly ____
+
+self = <test_papers_p11.TestPaperVersionList object at 0x129842390>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-72/test_no_repository_configured_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x129946060>
+
+    def test_no_repository_configured_lists_empty_honestly(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PAPER2LAB_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("PAPER2LAB_DATABASE_URL", raising=False)
+        monkeypatch.setenv("PAPER2LAB_DISABLE_STARTUP_WARMUP", "1")
+        with TestClient(app) as client:
+>           listing = client.get("/api/papers").json()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:135: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/.venv/lib/python3.12/site-packages/httpx2/_models.py:830: in json
+    return jsonlib.loads(self.content, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:338: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.decoder.JSONDecoder object at 0x1012f76b0>
+s = '<!doctype html>\n<html lang="zh-CN">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="widt..." crossorigin href="/assets/index-Chx8wPqn.css">\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n'
+idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+    
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+    
+        """
+        try:
+            obj, end = self.scan_once(s, idx)
+        except StopIteration as err:
+>           raise JSONDecodeError("Expecting value", s, err.value) from None
+E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:356: JSONDecodeError
+___ TestOriginalPdfReadable.test_pdf_serves_while_the_parse_is_still_running ___
+
+self = <test_papers_p11.TestOriginalPdfReadable object at 0x129842690>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-72/test_pdf_serves_while_the_pars0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1298f4aa0>
+
+    def test_pdf_serves_while_the_parse_is_still_running(self, tmp_path, monkeypatch):
+        _fixture_env(tmp_path, monkeypatch, "hang")
+        with TestClient(app) as client:
+            submit = _upload(client, "slow.pdf")
+            body = client.get(f"/api/ingest/{submit['jobId']}").json()
+            assert body["status"] in ("queued", "running")  # parse NOT done yet
+            res = client.get(f"/api/papers/{submit['repo']['paper_id']}/pdf")
+            assert res.status_code == 200
+>           assert res.content == PDF  # the ORIGINAL bytes, from the blob store
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: assert b'<!doctype h...y>\n</html>\n' == b'%PDF-1.4 p1...ppppppppppppp'
+E             
+E             At index 0 diff: b'<' != b'%'
+E             Use -v to get more diff
+
+server/tests/test_papers_p11.py:148: AssertionError
+________ TestOriginalPdfReadable.test_pdf_serves_after_the_parse_failed ________
+
+self = <test_papers_p11.TestOriginalPdfReadable object at 0x1298426c0>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-72/test_pdf_serves_after_the_pars0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x129a51940>
+
+    def test_pdf_serves_after_the_parse_failed(self, tmp_path, monkeypatch):
+        _fixture_env(tmp_path, monkeypatch, "error")
+        with TestClient(app) as client:
+            submit = _upload(client, "boom.pdf")
+            done = _wait_status(client, submit["jobId"])
+            assert done["status"] == "error"
+            res = client.get(f"/api/papers/{submit['repo']['paper_id']}/pdf")
+            assert res.status_code == 200
+>           assert res.content == PDF
+E           AssertionError: assert b'<!doctype h...y>\n</html>\n' == b'%PDF-1.4 p1...ppppppppppppp'
+E             
+E             At index 0 diff: b'<' != b'%'
+E             Use -v to get more diff
+
+server/tests/test_papers_p11.py:158: AssertionError
+____________ TestOriginalPdfReadable.test_unknown_paper_pdf_is_404 _____________
+
+self = <test_papers_p11.TestOriginalPdfReadable object at 0x129842270>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-72/test_unknown_paper_pdf_is_4040')
+
+    def test_unknown_paper_pdf_is_404(self, env):
+        with TestClient(app) as client:
+            res = client.get("/api/papers/paper-nosuch/pdf")
+>       assert res.status_code == 404
+E       assert 200 == 404
+E        +  where 200 = <Response [200 OK]>.status_code
+
+server/tests/test_papers_p11.py:163: AssertionError
+=========================== short test summary info ============================
+FAILED server/tests/test_papers_p11.py::TestPaperVersionList::test_upload_lands_in_the_version_list_with_provenance
+FAILED server/tests/test_papers_p11.py::TestPaperVersionList::test_same_file_twice_one_paper_two_uploads_in_the_list
+FAILED server/tests/test_papers_p11.py::TestPaperVersionList::test_two_different_papers_list_separately
+FAILED server/tests/test_papers_p11.py::TestPaperVersionList::test_no_repository_configured_lists_empty_honestly
+FAILED server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_pdf_serves_while_the_parse_is_still_running
+FAILED server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_pdf_serves_after_the_parse_failed
+FAILED server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_unknown_paper_pdf_is_404
+7 failed in 6.79s

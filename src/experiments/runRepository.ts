@@ -5,6 +5,7 @@ import {
   getExperimentRun,
   listExperimentRuns,
   registerImportedRun,
+  validateImportedRun,
   type ExperimentRun,
 } from './protocol'
 
@@ -64,14 +65,10 @@ export function importRuns(bundleJson: string): { imported: number } {
   const parsed = JSON.parse(bundleJson) as unknown
   if (!Array.isArray(parsed)) throw new Error('Run bundle must be a JSON array')
   const runs = parsed as ExperimentRun[]
-  for (const r of runs) {
-    if (!r?.runId || !r?.spec || !r?.status || !Array.isArray(r.errors)) {
-      throw new Error('Run bundle entry does not match the ExperimentRun protocol')
-    }
-  }
-  // preflight EVERY id against history and against each other before touching
-  // the store — a mid-bundle failure used to leave a partially imported,
-  // non-retryable history (the call is documented all-or-nothing)
+  // preflight EVERY entry against the full import gate (same assertion as
+  // registerImportedRun) plus duplicate ids, BEFORE touching the store — a
+  // mid-bundle failure must leave nothing imported and stay retryable
+  for (const r of runs) validateImportedRun(r)
   const seen = new Set<string>()
   for (const r of runs) {
     if (getExperimentRun(r.runId)) throw new Error(`Run already recorded: ${r.runId}`)

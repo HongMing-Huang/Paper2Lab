@@ -10,6 +10,7 @@ const tube = (dir: [number, number, number], center: [number, number, number], r
   dir: { x: dir[0], y: dir[1], z: dir[2] },
   center: { x: center[0], y: center[1], z: center[2] },
   radius,
+  length: 1,
 })
 
 /** voxel centres of a res³ grid on [0,1]³, hand-checkable */

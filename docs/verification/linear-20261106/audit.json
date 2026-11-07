@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-06",
+  "project": "P-CLI-3",
+  "projectUrl": "https://linear.app/clion/project/paper2lab-fb8690d9daff",
+  "team": "Clion",
+  "created": {
+    "workPackages": 21,
+    "slices": 65,
+    "total": 86,
+    "projectDocuments": 1
+  },
+  "preservedHistoricalIssues": 22,
+  "remoteReadback": {
+    "count": 86,
+    "errors": [],
+    "scope": "each issue identity/title/status/parent/blockedBy; final CLI-100 owner/review metadata and CLI-93 blocked-human label separately read back"
+  },
+  "playbook": {
+    "id": "5a17a0c8-3e5f-40b4-90fa-3414016b10cc",
+    "url": "https://linear.app/clion/document/paper2lab产品目标窗口启动-prompt-与工具复用-058a9743e9d4",
+    "checkedMarkers": [
+      "## 公共目标",
+      "## I：",
+      "## C：",
+      "## R：",
+      "## 工具",
+      "get_project",
+      "get_issue",
+      "docs/development/COORDINATION.md",
+      "pg-boss"
+    ],
+    "missing": []
+  },
+  "review": {
+    "agent": "/root/review_window_prompts",
+    "result": "pass, including final path wording",
+    "scope": "local prompts/contracts/links and stored readback evidence only; reviewer did not independently query remote or sign product acceptance"
+  },
+  "notPerformed": [
+    "production implementation or deletion",
+    "J1.1 final signoff",
+    "Git commits/push/PR/merge/deployment",
+    "new worktrees or parallel write test",
+    "ZCode Linear connection verification",
+    "shared PG/Redis or product tests"
+  ],
+  "authority": "Linear P-CLI-3 current state; STATE integration recovery only",
+  "taskIds": {
+    "J1": "CLI-67",
+    "J1.1": "CLI-100",
+    "J1.CI": "CLI-144",
+    "J1.2a": "CLI-145",
+    "J1.2b": "CLI-146",
+    "A0.3": "CLI-93"
+  },
+  "hashes": {
+    "AGENTS.md": "a22ae9d1d3e1bd2867e2e952839404cd649e2ece39277596fa366bc08579ee46",
+    "LOOP.md": "5eca7e3c9054bd6874222a0b56817f118f020cb92e118b458e2d4e010e642b1f",
+    "PLAN.md": "bdf41d58b677c3bd035e506c0dcfea5b3a768f456bc63369ba7a13a85d1dc2c4",
+    "STATE.md": "a79c10aa21d01e3927a2c4674a754bc210511d160aec7dd30a8c6849944eb8d1",
+    "DEVELOPMENT_PROMPT.md": "ef41ae59d789857ec4bbc7768641e59ac0bd4a5f19c9599bcb307b3cb559abd8",
+    "docs/development/COORDINATION.md": "c6aab42ee637c72cbc8a79203d00678549370e23f0455f83f29386b820c8befb",
+    "docs/development/WINDOW_PROMPTS.md": "be8cffb64a0fcc374b77f882d3f7047bb773de4558d7a6fedc33d3d195c50001",
+    "docs/development/linear-map.json": "34af676d0448a941de0d339e1787d0b12a7eef79d14521da46525a1c4e616fae",
+    "docs/development/linear-plan.json": "f25cf0e67075e2e1d4f63eb76d5a588a973cf5745d571b7ac5febd7db55116e7"
+  }
+}

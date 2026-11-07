@@ -1,0 +1,160 @@
+FFFFF..F                                                                 [100%]
+=================================== FAILURES ===================================
+__ TestDocImport.test_imports_every_doc_preserving_ids_and_legacy_provenance ___
+
+self = <test_db_import_d12.TestDocImport object at 0x10bd8a4b0>
+db = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x10bde35f0>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-49/test_imports_every_doc_preserv0')
+
+    def test_imports_every_doc_preserving_ids_and_legacy_provenance(self, db, tmp_path):
+        _doc_file(tmp_path, "doc-aaa111")
+        _doc_file(tmp_path, "doc-bbb222")
+        report = import_doc_snapshots(db, tmp_path)
+>       assert report.imported == 2
+E       AssertionError: assert 0 == 2
+E        +  where 0 = ImportReport(imported=0, skipped=0, conflicts=0, errors=2, sources=[{'file': 'doc-doc-aaa111.json', 'error': 'docId mismatch with filename'}, {'file': 'doc-doc-bbb222.json', 'error': 'docId mismatch with filename'}]).imported
+
+server/tests/test_db_import_d12.py:91: AssertionError
+__________ TestDocImport.test_reimport_is_idempotent_zero_duplicates ___________
+
+self = <test_db_import_d12.TestDocImport object at 0x10bd8baa0>
+db = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x10be4ee70>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-49/test_reimport_is_idempotent_ze0')
+
+    def test_reimport_is_idempotent_zero_duplicates(self, db, tmp_path):
+        _doc_file(tmp_path, "doc-aaa111")
+        first = import_doc_snapshots(db, tmp_path)
+        second = import_doc_snapshots(db, tmp_path)
+>       assert first.imported == 1 and second.imported == 0
+E       AssertionError: assert (0 == 1)
+E        +  where 0 = ImportReport(imported=0, skipped=0, conflicts=0, errors=1, sources=[{'file': 'doc-doc-aaa111.json', 'error': 'docId mismatch with filename'}]).imported
+
+server/tests/test_db_import_d12.py:105: AssertionError
+_ TestDocImport.test_a_changed_file_under_a_known_id_is_reported_not_overwritten _
+
+self = <test_db_import_d12.TestDocImport object at 0x10bd8bdd0>
+db = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x10be4f9b0>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-49/test_a_changed_file_under_a_kn0')
+
+    def test_a_changed_file_under_a_known_id_is_reported_not_overwritten(self, db, tmp_path):
+        p = _doc_file(tmp_path, "doc-aaa111")
+        import_doc_snapshots(db, tmp_path)
+        p.write_text(json.dumps({"docId": "doc-aaa111", "title": "tampered"}))
+        report = import_doc_snapshots(db, tmp_path)
+>       assert report.conflicts == 1
+E       AssertionError: assert 0 == 1
+E        +  where 0 = ImportReport(imported=0, skipped=0, conflicts=0, errors=1, sources=[{'file': 'doc-doc-aaa111.json', 'error': 'docId mismatch with filename'}]).conflicts
+
+server/tests/test_db_import_d12.py:116: AssertionError
+____________ TestDocImport.test_malformed_json_is_counted_not_fatal ____________
+
+self = <test_db_import_d12.TestDocImport object at 0x10bdb0170>
+db = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x10bea4230>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-49/test_malformed_json_is_counted0')
+
+    def test_malformed_json_is_counted_not_fatal(self, db, tmp_path):
+        _doc_file(tmp_path, "doc-aaa111")
+        (tmp_path / "doc-bad.json").write_text("{not json")
+        report = import_doc_snapshots(db, tmp_path)
+>       assert report.imported == 1 and report.errors == 1
+E       AssertionError: assert (0 == 1)
+E        +  where 0 = ImportReport(imported=0, skipped=0, conflicts=0, errors=2, sources=[{'file': 'doc-bad.json', 'error': 'invalid JSON'}, {'file': 'doc-doc-aaa111.json', 'error': 'docId mismatch with filename'}]).imported
+
+server/tests/test_db_import_d12.py:126: AssertionError
+______ TestRunImport.test_imports_runs_by_original_id_without_recomputing ______
+
+self = <test_db_import_d12.TestRunImport object at 0x10bdb0500>
+db = <psycopg.Connection [INTRANS] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x10bea6660>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-49/test_imports_runs_by_original_0')
+
+    def test_imports_runs_by_original_id_without_recomputing(self, db, tmp_path):
+        log = tmp_path / "engine-runs.jsonl"
+        log.write_text(_run_line("formula-value-x1") + "\n" + _run_line("formula-value-x2") + "\n")
+        report = import_run_log(db, log)
+        assert report.imported == 2
+        with db.cursor() as cur:
+            cur.execute("SELECT run_id, status, result_json FROM imported_runs ORDER BY run_id")
+            rows = cur.fetchall()
+        assert [r["run_id"] for r in rows] == ["formula-value-x1", "formula-value-x2"]
+        assert all(r["status"] == "resolved" for r in rows)
+        # the numbers are the LEGACY snapshot's, byte-identical — no recompute
+>       assert json.loads(rows[0]["result_json"]) == {"value": 0.8414709848078965}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_db_import_d12.py:141: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+s = {'value': 0.8414709848078965}, cls = None, object_hook = None
+parse_float = None, parse_int = None, parse_constant = None
+object_pairs_hook = None, kw = {}
+
+    def loads(s, *, cls=None, object_hook=None, parse_float=None,
+            parse_int=None, parse_constant=None, object_pairs_hook=None, **kw):
+        """Deserialize ``s`` (a ``str``, ``bytes`` or ``bytearray`` instance
+        containing a JSON document) to a Python object.
+    
+        ``object_hook`` is an optional function that will be called with the
+        result of any object literal decode (a ``dict``). The return value of
+        ``object_hook`` will be used instead of the ``dict``. This feature
+        can be used to implement custom decoders (e.g. JSON-RPC class hinting).
+    
+        ``object_pairs_hook`` is an optional function that will be called with the
+        result of any object literal decoded with an ordered list of pairs.  The
+        return value of ``object_pairs_hook`` will be used instead of the ``dict``.
+        This feature can be used to implement custom decoders.  If ``object_hook``
+        is also defined, the ``object_pairs_hook`` takes priority.
+    
+        ``parse_float``, if specified, will be called with the string
+        of every JSON float to be decoded. By default this is equivalent to
+        float(num_str). This can be used to use another datatype or parser
+        for JSON floats (e.g. decimal.Decimal).
+    
+        ``parse_int``, if specified, will be called with the string
+        of every JSON int to be decoded. By default this is equivalent to
+        int(num_str). This can be used to use another datatype or parser
+        for JSON integers (e.g. float).
+    
+        ``parse_constant``, if specified, will be called with one of the
+        following strings: -Infinity, Infinity, NaN.
+        This can be used to raise an exception if invalid JSON numbers
+        are encountered.
+    
+        To use a custom ``JSONDecoder`` subclass, specify it with the ``cls``
+        kwarg; otherwise ``JSONDecoder`` is used.
+        """
+        if isinstance(s, str):
+            if s.startswith('\ufeff'):
+                raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)",
+                                      s, 0)
+        else:
+            if not isinstance(s, (bytes, bytearray)):
+>               raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+                                f'not {s.__class__.__name__}')
+E               TypeError: the JSON object must be str, bytes or bytearray, not dict
+
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/__init__.py:339: TypeError
+_____________ TestReport.test_the_report_carries_verifiable_hashes _____________
+
+self = <test_db_import_d12.TestReport object at 0x10bdb0ef0>
+db = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x10bea71a0>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-49/test_the_report_carries_verifi0')
+
+    def test_the_report_carries_verifiable_hashes(self, db, tmp_path):
+        _doc_file(tmp_path, "doc-aaa111")
+        log = tmp_path / "engine-runs.jsonl"
+        log.write_text(_run_line("formula-value-x1") + "\n")
+        docs = import_doc_snapshots(db, tmp_path)
+        runs = import_run_log(db, log)
+        combined = import_report(docs, runs)
+>       assert combined["docs"]["imported"] == 1 and combined["runs"]["imported"] == 1
+E       assert (0 == 1)
+
+server/tests/test_db_import_d12.py:168: AssertionError
+=========================== short test summary info ============================
+FAILED server/tests/test_db_import_d12.py::TestDocImport::test_imports_every_doc_preserving_ids_and_legacy_provenance
+FAILED server/tests/test_db_import_d12.py::TestDocImport::test_reimport_is_idempotent_zero_duplicates
+FAILED server/tests/test_db_import_d12.py::TestDocImport::test_a_changed_file_under_a_known_id_is_reported_not_overwritten
+FAILED server/tests/test_db_import_d12.py::TestDocImport::test_malformed_json_is_counted_not_fatal
+FAILED server/tests/test_db_import_d12.py::TestRunImport::test_imports_runs_by_original_id_without_recomputing
+FAILED server/tests/test_db_import_d12.py::TestReport::test_the_report_carries_verifiable_hashes
+6 failed, 2 passed in 0.17s

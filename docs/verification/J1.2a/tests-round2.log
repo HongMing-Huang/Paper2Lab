@@ -1,0 +1,19 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ✓ server/node/orphan.test.ts (1 test) 761ms
+   ✓ J1.2a — engine orphan guard > an engine whose owning worker dies exits by itself  760ms
+ ✓ server/node/science.test.ts (12 tests) 46318ms
+   ✓ J1.2a — real compute through the transactional worker > a formula.plot operation commits one real Run and replays idempotently  839ms
+   ✓ J1.2a — real compute through the transactional worker > a formal skill without a plan is refused at preflight; the operationId stays usable  418ms
+   ✓ J1.2a — real compute through the transactional worker > a fork chains onto the PostgreSQL parent with correct lineage and values  1020ms
+   ✓ J1.2a — cancel, isolation and health during long computes > cancelling a running long compute kills only ITS engine; a parallel task completes  1430ms
+   ✓ J1.2a — cancel, isolation and health during long computes > health stays green and the lease renews while a long compute runs  9636ms
+   ✓ J1.2a — fencing and crash recovery > a worker crash before commit leaves no run; redelivery commits exactly one  30776ms
+   ✓ J1.2a — fencing and crash recovery > a worker crash AFTER commit: redelivery is skipped, still exactly one run  2028ms
+
+ Test Files  2 passed (2)
+      Tests  13 passed (13)
+   Start at  22:46:55
+   Duration  46.89s (transform 68ms, setup 0ms, collect 214ms, tests 47.08s, environment 0ms, prepare 99ms)
+

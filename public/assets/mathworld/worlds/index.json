@@ -1,0 +1,4 @@
+{
+  "note": "MathWorld 开发样例清单（CLI-129）。这些世界定义是手写的教科书方程与目标，不是 PDF 解析结果，也不是 Qwen 生成。新增世界只需在此登记一个 JSON 文件，不需要修改 React 页面。",
+  "worlds": ["sine-gates.json", "sir-flatten.json", "kakeya-room-basic.json", "kakeya-room-sticky.json"]
+}

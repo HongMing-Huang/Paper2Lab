@@ -1,0 +1,1026 @@
+........................................................................ [ 37%]
+.............EEE.EEEEEEE.EE............................................E [ 74%]
+EE.FFE...........................................                        [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestConsumerRoundTrip.test_upload_writes_artifact_paper_version_and_job_carries_the_record _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_upload_writes_artifact_pa0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12dfa8530>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        """isolated DATA_DIR + the repository configured + a clean schema"""
+        import psycopg
+    
+        with psycopg.connect("postgresql://localhost:5432/postgres", autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = db.connect(TEST_DB_URL)
+        db.migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces")
+
+server/tests/test_db_consumer_d1.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12de77d10>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestConsumerRoundTrip.test_same_file_reupload_dedups_to_one_version_with_two_events _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_same_file_reupload_dedups0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12df97170>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        """isolated DATA_DIR + the repository configured + a clean schema"""
+        import psycopg
+    
+        with psycopg.connect("postgresql://localhost:5432/postgres", autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = db.connect(TEST_DB_URL)
+        db.migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces")
+
+server/tests/test_db_consumer_d1.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12df97e60>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestConsumerRoundTrip.test_repository_failure_is_recorded_not_silent _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_repository_failure_is_rec0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12dfdc2c0>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+        """isolated DATA_DIR + the repository configured + a clean schema"""
+        import psycopg
+    
+        with psycopg.connect("postgresql://localhost:5432/postgres", autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = db.connect(TEST_DB_URL)
+        db.migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces")
+
+server/tests/test_db_consumer_d1.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dfdffe0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestWorkspaceIdentity.test_ensure_workspace_is_idempotent __
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_ensure_workspace_is_idemp0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # create the fixed test database if missing (static SQL, no interpolation)
+        with psycopg.connect(ADMIN_URL, autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = connect(TEST_DB_URL)
+        migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces")
+
+server/tests/test_db_d1.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dfdfda0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestContentAddressedRoundTrip.test_upload_stores_artifact_paper_version_and_reads_back _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_upload_stores_artifact_pa0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # create the fixed test database if missing (static SQL, no interpolation)
+        with psycopg.connect(ADMIN_URL, autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = connect(TEST_DB_URL)
+        migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces")
+
+server/tests/test_db_d1.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12df97980>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestContentAddressedRoundTrip.test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_same_file_twice_dedups_to0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # create the fixed test database if missing (static SQL, no interpolation)
+        with psycopg.connect(ADMIN_URL, autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = connect(TEST_DB_URL)
+        migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces")
+
+server/tests/test_db_d1.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dd551f0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestContentAddressedRoundTrip.test_different_workspaces_keep_separate_papers_for_the_same_bytes _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_different_workspaces_keep0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # create the fixed test database if missing (static SQL, no interpolation)
+        with psycopg.connect(ADMIN_URL, autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = connect(TEST_DB_URL)
+        migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces")
+
+server/tests/test_db_d1.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dfdd400>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+___ ERROR at setup of TestMigration.test_migrate_is_idempotent_and_versioned ___
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_migrate_is_idempotent_and0')
+
+    @pytest.fixture()
+    def db(tmp_path):
+        import psycopg
+    
+        # create the fixed test database if missing (static SQL, no interpolation)
+        with psycopg.connect(ADMIN_URL, autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = connect(TEST_DB_URL)
+        migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces")
+
+server/tests/test_db_d1.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dfdecf0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestWriteAuthoritySwitch.test_doc_lands_in_pg_only_no_json_dual_write _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_doc_lands_in_pg_only_no_j0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12dfdfb60>
+
+    @pytest.fixture()
+    def db_env(tmp_path, monkeypatch):
+        import psycopg
+    
+        with psycopg.connect("postgresql://localhost:5432/postgres", autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = db.connect(TEST_DB_URL)
+        db.migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+
+server/tests/test_db_d13.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dfdd6d0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestWriteAuthoritySwitch.test_legacy_json_docs_remain_readable_read_only_fallback _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_legacy_json_docs_remain_r0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12dfdff80>
+
+    @pytest.fixture()
+    def db_env(tmp_path, monkeypatch):
+        import psycopg
+    
+        with psycopg.connect("postgresql://localhost:5432/postgres", autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = db.connect(TEST_DB_URL)
+        db.migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+
+server/tests/test_db_d13.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dfabbc0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestWriteAuthoritySwitch.test_pg_failure_at_persist_does_not_fallback_to_json _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_pg_failure_at_persist_doe0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12dfddb80>
+
+    @pytest.fixture()
+    def db_env(tmp_path, monkeypatch):
+        import psycopg
+    
+        with psycopg.connect("postgresql://localhost:5432/postgres", autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = db.connect(TEST_DB_URL)
+        db.migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+
+server/tests/test_db_d13.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dfde180>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestExportRecoveryDrill.test_export_wipe_restore_verifies_counts_and_serves_docs _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_export_wipe_restore_verif0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12dfde5d0>
+
+    @pytest.fixture()
+    def db_env(tmp_path, monkeypatch):
+        import psycopg
+    
+        with psycopg.connect("postgresql://localhost:5432/postgres", autocommit=True) as admin_conn:
+            exists = admin_conn.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s", ("paper2lab_d11_test",)
+            ).fetchone()
+            if not exists:
+                admin_conn.execute("CREATE DATABASE paper2lab_d11_test")
+        conn = db.connect(TEST_DB_URL)
+        db.migrate(conn)
+        conn.autocommit = True
+>       conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+
+server/tests/test_db_d13.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12dfdf320>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestPaperVersionList.test_upload_lands_in_the_version_list_with_provenance _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_upload_lands_in_the_versi0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12e73a630>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _fixture_env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:51: in _fixture_env
+    conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12e7392e0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestPaperVersionList.test_same_file_twice_one_paper_two_uploads_in_the_list _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_same_file_twice_one_paper0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12e739070>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _fixture_env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:51: in _fixture_env
+    conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12e73bf80>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+_ ERROR at setup of TestPaperVersionList.test_two_different_papers_list_separately _
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_two_different_papers_list0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12e7ca900>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _fixture_env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:51: in _fixture_env
+    conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12e7c9100>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+___ ERROR at setup of TestOriginalPdfReadable.test_unknown_paper_pdf_is_404 ____
+
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_unknown_paper_pdf_is_4040')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12e73ab40>
+
+    @pytest.fixture()
+    def env(tmp_path, monkeypatch):
+>       return _fixture_env(tmp_path, monkeypatch, "ok")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+server/tests/test_papers_p11.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:51: in _fixture_env
+    conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12e739820>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+=================================== FAILURES ===================================
+___ TestOriginalPdfReadable.test_pdf_serves_while_the_parse_is_still_running ___
+
+self = <test_papers_p11.TestOriginalPdfReadable object at 0x12cf66240>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_pdf_serves_while_the_pars0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12e7cb6b0>
+
+    def test_pdf_serves_while_the_parse_is_still_running(self, tmp_path, monkeypatch):
+>       _fixture_env(tmp_path, monkeypatch, "hang")
+
+server/tests/test_papers_p11.py:141: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:51: in _fixture_env
+    conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12e7c88f0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+________ TestOriginalPdfReadable.test_pdf_serves_after_the_parse_failed ________
+
+self = <test_papers_p11.TestOriginalPdfReadable object at 0x12cf64e90>
+tmp_path = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-78/test_pdf_serves_after_the_pars0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12e739190>
+
+    def test_pdf_serves_after_the_parse_failed(self, tmp_path, monkeypatch):
+>       _fixture_env(tmp_path, monkeypatch, "crash")
+
+server/tests/test_papers_p11.py:151: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+server/tests/test_papers_p11.py:51: in _fixture_env
+    conn.execute("TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [IDLE] (host=localhost user=c14h14n3 database=paper2lab_d11_test) at 0x12e7382f0>
+query = 'TRUNCATE upload_events, paper_versions, papers, artifacts, workspaces, documents'
+params = None, prepare = None, binary = False
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            if isinstance(query, Template):
+                if params is not None:
+                    raise TypeError(
+                        "'execute()' with string template query doesn't support parameters"
+                    )
+                return cur.execute(query, prepare=prepare)
+            else:
+                return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.FeatureNotSupported: cannot truncate a table referenced in a foreign key constraint
+E           DETAIL:  Table "parse_artifacts" references "paper_versions".
+E           HINT:  Truncate table "parse_artifacts" at the same time, or use TRUNCATE ... CASCADE.
+
+server/.venv/lib/python3.12/site-packages/psycopg/connection.py:304: FeatureNotSupported
+=============================== warnings summary ===============================
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy
+  test_agent_a02.py:24: PytestWarning: The test <Function test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_an_error_batch_keeps_its_semantics_in_the_degraded_summary
+  test_agent_a02.py:40: PytestWarning: The test <Function test_an_error_batch_keeps_its_semantics_in_the_degraded_summary> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_an_error_batch_keeps_its_semantics_in_the_degraded_summary(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_small_result_is_verbatim_and_registers_nothing
+  test_agent_a02.py:47: PytestWarning: The test <Function test_a_small_result_is_verbatim_and_registers_nothing> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_small_result_is_verbatim_and_registers_nothing(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_huge_comparison_never_busts_the_budget
+  test_agent_a02.py:53: PytestWarning: The test <Function test_a_huge_comparison_never_busts_the_budget> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_huge_comparison_never_busts_the_budget(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_metrics_tier_is_actually_reachable_when_it_fits
+  test_agent_a02.py:63: PytestWarning: The test <Function test_the_metrics_tier_is_actually_reachable_when_it_fits> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_metrics_tier_is_actually_reachable_when_it_fits(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_every_degradation_level_stays_within_budget_and_valid
+  test_agent_a02.py:75: PytestWarning: The test <Function test_every_degradation_level_stays_within_budget_and_valid> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_every_degradation_level_stays_within_budget_and_valid(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_artifact_registry_is_bounded_and_evicts_oldest
+  test_agent_a02.py:97: PytestWarning: The test <Function test_the_artifact_registry_is_bounded_and_evicts_oldest> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_artifact_registry_is_bounded_and_evicts_oldest(self):
+
+test_api.py::test_health_is_alive_and_ready_checks_dependencies
+  /Users/c14h14n3/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/events.py:88: RuntimeWarning: The executor did not finishing joining its threads within 300 seconds.
+    self._context.run(self._callback, *self._args)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_pdf_serves_while_the_parse_is_still_running
+FAILED server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_pdf_serves_after_the_parse_failed
+ERROR server/tests/test_db_consumer_d1.py::TestConsumerRoundTrip::test_upload_writes_artifact_paper_version_and_job_carries_the_record
+ERROR server/tests/test_db_consumer_d1.py::TestConsumerRoundTrip::test_same_file_reupload_dedups_to_one_version_with_two_events
+ERROR server/tests/test_db_consumer_d1.py::TestConsumerRoundTrip::test_repository_failure_is_recorded_not_silent
+ERROR server/tests/test_db_d1.py::TestWorkspaceIdentity::test_ensure_workspace_is_idempotent
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_upload_stores_artifact_paper_version_and_reads_back
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_same_file_twice_dedups_to_one_version_but_keeps_both_uploads
+ERROR server/tests/test_db_d1.py::TestContentAddressedRoundTrip::test_different_workspaces_keep_separate_papers_for_the_same_bytes
+ERROR server/tests/test_db_d1.py::TestMigration::test_migrate_is_idempotent_and_versioned
+ERROR server/tests/test_db_d13.py::TestWriteAuthoritySwitch::test_doc_lands_in_pg_only_no_json_dual_write
+ERROR server/tests/test_db_d13.py::TestWriteAuthoritySwitch::test_legacy_json_docs_remain_readable_read_only_fallback
+ERROR server/tests/test_db_d13.py::TestWriteAuthoritySwitch::test_pg_failure_at_persist_does_not_fallback_to_json
+ERROR server/tests/test_db_d13.py::TestExportRecoveryDrill::test_export_wipe_restore_verifies_counts_and_serves_docs
+ERROR server/tests/test_papers_p11.py::TestPaperVersionList::test_upload_lands_in_the_version_list_with_provenance
+ERROR server/tests/test_papers_p11.py::TestPaperVersionList::test_same_file_twice_one_paper_two_uploads_in_the_list
+ERROR server/tests/test_papers_p11.py::TestPaperVersionList::test_two_different_papers_list_separately
+ERROR server/tests/test_papers_p11.py::TestOriginalPdfReadable::test_unknown_paper_pdf_is_404
+2 failed, 175 passed, 2 deselected, 8 warnings, 16 errors in 355.18s (0:05:55)

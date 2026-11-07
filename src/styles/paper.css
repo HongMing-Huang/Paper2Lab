@@ -382,3 +382,13 @@ math-field.sandbox-field { width: 100%; min-height: 52px; font-size: 17px; }
   font-style: italic;
   color: #a99c82;
 }
+
+/* Demo navigation reuses the paper palette; math controls stay in the paper. */
+.demo-guide { width: min(900px, calc(100vw - 40px)); box-sizing: border-box; padding: 14px 18px; background: #faf6eeed; border: 1px solid #d8cfc0; border-radius: 8px; box-shadow: 0 6px 28px #51433118; backdrop-filter: blur(12px); }
+.demo-guide-heading { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; color: #40382f; }
+.demo-guide-heading span, .demo-guide-evidence { font-size: 11px; color: #786b5b; }
+.demo-guide-actions { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; align-items: center; }
+.demo-guide-actions button, .demo-guide-actions a { padding: 7px 10px; border: 1px solid #d8cfc0; border-radius: 4px; background: #fffaf2; color: #684f3e; cursor: pointer; font: inherit; font-size: 12px; text-decoration: none; }
+.demo-guide-actions button:disabled { opacity: .45; cursor: wait; }
+.demo-guide-status { font-size: 12px; line-height: 1.6; color: #554b3e; }
+.demo-guide-evidence { margin-top: 5px; overflow-wrap: anywhere; }

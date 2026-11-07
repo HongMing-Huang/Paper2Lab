@@ -1,0 +1,91 @@
+{
+  "scope": "Documentation only, user-authorized consolidation. No production code/dependency/assets/runtime data deleted.",
+  "removed": [
+    {
+      "path": "docs/development/2026-11-06-product-runtime-change/AGENTS.proposed.md",
+      "sha256": "82ee81ca91ac5ff330798e10a8bfcc3ce834127d4c9e07fc6e7e69c8f825856b",
+      "bytes": 80063,
+      "replacement": "AGENTS.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-product-runtime-change/PLAN.proposed.md",
+      "sha256": "19b6009f5fff9cab2ce356514137b3834b5a2eb926f6a03d5ddbad5afadf68bf",
+      "bytes": 47312,
+      "replacement": "PLAN.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-product-runtime-change/DEVELOPMENT_PROMPT.proposed.md",
+      "sha256": "134f191e06bda7798cb8cb1daa2513a4dc92ba76db2343d4eb3a076c34347965",
+      "bytes": 12794,
+      "replacement": "DEVELOPMENT_PROMPT.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-product-runtime-change/DECISION.md",
+      "sha256": "59566fa033c0a90e6c0dfa766a8f6c234d47e3974dc6f56a0ffd2f7633619d04",
+      "bytes": 12055,
+      "replacement": "docs/development/product-experience-and-runtime.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-product-runtime-change/APPLY.md",
+      "sha256": "4bfdd6487d6daff43c02ec573248bbfc061dbf7af06ea596f079bc7ff92ec41d",
+      "bytes": 1857,
+      "replacement": "docs/development/COORDINATION.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-product-runtime-change/verify_agent_context.mjs",
+      "sha256": "111208eba9cdef89a634d8d885e862f264da71c279f5866c865cde9684056ead",
+      "bytes": 3530,
+      "replacement": "docs/development/verify_agent_context.mjs",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-backend-design/APPLY.md",
+      "sha256": "8238d9706825c8254dfca4ebb6c4c616acb2631d2f3a599d6636e307fe18672c",
+      "bytes": 1467,
+      "replacement": "docs/development/COORDINATION.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-backend-design/backend-implementation.md",
+      "sha256": "9afd1f7a40915a9ab76e917d3d3c3b0e0190471e617b95bdd7057ca5f80356a2",
+      "bytes": 21384,
+      "replacement": "docs/development/backend-implementation.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-backend-design/backend-node-sources-20261106.md",
+      "sha256": "d42c3316b7e509c9e7340dce7372ce4bea41dfb181d43e9f5740942f1cd177ee",
+      "bytes": 8449,
+      "replacement": "docs/development/backend-node-sources-20261106.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-backend-design/math-runtime-contract.md",
+      "sha256": "5729f3493734d0246f3ceb97d59b262c532531470395e2b972abb36e99d7e90b",
+      "bytes": 11070,
+      "replacement": "docs/development/math-runtime-contract.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/2026-11-06-backend-design/product-experience-and-runtime.md",
+      "sha256": "ceb2d1913bb9096c082a0f9c48eea013a17e75a50f7726e1ce43d8bd20e35b41",
+      "bytes": 12337,
+      "replacement": "docs/development/product-experience-and-runtime.md",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    },
+    {
+      "path": "docs/development/verify_agent_context.py",
+      "sha256": "5cf61bab4d293bc4ddd14a9fc82fbc509ba22b2fe08554af37772e5767597187",
+      "bytes": 2804,
+      "replacement": "docs/development/verify_agent_context.mjs",
+      "reason": "Merged into current canonical contract/checker; historical review is not transferred to new identity."
+    }
+  ],
+  "removedBytes": 215122,
+  "archives": "Old live root documents + handback review/input evidence retained under this directory; never current instructions."
+}

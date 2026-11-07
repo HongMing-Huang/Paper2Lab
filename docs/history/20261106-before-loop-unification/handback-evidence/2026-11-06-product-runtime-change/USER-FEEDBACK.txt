@@ -1,0 +1,188 @@
+我检查了你上传的 Paper2Lab 整体架构 HTML。目前的问题比较明确：
+
+我们设计了一套相当完整的科研计算与游戏生成架构，却还没有完整设计出用户真正使用的 Paper2Lab 产品。
+
+这不是单纯的 UI 美观问题，而是产品定位、核心体验、游戏玩法、AI 交互和科研价值没有完全统一。
+
+## 一、目前的产品设计缺少什么？
+
+你的 HTML 包含 16 个架构模块、4 个架构视图，已经明确哪些模块负责数学事实、Agent、游戏程序和状态提交。但它没有展示实际的论文导入、数学游戏运行、学习过程或科研探索界面。页面中的“演示数据流”也只是依次切换架构模块，不是真正运行产品。
+
+Paper2Lab-整体架构(1).html
+
+
+
+从产品经理和游戏系统设计角度，我认为缺少六个关键部分：
+
+| 缺失部分     | 当前问题                       | 应当补充                                |
+| -------- | -------------------------- | ----------------------------------- |
+| 用户目标     | 面向科研、学习还是游戏的主线没有确定         | 明确第一目标用户和使用场景                       |
+| 产品空间     | 有系统架构，没有完整用户界面             | Paper Desk、MathWorld、Research Space |
+| 玩法体验     | 有 Action、Goal、Run，没有完整游戏节奏 | 探索、预测、操作、反馈、挑战、进阶                   |
+| 数学理解     | 侧重模型正确性，缺少教学转化             | 生活直觉、互动演示、正式数学、论文来源                 |
+| Agent 体验 | Agent 主要存在于底层编排            | 让用户感知 AI 主动研究、创作与引导                 |
+| 持续使用     | 有任务和实验历史，但用户价值不明确          | 保存研究世界、继续探索、比较成果                    |
+
+其中最严重的是：用户为什么进入一个数学世界？进入后究竟怎么玩？完成后能获得什么？
+
+现在的架构还无法完整回答这三个问题。
+
+## 二、我建议重新确定产品定位
+
+# Paper2Lab — Play the Mathematics Behind Research
+
+把数学论文变成可以探索、操作、理解和持续研究的数学世界。
+
+产品不应直接定位为普通游戏，也不应仅定位为专业科研软件。
+
+更合理的是：
+
+面向数学学习者和科研探索者的 AI 数学实验室。
+
+它包含两种自然衔接的使用方式：
+
+- 探索模式： 不需要先理解全部公式。先通过生活化问题、数学对象与直观反馈理解论文。
+- 研究模式： 可以深入数学定义、控制参数、运行实验、核对来源、分析不同论文的研究进展。
+
+这两种方式应共享同一模型，而不是开发两款产品。
+
+## 三、产品应该拥有三个真正独立的空间
+
+[Parchment | Devpost](https://images.openai.com/static-rsc-4/uwrLLEFDe5PprsVopz9SSa8-C7-Nn5vcZD1MAKHVffslrx7yk5gg4QQJ9Y4nK_ioDQbMRN6_Na2vV_9O6hnXhEqO_rKXHPBont89xFlivuhASWcQx8WB7KXpAqD9SiDFxtVQORki56PojYKe7sxyndxIvcMeZWfBSUYD9BJ7Kqs?purpose=inline)
+
+01 · Paper Desk — 从论文进入问题
+
+用户上传 PDF，或打开一个已有研究世界。Qwen 解释这篇论文想解决什么问题，提炼值得探索的数学对象，并提供进入实验的入口。
+
+不应把全部解析结果和卡片一次性铺满画布。
+
+[La Maison Poincaré, un musée pour faire aimer les maths](https://images.openai.com/static-rsc-4/lQGmEFsiXqHcozhhBFM6JJ9DSH86P7BPkn_OfPkLUhLgomZdNxQpBbM2CfuSboYUTtVAFqR2kM8maSPVMdAG2npFNKci0KsnImbUHrvs-2Il-F0jV48Khv6FF5WUxWXugd3eTTnzEHZpXfiZTupbKClQeKlOyVxzl51yGNRkwUw?purpose=inline)
+
+02 · MathWorld — 真正进入数学实验
+
+这是产品最重要的空间。用户可以直接操作数学结构、改变模型条件、完成目标、观察真实计算结果。
+
+可以使用 2D/3D、物理交互、几何构造、动态系统，不局限于拖动参数。
+
+[Research - Intelligence artificielle — Regards sur l'IA à l'UNIL](https://images.openai.com/static-rsc-4/xq7XCHC6vIRFhA-ZBf2CM-UM7Purf0_MW0qqEUPlExZvjZy4SnJXKVeW33EyZWt0TOB8XWQFAIs20BuU14N_yHDAwJFYLiNukqBNlf1gYHkQduRmZz-vSvg0YV2RfVJRRkLEZVeNVvFsDTtq-ca5GINyy3b445giXd-c-3JdohE?purpose=inline)
+
+03 · Research Space — 从游戏进入研究
+
+保存每一次实验，解释为什么成功或失败。Agent 主动查找前置论文、关键引用以及后续进展，并据此生成新的研究问题和实验分支。
+
+以上为界面风格参考，不代表当前已经实现的产品截图。
+
+这三个空间不需要变成三个割裂的网站页面。更适合通过连贯的空间转场连接：从原始论文聚焦一个数学对象，进入实验世界，再返回研究桌面。
+
+## 四、真正的 MathWorld 页面应该怎么设计？
+
+你之前提供的 Paper2Lab 封面其实已经给出了正确的审美方向：暖白纸张、细线关联、核心论文、精密三维数学对象。
+
+但运行时需要将游戏世界变成视觉中心，论文与控制信息成为辅助。
+
+PAPER2LAB / MATHWORLD
+
+Kakeya · 空间压缩实验
+
+挑战：在合法条件下减少管束占据的空间
+
+探索模式
+
+[The Three-Cylinders Problem — When AI Models Choose Beauty Over Truth](https://images.openai.com/static-rsc-4/0gU4BCX8w8cm1YqDBFdR_cmSmbVy29bpvEqZzCIXh3620srRRMNd08jQc7tGs1nH042dZJPQZHyrtJ0EEMxgKu8YQLHd9ibT460J1X7Y91g3GmcgbNfNnBfYvJKFuU-dTU3bDZue3AE2MbxV7yQ7dTRt5_g4Gy1VI0z1OvBnuZ0?purpose=inline)
+
+拖动管束或改变排列，观察覆盖结构
+
+PREVIEW / RUN
+
+数学观察
+
+并集体积 / 重叠分布
+
+由真实有限尺度实验计算
+
+Agent 导演
+
+为什么这个排列更紧凑？
+
+解释现象 · 推荐下一次实验
+
+详细设计实验界面研究游戏玩法
+
+这是产品结构示意，未连接实际 Paper2Lab 数学引擎。
+
+一个成熟的数学实验室需要的不只是漂亮的三维模型，还需要明确的玩家行动、即时反馈和下一步目标。
+
+具体来说，玩家操作应该经历：
+
+`观察 → 猜测 → 操作 → 真实计算 → 发现 → 理解 → 下一挑战`
+
+与一般数学演示最大的区别在于：
+
+用户的操作需要产生后果，而不是简单改变图形。
+
+例如挑战失败时，系统要解释哪些数学条件没有满足，并允许重新尝试；挑战成功时，系统要解释成功背后的数学原因，而不是只显示一个通关动画。
+
+## 五、Agent 的产品角色还需要重新设计
+
+你现在的架构把 Agent 描述为“研究者与游戏导演”，但具体用户体验仍不够。
+
+我建议让 Qwen 在产品中拥有四种可感知的能力。
+
+| Agent 能力          | 用户看到的实际表现               |
+| ----------------- | ----------------------- |
+| Researcher        | 主动发现重要公式、前置论文、值得探索的问题   |
+| World Creator     | 根据数学模型生成新的世界、行为与挑战      |
+| Math Tutor        | 用生活化语言解释数学现象，并逐步引导到正式定义 |
+| Research Director | 根据真实实验结果提出下一次探索，并创建研究分支 |
+
+这里不能只让 Agent 生成几个预制机制的参数。它应该能够产生新的玩法逻辑，但游戏程序仍须通过编译、受限执行和数学检查。
+
+对于普通用户，以上角色最好由同一个可见的 AI 助手承担，而不是在界面中出现四个 Agent 聊天窗口。
+
+更重要的是，Agent 不应该持续打断用户。它可以在首次进入世界、用户遇到困难、发现特殊现象或完成挑战时介入。
+
+## 六、我建议第一版的完整产品体验
+
+以你已有的 Wang–Zahl Kakeya 研究为主线，不需要换掉已经实现的大量技术。
+
+1. 用户进入 Paper Desk。 打开论文，Qwen 用“如何让有限空间容纳不同方向的线段”引入数学问题，并指出这是有限尺度直觉实验。
+2. 用户选择一个可玩入口。 系统明确展示数学对象、可以操作的自由度及挑战条件。缺少数学条件时应让用户补充，而不是伪造。
+3. 进入独立 MathWorld。 用户在 3D 场景中调整管束排列，真实数学内核计算覆盖、重数和并集体积。
+4. 产生游戏反馈。 玩家尝试挑战，可能成功也可能失败。系统根据真实计算结果判定，必要时展示数值误差与近似标记。
+5. Agent 解释并延伸。 将实验现象映射到论文相关概念，提供“继续挑战”“查看推导”“研究前置工作”等自然选择。
+6. 保存到研究空间。 实验、参数、结果、论文来源和 Agent 解释形成可恢复的研究记录，允许下一次继续探索。
+
+这里需要明确一个产品定位上的取舍：Kakeya 是核心展示案例；正定二次型可以作为第二个可生成数学世界的技术验收案例。
+
+这样既维持封面、论文、作品故事的一致性，也能证明底层并非完全针对 Kakeya 写死。
+
+## 七、当前架构应该怎么改？
+
+我不建议现在继续扩充你 HTML 中的 16 个系统模块。
+
+这些模块在工程职责上基本可以保留，但应该在它们之上新增一层真正的 Product Experience Architecture。
+
+| 产品层                 | 必须确定的内容                 | 当前优先级  |
+| ------------------- | ----------------------- | ------ |
+| Paper Desk          | 导入、研究问题、可玩入口、来源与信任状态    | P0     |
+| MathWorld           | 游戏世界、玩家输入、玩法目标、反馈、失败与成功 | P0     |
+| Learning Experience | 生活直觉、公式解释、逐步提示、数学意义     | P0     |
+| Agent Experience    | 主动生成、引导、修复、下一轮研究        | P0     |
+| Research Space      | 实验保存、对比、研究脉络和继续探索       | P1     |
+| System Atlas        | 架构、任务、数据所有权、运行证据        | 内部开发工具 |
+
+你上传的 SYSTEM ATLAS 应该保留，但它应当服务于开发团队，不应该代替真正的产品原型。
+
+另外，我建议比赛阶段特别注意 Intel 本地 AI：它应当出现在真实的论文检索或解释交互中，并有可核验的本地推理记录，而不是只在架构图中画出端云协同。
+
+## 最终建议
+
+现在最需要做的不是继续开发 Agent Harness，也不是立刻换 PlayCanvas 或 Godot，而是确定 Paper2Lab 的完整产品体验。
+
+我建议下一次设计交付只围绕四个真正的产品画面完成：
+
+论文入口、数学实验世界、AI 引导与数学理解、研究记录与继续探索。
+
+每个画面必须说明用户看到什么、能做什么、操作后真实发生什么、失败时怎样处理、Agent 何时介入，以及科学内核怎样提供依据。
+
+只有完成这一层设计，再将现有 Math IR、World Program、Scientific Runtime 和 Agent 接进去，Paper2Lab 才会从一张复杂的架构图，变成一个真正能被用户理解、进入、玩起来并持续使用的产品。

@@ -24,7 +24,7 @@ export async function executeFormulaSteps(
       const param = source.spec.parameters.find((p) => p.name === step.param)
       if (!param || typeof step.value !== 'number' || !Number.isFinite(step.value)) throw new Error('Invalid formula parameter')
       const value = step.op === 'formula.scale' ? proposed[param.name] * step.value : step.value
-      if (!Number.isFinite(value) || value < param.min || value > param.max) throw new Error(`Parameter ${param.name} exceeds its range`)
+      if (!Number.isFinite(value) || value < param.min || value > param.max) throw new Error(`参数 ${param.name}=${value} 超出当前模型允许范围 [${param.min}, ${param.max}]；未创建分支或修改参数`)
       proposed[param.name] = value
     }
   }

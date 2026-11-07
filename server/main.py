@@ -22,7 +22,7 @@ from typing import Any
 import shutil
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from server.agent import router as agent_router
@@ -36,6 +36,9 @@ if os.environ.get("PAPER2LAB_DOCLING_OFFLINE", "0") == "1":
 
 from server.engine_bridge import bridge
 from server.ingest_core import convert_pdf
+from server.ingest_runner import INGEST_TIMEOUT_S as _INGEST_TIMEOUT_S
+from server.ingest_runner import IngestTimeout, WarmIngestWorker, ingest_timeout_s, sync_kill
+from server.parse_store import persist_parse_result
 from server.vlm_parse import parse_pdf_with_vlm
 
 
@@ -105,6 +108,16 @@ async def _lifespan(_app: FastAPI):
     # subprocess state across closed event loops and broke shutdown
     _warm_worker = _WarmIngestWorker()
     app.state.warm_worker = _warm_worker
+    # J1.1: queue-backed parses survive an API restart; tasks the ledger still
+    # holds as queued but whose queue message was lost (Redis flush/restart,
+    # failed enqueue) are re-queued from PG — bounded, idempotent, visible
+    if os.environ.get("PAPER2LAB_DATABASE_URL") and os.environ.get("PAPER2LAB_REDIS_URL"):
+        try:
+            requeued = await asyncio.wait_for(asyncio.to_thread(_reconcile_parse_queue), timeout=15)
+            if requeued:
+                print(f"[paper2lab] parse queue: re-queued {len(requeued)} task(s) from the ledger: {requeued}", flush=True)
+        except Exception as exc:  # noqa: BLE001 — the API still serves; the worker reconciles too
+            print(f"[paper2lab] parse queue reconcile failed: {exc!r}", file=sys.stderr, flush=True)
     # background warmup (#15 perf): the FIRST engine request after a cold
     # start paid ~20s (node + bundle + cortex cold import) and the FIRST
     # parse paid the docling model load. Warm both now, non-blocking, with
@@ -148,16 +161,10 @@ app.include_router(engine_router)
 DATA_DIR = Path(os.environ.get("PAPER2LAB_DATA_DIR", Path(__file__).parent / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
-INGEST_TIMEOUT_S = float(os.environ.get("PAPER2LAB_INGEST_TIMEOUT", "600"))
-
-
-def _ingest_timeout_s() -> float:
-    """live-read (#31): the module constant freezes at import — tests and
-    config changes must take effect per conversion, not per process"""
-    try:
-        return float(os.environ.get("PAPER2LAB_INGEST_TIMEOUT", str(INGEST_TIMEOUT_S)))
-    except ValueError:
-        return INGEST_TIMEOUT_S
+# the conversion timeout is live-read in server.ingest_runner (shared with the
+# J1.1 queue worker); the aliases keep this module's call sites unchanged
+INGEST_TIMEOUT_S = _INGEST_TIMEOUT_S
+_ingest_timeout_s = ingest_timeout_s
 
 # ---------------------------------------------------------------- job store
 # Docling models are heavy and not thread-safe → conversions run one at a
@@ -210,6 +217,31 @@ class IngestJob:
         self.finished_at: float | None = None
         self.error: str | None = None
         self.result: dict[str, Any] | None = None
+        # D1.1: the repository round-trip record (content hash + paper/version
+        # ids) and any repository failure — surfaced in the job JSON so a DB
+        # problem is visible, never silent
+        self.repo_record: dict[str, Any] | None = None
+        self.repo_error: str | None = None
+        # J1.1: a queue-backed parse is a research_task in the PG ledger,
+        # consumed by a SEPARATE worker process (server.parse_worker); this
+        # API process only reads its status. None ⇒ in-process parse.
+        self.task_id: int | None = None
+        self.queue_error: str | None = None
+        # transient (never persisted): position among the ledger's queued
+        # parse tasks, refreshed on each status read
+        self.queue_position: int | None = None
+        # CLI-151 渐进片段 (VLM path only, in-process): pages finish out of
+        # order and each finished page's RAW extraction lands here so the
+        # paper-study view can research over real fragments BEFORE the parse
+        # settles. Never persisted — a restart simply loses the preview (the
+        # settled document is the durable artifact). Docling/queue parses
+        # stay empty (no page-level progress exists there — shown honestly).
+        self.partial: list[dict[str, Any]] = []
+        # CLI-151: inclusive 1-based pages this job parses (None = whole file)
+        self.page_range: tuple[int, int] | None = None
+        # phase durations for this job (same-process spans, never summed
+        # across overlapping phases); no paper text and no credentials here
+        self.timing: dict[str, Any] = {}
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -223,13 +255,45 @@ class IngestJob:
             "finishedAt": self.finished_at,
             "error": self.error,
             "docId": self.result.get("docId") if self.result else None,
+            # D1.1: repository round-trip visibility
+            "repo": self.repo_record if self.repo_record else ({"error": self.repo_error} if self.repo_error else None),
+            # J1.1: the ledger task behind a queue-backed parse, and any
+            # queue/ledger problem (visible, never silent)
+            "taskId": self.task_id,
+            "queueError": self.queue_error,
+            "pages": list(self.page_range) if self.page_range else None,
+            "timing": self.timing or None,
         }
 
     def persist(self) -> None:
         _job_path(self.job_id).write_text(json.dumps(self.to_json()))
 
     def persist_doc(self) -> None:
-        if self.result:
+        if not self.result:
+            return
+        # D1.3: with the repository configured, the documents table is the
+        # ONLY write authority for parse results — no dual write to the
+        # legacy JSON file. A repository failure is visible (repo_error),
+        # never silently absorbed and never papered over with a JSON write.
+        if os.environ.get("PAPER2LAB_DATABASE_URL"):
+            try:
+                from server import db as _db
+
+                # one code path with the J1.1 queue worker (server.parse_store):
+                # document + P1.2 APPEND-ONLY parse artifact (parser identity +
+                # anchor precision; old artifacts never overwritten/upgraded)
+                record = self.repo_record or {}
+                with _db.connect() as repo_conn:
+                    persist_parse_result(
+                        repo_conn,
+                        self.result,
+                        paper_id=record.get("paper_id"),
+                        version_id=record.get("version_id"),
+                        mode=self.mode,
+                    )
+            except Exception as exc:  # noqa: BLE001 — recorded, no JSON fallback
+                self.repo_error = f"document persist failed: {exc}"
+        else:
             _doc_path(self.result["docId"]).write_text(json.dumps(self.result))
 
 
@@ -278,23 +342,48 @@ def _restore_jobs() -> None:
         job.created_at = float(data.get("createdAt", 0))
         job.finished_at = data.get("finishedAt")
         job.error = data.get("error")
-        # a running/pending job died with the process — no task is recreated,
-        # so it must surface as interrupted instead of "running" forever
-        if job.status in ("pending", "running"):
+        job.timing = data.get("timing") or {}
+        task_id = data.get("taskId")
+        job.task_id = int(task_id) if isinstance(task_id, int) else None
+        # an IN-PROCESS job that was pending/queued/running died with the
+        # process — no coroutine is recreated, so it must surface as
+        # interrupted instead of waiting forever (a queued one used to stay
+        # "queued" with nobody to run it). A QUEUE-BACKED job (J1.1) is NOT
+        # interrupted: its worker is independent of this API process and its
+        # status is read from the ledger.
+        if job.task_id is None and job.status in ("pending", "queued", "running"):
             job.status = "error"
             job.error = "interrupted by server restart"
             job.finished_at = time.time()
             job.persist()
-        doc = _load_json(_doc_path(str(data.get("docId")))) if data.get("docId") else None
+        # D1.3: restart recovery reads through _get_doc (PG first, legacy JSON
+        # read-only fallback) — reading the file directly lost the docId for
+        # DB-authority documents on restart (review finding)
+        doc = _get_doc(str(data.get("docId"))) if data.get("docId") else None
         job.result = doc
         _jobs[job.job_id] = job
 
 
-_restore_jobs()
-
-
 def _get_doc(doc_id: str) -> dict[str, Any] | None:
+    # D1.3: the repository is the read path when configured; the legacy JSON
+    # files remain a READ-ONLY fallback for pre-switch documents
+    if os.environ.get("PAPER2LAB_DATABASE_URL"):
+        try:
+            from server import db as _db
+
+            with _db.connect() as repo_conn:
+                doc = _db.get_document(repo_conn, doc_id)
+            if doc is not None:
+                return doc
+        except Exception:  # noqa: BLE001 — fall through to the legacy files
+            pass
     return _load_json(_doc_path(doc_id))
+
+
+# restart recovery runs AFTER _get_doc is defined (it reads through the
+# repository-first path) — a module-level call above the definition crashed
+# import whenever server/data held a finished job with a docId (review find)
+_restore_jobs()
 
 
 # ---------------------------------------------------------------- endpoints
@@ -395,8 +484,9 @@ async def _read_bounded(file: UploadFile) -> bytes:
     return b"".join(chunks)
 
 
-class _IngestTimeout(Exception):
-    """docling conversion exceeded the budget — the worker process was killed"""
+# the warm killable conversion child lives in server.ingest_runner — ONE
+# implementation shared with the J1.1 queue worker (server.parse_worker)
+_IngestTimeout = IngestTimeout
 
 
 class _VLMUnavailable(Exception):
@@ -405,139 +495,8 @@ class _VLMUnavailable(Exception):
     docling: the user picked the fast path because docling is slow)"""
 
 
-class _WarmIngestWorker:
-    """#31 speed + killability in ONE shape: a LONG-LIVED worker process whose
-    docling converter is loaded once and reused (the per-parse spawn paid the
-    full model load on every PDF — tens of seconds — and a cold cache tried
-    the Hub). Per-job timeout KILLS the process; the next request respawns.
-    Serialization stays with _ingest_guard as before."""
-
-    def __init__(self) -> None:
-        self._proc: asyncio.subprocess.Process | None = None
-        self._rid = 0
-        self._lock = asyncio.Lock()
-
-    async def _ensure(self) -> asyncio.subprocess.Process:
-        if self._proc is None or self._proc.returncode is not None:
-            env = {**os.environ, "PYTHONUNBUFFERED": "1"}
-            self._proc = await asyncio.create_subprocess_exec(
-                sys.executable, "-m", "server.ingest_worker",
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=env,
-            )
-            # wait for the ready banner (bounded — a wedged boot is replaced)
-            try:
-                line = await asyncio.wait_for(self._proc.stdout.readline(), timeout=30.0)
-                if b"worker-ready" not in line:
-                    raise RuntimeError(f"ingest worker bad banner: {line[:120]!r}")
-            except asyncio.TimeoutError:
-                self._proc.kill()
-                self._proc = None
-                raise RuntimeError("ingest worker did not boot in 30s")
-        return self._proc
-
-    async def convert(
-        self, pdf_path: str, title_hint: str, test_mode: str,
-        on_stage=None,
-    ) -> dict[str, Any]:
-        """on_stage(stage) fires when the worker reports warming/parsing so the
-        job (and the UI) can tell model-load from actual parsing (#15 UX)."""
-        async with self._lock:
-            proc = await self._ensure()
-            self._rid += 1
-            rid = self._rid
-            req = json.dumps(
-                {"id": rid, "pdf": pdf_path, "title": title_hint, "testMode": test_mode}
-            ).encode() + b"\n"
-            try:
-                proc.stdin.write(req)
-                await proc.stdin.drain()
-            except (BrokenPipeError, OSError):
-                # worker died between jobs — respawn once and retry
-                proc = await self._respawn()
-                proc.stdin.write(req)
-                await proc.stdin.drain()
-            loop = asyncio.get_event_loop()
-            deadline = loop.time() + _ingest_timeout_s()
-            msg: dict[str, Any] = {}
-            while True:
-                remaining = deadline - loop.time()
-                if remaining <= 0:
-                    await self._kill()
-                    raise _IngestTimeout(
-                        f"docling exceeded {_ingest_timeout_s():.0f}s — warm worker killed (pid {proc.pid})"
-                    )
-                try:
-                    raw = await asyncio.wait_for(proc.stdout.readline(), timeout=remaining)
-                except asyncio.TimeoutError:
-                    await self._kill()
-                    raise _IngestTimeout(
-                        f"docling exceeded {_ingest_timeout_s():.0f}s — warm worker killed (pid {proc.pid})"
-                    ) from None
-                if not raw:
-                    err = await proc.stderr.read() if proc.stderr else b""
-                    await self._kill()
-                    raise RuntimeError(f"ingest worker died: {err.decode('utf-8', 'replace')[-300:]}")
-                try:
-                    msg = json.loads(raw)
-                except ValueError:
-                    continue
-                if msg.get("stage"):
-                    if on_stage:
-                        on_stage(str(msg["stage"]))
-                    continue
-                if msg.get("id") != rid:
-                    # protocol desync — replace the worker and fail loudly
-                    await self._kill()
-                    raise RuntimeError(f"ingest worker response desync ({msg.get('id')} != {rid})")
-                break
-            if not msg.get("ok"):
-                raise RuntimeError(f"docling failed: {msg.get('error', 'unknown')}")
-            return msg["result"]
-
-    async def _respawn(self) -> asyncio.subprocess.Process:
-        await self._kill()
-        return await self._ensure()
-
-    async def _kill(self) -> None:
-        proc, self._proc = self._proc, None
-        if proc is None:
-            return
-        try:
-            proc.kill()
-        except ProcessLookupError:
-            pass
-        await proc.wait()
-
-    async def stop(self) -> None:
-        proc, self._proc = self._proc, None
-        if proc is None:
-            return
-        if proc.stdin is not None and not proc.stdin.is_closing():
-            try:
-                proc.stdin.close()
-            except OSError:
-                pass
-        try:
-            await asyncio.wait_for(proc.wait(), timeout=5)
-        except (asyncio.TimeoutError, ProcessLookupError):
-            _sync_kill(proc)
-        except RuntimeError:
-            # the child belongs to a CLOSED event loop (app restarted between
-            # tests / redeploys) — its transport can't be awaited here; reap
-            # synchronously instead of failing the app shutdown
-            _sync_kill(proc)
-
-
-def _sync_kill(proc: asyncio.subprocess.Process) -> None:
-    """best-effort reaping when the child's loop is gone: SIGKILL now; the OS
-    reaps it (or pytest's process exit does). No await on a dead loop."""
-    try:
-        proc.kill()
-    except ProcessLookupError:
-        pass
+_WarmIngestWorker = WarmIngestWorker
+_sync_kill = sync_kill
 
 
 
@@ -562,7 +521,7 @@ async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") ->
 
         def convert() -> dict[str, Any]:
             try:
-                return convert_pdf(pdf_path, title_hint=title_hint)
+                return convert_pdf(pdf_path, title_hint=title_hint, page_range=(job.page_range if job is not None else None))
             finally:
                 loop.call_soon_threadsafe(done.set)
 
@@ -581,7 +540,146 @@ async def _convert_isolated(pdf_path: str, title_hint: str, job: "IngestJob") ->
         def on_stage(stage: str, _job=job) -> None:
             _job.stage = stage
             _job.persist()
-    return await _current_warm_worker().convert(pdf_path, title_hint, test_mode, on_stage)
+    kwargs = {"page_range": job.page_range} if job is not None and job.page_range else {}
+    return await _current_warm_worker().convert(pdf_path, title_hint, test_mode, on_stage, **kwargs)
+
+
+# ------------------------------------------- J1.1 queue-backed parse ledger
+# job statuses that never change again — a queue-backed job in one of these
+# is not re-read from the ledger
+_LEDGER_SETTLED = frozenset({"done", "error", "timeout", "superseded", "cancelled"})
+
+
+def _refresh_from_ledger(job: IngestJob) -> None:
+    """J1.1: a queue-backed job's truth is the PG ledger (the parse runs in
+    a separate worker process). Map task status onto the job contract the UI
+    polls. A ledger read failure is visible (queueError); the last known
+    state is kept rather than guessed."""
+    try:
+        from server import db as _db
+        from server import jobs as _task_ledger
+
+        with _db.connect() as conn:
+            task = _task_ledger.get_task(conn, job.task_id)
+            position = (
+                _task_ledger.queued_position(conn, job.task_id)
+                if task is not None and task["status"] == "queued"
+                else 0
+            )
+    except Exception as exc:  # noqa: BLE001 — visible, state kept
+        job.queue_error = f"ledger read failed: {exc}"
+        return
+    if task is None:
+        job.queue_error = f"task {job.task_id} missing from the ledger"
+        return
+    job.queue_position = position
+    status = str(task["status"])
+    result = task.get("result") or {}
+    before = (job.status, job.stage, job.error)
+    if status == "queued":
+        job.status = "queued"
+    elif status == "running":
+        job.status = "running"
+        job.stage = task.get("stage")
+    elif status == "succeeded":
+        doc_id = str(result.get("docId") or "")
+        doc = _get_doc(doc_id) if doc_id else None
+        if doc is None:
+            job.status = "error"
+            job.error = f"worker reported docId {doc_id!r} but the document is not in the store"
+        else:
+            job.result = doc
+            job.status = "done"
+        job.finished_at = job.finished_at or time.time()
+    elif status == "failed":
+        job.status = "timeout" if result.get("kind") == "timeout" else "error"
+        job.error = str(result.get("error") or "parse failed")
+        job.finished_at = job.finished_at or time.time()
+    elif status == "cancelled":
+        job.status = "superseded" if job.status == "superseded" else "cancelled"
+        job.finished_at = job.finished_at or time.time()
+    if (job.status, job.stage, job.error) != before:
+        job.persist()
+
+
+def _supersede_queue_job(job: IngestJob) -> None:
+    """J1.1 latest-wins for a queue-backed job, decided by the LEDGER — the
+    in-memory status may be stale (nobody polled since the worker moved on):
+    queued → atomically cancelled (the worker's claim then loses: the
+    delivery is skipped, never parsed); running → superseded for the user
+    while the worker finishes (cancelling a RUNNING queue task is J1.3);
+    already settled → the settled truth is kept. A ledger failure is
+    visible and changes nothing."""
+    try:
+        from server import db as _db
+        from server import jobs as _task_ledger
+
+        with _db.connect() as conn:
+            cancelled = _task_ledger.cancel_queued(
+                conn, job.task_id, reason="superseded by a newer upload from the same tab"
+            )
+            task = None if cancelled else _task_ledger.get_task(conn, job.task_id)
+    except Exception as exc:  # noqa: BLE001 — visible on the job
+        job.queue_error = f"ledger cancel failed: {exc}"
+        return
+    if cancelled or (task is not None and task["status"] == "running"):
+        job.status = "superseded"
+        job.error = "已被同一页面的新上传取代"
+        job.finished_at = time.time()
+        job.persist()
+        return
+    _refresh_from_ledger(job)
+
+
+def _queue_parse_task(job: IngestJob, record: dict[str, Any]) -> None:
+    """J1.1: write the ledger task and enqueue it (sync — runs off the event
+    loop). job.task_id is set the moment the ledger row exists; from then on
+    the LEDGER is the authority: an enqueue failure must NOT fall back
+    in-process (the task would later be delivered AND parsed twice) — it
+    stays queued and the next worker/API start re-queues it from PG."""
+    from server import db as _ledger_db
+    from server import jobs as _task_ledger
+
+    try:
+        with _ledger_db.connect() as ledger_conn:
+            job.task_id = _task_ledger.create_task(
+                ledger_conn,
+                kind="parse",
+                payload={
+                    "jobId": job.job_id,
+                    "title": os.path.splitext(job.filename)[0],
+                    "filename": job.filename,
+                    "mode": job.mode,
+                    "sha256": record.get("sha256"),
+                    "paperId": record.get("paper_id"),
+                    "versionId": record.get("version_id"),
+                },
+            )
+        # durable link job→task at once: an API crash before the enqueue
+        # still restores this job as queue-backed (not "interrupted")
+        job.persist()
+    except Exception as exc:  # noqa: BLE001
+        if job.task_id is None:  # no ledger row was written: in-process is safe
+            job.queue_error = f"task ledger unavailable — parsed in-process: {exc}"
+            return
+        job.queue_error = f"ledger connection error after the task was written: {exc}"
+    try:
+        with _ledger_db.connect() as ledger_conn:
+            _task_ledger.enqueue_task(ledger_conn, _task_ledger.redis_conn(), job.task_id)
+    except Exception as exc:  # noqa: BLE001 — visible; recovered by reconcile
+        job.queue_error = (
+            f"enqueue failed — task stays queued in the ledger, re-queued at the next worker/API start: {exc}"
+        )
+
+
+def _reconcile_parse_queue() -> list[int]:
+    """API-start reconcile: tasks the ledger holds as queued get a live RQ job
+    again (lost queue messages are rebuilt from PG; idempotent)"""
+    from server import db as _db
+    from server import jobs as _task_ledger
+
+    with _db.connect() as conn:
+        return _task_ledger.reconcile_queued(conn, _task_ledger.redis_conn())
 
 
 async def _supersede_client_jobs(client_id: str, new_job_id: str) -> None:
@@ -589,8 +687,13 @@ async def _supersede_client_jobs(client_id: str, new_job_id: str) -> None:
     supersedes that tab's older tasks — queued ones cancel outright; a hung
     running one gets the worker killed so the slot frees for the new task
     instead of making the user's retry queue behind their own stale job."""
-    for j in _jobs.values():
+    for j in list(_jobs.values()):  # snapshot: the loop awaits, _jobs may grow
         if j.client_id != client_id or j.job_id == new_job_id:
+            continue
+        if j.task_id is not None:
+            # J1.1 queue-backed: the LEDGER decides (see _supersede_queue_job)
+            if j.status in ("queued", "running"):
+                await asyncio.to_thread(_supersede_queue_job, j)
             continue
         if j.status == "queued":
             j.status = "superseded"
@@ -645,10 +748,37 @@ async def _convert_vlm(pdf_path: str, job: "IngestJob") -> dict[str, Any]:
         _job.stage = stage
         _job.persist()
 
+    def on_page(page_no: int, page_items: list[dict[str, Any]], _job: "IngestJob" = job) -> None:
+        # CLI-151 progressive fragments: append the page's raw extraction as
+        # a lightweight preview {page, kind, latex?/text?}. Runs on the event
+        # loop (same task), so no lock is needed against the status reader.
+        for it in page_items:
+            frag: dict[str, Any] = {"page": page_no, "kind": str(it.get("kind") or "text")}
+            if it.get("kind") == "formula":
+                frag["latex"] = str(it.get("latex") or "")
+            else:
+                frag["text"] = str(it.get("text") or "")
+            _job.partial.append(frag)
+
     return await asyncio.wait_for(
-        parse_pdf_with_vlm(pdf_path, provider, on_stage),
+        parse_pdf_with_vlm(pdf_path, provider, on_stage, on_page=on_page, page_range=job.page_range),
         timeout=_ingest_timeout_s(),
     )
+
+
+def _parse_page_range(pages: str | None) -> tuple[int, int] | None:
+    """`pages` form field: "3" or "3-5" (1-based, inclusive). Absent means the
+    whole file; anything else is the caller's error, never a silent full parse."""
+    if pages is None or not pages.strip():
+        return None
+    first, sep, last = pages.strip().partition("-")
+    if not first.isdigit() or (sep and not last.isdigit()):
+        raise HTTPException(status_code=422, detail=f"invalid pages: {pages!r} (expected '3' or '3-5')")
+    start = int(first)
+    end = int(last) if sep else start
+    if start < 1 or end < start:
+        raise HTTPException(status_code=422, detail=f"invalid pages: {pages!r} (1-based, first ≤ last)")
+    return (start, end)
 
 
 @app.post("/api/ingest", status_code=202)
@@ -656,11 +786,14 @@ async def ingest(
     file: UploadFile = File(...),
     clientId: str | None = Form(default=None),
     mode: str = Form(default="docling"),
+    identifier: str | None = Form(default=None),
+    pages: str | None = Form(default=None),
 ) -> dict:
     if mode not in ("docling", "vlm"):
         raise HTTPException(status_code=422, detail=f"unknown parse mode: {mode}")
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=415, detail="only PDF is supported in 0.1")
+    page_range = _parse_page_range(pages)
     payload = await _read_bounded(file)
     if not payload.startswith(b"%PDF"):
         raise HTTPException(status_code=422, detail="file is not a valid PDF")
@@ -669,6 +802,8 @@ async def ingest(
     job = IngestJob(job_id, file.filename or "upload.pdf")
     job.status = "queued"  # the docling slot may still be busy (#31)
     job.mode = mode
+    job.page_range = page_range
+    job.timing["uploadBytes"] = len(payload)
     if clientId:
         job.client_id = clientId[:64]
         await _supersede_client_jobs(clientId, job_id)
@@ -678,8 +813,60 @@ async def ingest(
     tmp_path = DATA_DIR / f"upload-{job_id}.pdf"
     tmp_path.write_bytes(payload)
 
+    # D1.1: the repository round-trip for the REAL upload consumer — content-
+    # addressed artifact + workspace-scoped Paper/Version with same-file dedup.
+    # Opt-in via PAPER2LAB_DATABASE_URL until D1.3 switches the write
+    # authority; a repository failure is recorded on the job, never silent.
+    if os.environ.get("PAPER2LAB_DATABASE_URL"):
+        try:
+            from server import db
+
+            with db.connect() as repo_conn:
+                job.repo_record = db.store_paper_upload(
+                    repo_conn,
+                    workspace="default",
+                    filename=file.filename or "upload.pdf",
+                    content=payload,
+                    storage_root=DATA_DIR,
+                    identifier=(identifier or None),
+                )
+                got = db.get_paper_by_sha(repo_conn, workspace="default", sha256=job.repo_record["sha256"])
+                if got is None:
+                    raise RuntimeError("repository round-trip failed: paper row not readable after store")
+                job.repo_record["readback_ok"] = True
+        except Exception as exc:  # noqa: BLE001 — recorded on the job, ingest continues
+            job.repo_error = str(exc)
+
+    # J1.1: with BOTH the ledger (PG) and the queue (Redis) configured, a
+    # docling parse runs in a SEPARATE worker process (server.parse_worker):
+    # this endpoint writes the research_task + enqueues it, then only READS
+    # status from the ledger. VLM parses stay in-process (one task kind is
+    # migrated first). No ledger row ⇒ the proven in-process path below runs
+    # unchanged, with the reason visible on the job (queueError). A page-scoped
+    # parse stays in-process for now: the queue worker has no page contract.
+    queue_path = mode == "docling" and page_range is None and bool(
+        os.environ.get("PAPER2LAB_DATABASE_URL") and os.environ.get("PAPER2LAB_REDIS_URL")
+    )
+    record = job.repo_record or {}
+    if queue_path and not record.get("sha256"):
+        job.queue_error = "queue path needs the stored upload (repository unavailable) — parsed in-process"
+    elif queue_path:
+        await asyncio.to_thread(_queue_parse_task, job, record)
+        if job.task_id is not None:
+            job.status = "queued"
+            job.persist()
+            tmp_path.unlink(missing_ok=True)  # the worker reads the content-addressed blob
+            return {
+                "jobId": job_id,
+                "status": "queued",
+                "taskId": job.task_id,
+                "queueError": job.queue_error,
+                "repo": job.repo_record,
+            }
+
     async def run() -> None:
         engine_label = mode
+        slot_wait_started = time.perf_counter()
         try:
             title_hint = os.path.splitext(job.filename)[0]
             if mode == "vlm":
@@ -687,14 +874,17 @@ async def ingest(
                 # with its own 4-page concurrency) — stays "queued" until a
                 # slot frees, mirroring the docling slot semantics
                 async with _vlm_jobs_guard():
+                    job.timing["slotWaitMs"] = round((time.perf_counter() - slot_wait_started) * 1000)
                     job.status = "running"
                     job.persist()
                     result = await _convert_vlm(str(tmp_path), job)
             else:
                 async with _ingest_guard():  # one docling conversion at a time (loop-safe)
+                    job.timing["slotWaitMs"] = round((time.perf_counter() - slot_wait_started) * 1000)
                     job.status = "running"  # queued → running only INSIDE the slot
                     job.persist()
                     result = await _convert_isolated(str(tmp_path), title_hint, job)
+            job.timing.update(result.pop("_timing", None) or {})
             job.result = result
             job.status = "done"
             job.finished_at = time.time()
@@ -744,7 +934,13 @@ async def ingest(
                 tmp_path.unlink(missing_ok=True)
 
     _running_tasks[job_id] = asyncio.get_event_loop().create_task(run())
-    return {"jobId": job_id, "status": "running"}
+    # D1.1: the immediate response carries the repository round-trip record
+    # (or its failure) so the consumer sees the paper identity at once
+    return {
+        "jobId": job_id,
+        "status": "running",
+        "repo": job.repo_record if job.repo_record else ({"error": job.repo_error} if job.repo_error else None),
+    }
 
 
 @app.get("/api/ingest/{job_id}")
@@ -752,13 +948,25 @@ def ingest_status(job_id: str) -> dict:
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"unknown job: {job_id}")
+    if job.task_id is not None and job.status not in _LEDGER_SETTLED:
+        _refresh_from_ledger(job)
     out = job.to_json()
     # #15 UX: the poller gets live stage, elapsed time and queue depth — a
     # static spinner for 20-60s reads as "stuck" and is the top complaint
     out["elapsedMs"] = int((time.time() - job.created_at) * 1000)
-    out["queueDepth"] = sum(1 for j in _jobs.values() if j.status == "queued")
+    if job.task_id is not None:
+        # J1.1: the worker queue's depth comes from the LEDGER (self + older
+        # queued tasks) — in-memory statuses of unpolled jobs may be stale
+        out["queueDepth"] = (job.queue_position or 0) if job.status == "queued" else 0
+    else:
+        # the in-process docling slot queue (queue-backed jobs wait elsewhere)
+        out["queueDepth"] = sum(1 for j in _jobs.values() if j.status == "queued" and j.task_id is None)
     if job.result:
         out["document"] = job.result
+    elif job.status == "running" and job.partial:
+        # CLI-151: progressive fragments while a VLM parse is still running —
+        # the study view researches over these BEFORE the document exists
+        out["partialItems"] = sorted(job.partial, key=lambda f: f.get("page", 0))
     return out
 
 
@@ -768,6 +976,79 @@ def document(doc_id: str) -> dict:
     if not doc:
         raise HTTPException(status_code=404, detail=f"unknown document: {doc_id}")
     return doc
+
+
+@app.get("/api/papers")
+def papers() -> dict:
+    """P1.1: the versioned paper library — papers with versions and per-upload
+    provenance. Without the repository configured the listing is empty and
+    says so honestly (no fake library over the JSON files)."""
+    if not os.environ.get("PAPER2LAB_DATABASE_URL"):
+        return {"repository": False, "papers": []}
+    try:
+        from server import db as _db
+
+        with _db.connect() as repo_conn:
+            return {"repository": True, "papers": _db.list_papers(repo_conn)}
+    except Exception as exc:  # noqa: BLE001 — listing failure is visible
+        raise HTTPException(status_code=502, detail=f"paper library unavailable: {exc}") from exc
+
+
+@app.get("/api/papers/{paper_id}/parses")
+def paper_parses(paper_id: str) -> dict:
+    """P1.2: append-only parse artifact listing (parser identity + precision).
+    Re-parses ADD rows; old rows keep their original anchor precision."""
+    if not os.environ.get("PAPER2LAB_DATABASE_URL"):
+        return {"repository": False, "parses": []}
+    try:
+        from server import db as _db
+
+        with _db.connect() as repo_conn:
+            return {"repository": True, "parses": _db.list_parse_artifacts(repo_conn, paper_id)}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"parse history unavailable: {exc}") from exc
+
+
+@app.get("/api/papers/{paper_id}/parses/{parse_id}")
+def paper_parse_detail(paper_id: str, parse_id: int) -> dict:
+    """P1.2: the FULL parse JSON of one artifact — old anchors stay openable."""
+    if not os.environ.get("PAPER2LAB_DATABASE_URL"):
+        raise HTTPException(status_code=404, detail="no repository configured")
+    try:
+        from server import db as _db
+
+        with _db.connect() as repo_conn:
+            parse = _db.get_parse_artifact(repo_conn, paper_id, parse_id)
+        if parse is None:
+            raise HTTPException(status_code=404, detail=f"unknown parse {parse_id} for paper {paper_id}")
+        return parse
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"parse history unavailable: {exc}") from exc
+
+
+@app.get("/api/papers/{paper_id}/pdf")
+def paper_pdf(paper_id: str) -> Response:
+    """P1.1: the ORIGINAL PDF from the content-addressed store — readable
+    whether the parse is still running, failed, or finished."""
+    if not os.environ.get("PAPER2LAB_DATABASE_URL"):
+        raise HTTPException(status_code=404, detail=f"unknown paper: {paper_id}")
+    try:
+        from server import db as _db
+
+        with _db.connect() as repo_conn:
+            sha = _db.paper_artifact_sha(repo_conn, paper_id)
+        if sha is None:
+            raise HTTPException(status_code=404, detail=f"unknown paper: {paper_id}")
+        content = _db.artifact_bytes(sha, storage_root=DATA_DIR)
+        if content is None:
+            raise HTTPException(status_code=410, detail=f"paper blob missing from store: {sha}")
+        return Response(content=content, media_type="application/pdf")
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"paper store unavailable: {exc}") from exc
 
 
 # ------------------------------------------------------- production statics

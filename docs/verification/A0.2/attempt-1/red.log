@@ -1,0 +1,17 @@
+
+==================================== ERRORS ====================================
+______________________ ERROR collecting test_agent_a02.py ______________________
+ImportError while importing test module '/Users/c14h14n3/Desktop/Paper2Lab/server/tests/test_agent_a02.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+server/tests/test_agent_a02.py:17: in <module>
+    from server.agent import _tool_output_json, get_result_artifact  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ImportError: cannot import name 'get_result_artifact' from 'server.agent' (/Users/c14h14n3/Desktop/Paper2Lab/server/agent.py)
+=========================== short test summary info ============================
+ERROR server/tests/test_agent_a02.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.18s

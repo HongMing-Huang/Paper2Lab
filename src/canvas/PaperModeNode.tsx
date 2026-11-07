@@ -28,7 +28,7 @@ function AgentStrip() {
   if (!state.plan) return null
   return (
     <div className="agent-strip">
-      <div className="agent-strip-title">AGENT · {state.plan.title}</div>
+      <div className="agent-strip-title">本地实验指令（非 AI）· {state.plan.title}</div>
       <ol className="agent-actions">
         {state.plan.actions.map((a, i) => (
           <li key={i} className={`agent-action st-${state.statuses[i]}`}>
@@ -137,7 +137,7 @@ export function PaperModeNode() {
             }}
           />
           <button type="button" onClick={ask}>
-            ▶ 运行实验
+            ▶ 本地指令（非 AI）
           </button>
         </div>
       </header>
@@ -211,9 +211,9 @@ export function PaperModeNode() {
                   data: {},
                 })
               }
-              title="第三幕：冻结 N 与 δ，比谁能让有限尺度 |⋃T| 更小（用户 vs Agent，同一引擎）"
+              title="第三幕：冻结 N 与 δ，比谁能让有限尺度 |⋃T| 更小（用户 vs 自动搜索，同一引擎）"
             >
-              ▶ Packing Challenge（第三幕 · 用户 vs Agent）
+              ▶ Packing Challenge（第三幕 · 用户 vs 自动搜索）
             </button>
           </section>
         </div>

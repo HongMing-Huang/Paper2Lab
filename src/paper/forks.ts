@@ -74,7 +74,7 @@ export function snapshotCurrentFork(label: string): ForkSnapshot {
   const versions: Record<string, number> = {}
   for (const c of kakeya.describe()) versions[c.id] = c.version
 
-  const voxRun = cellValue<import('../experiments/protocol').ExperimentRun<import('../kakeya/voxels3d').VoxelResult>>('kakeya.voxel')
+  const voxRun = cellValue<import('../experiments/protocol').ExperimentRun<import('../kakeya/voxels3d').VoxelMetrics>>('kakeya.voxel')
   const vox = voxRun?.result
   const delta = cellValue<number>('kakeya.delta') ?? 0
   const metrics: ForkMetrics | null = vox

@@ -7,6 +7,7 @@ import { makeTubes, type Tube3 } from '../kakeya/tubes'
 import { perronTree, type PerronResult } from '../kakeya/perron'
 import { computeVoxelCoverage, type VoxelMetrics, type VoxelResult } from '../kakeya/voxels3d'
 import { ENGINES, executeSpec, type ExperimentRun } from '../experiments/protocol'
+import { readArtifact, sealArray, type ArtifactRef } from '../experiments/artifacts'
 import { isWorkerAvailable, measureFamily, measureVoxelCover } from '../workers/voxelClient'
 
 export const VIS_RES = 16 // 3D occupancy grid resolution (divides all voxelRes choices)
@@ -15,6 +16,26 @@ export const SWEEP_RES = 40 // live sweep grid resolution (Comlink worker)
 export const FINE_DELTA = 2 ** -6 // microscope finest scale (demo configuration)
 
 export const kakeya = new Runtime()
+
+/** a kakeya.voxel run: metrics, plus the occupancy grid as a sealed artifact */
+export interface VoxelRunResult extends VoxelMetrics {
+  visGrid?: { res: number; artifact: ArtifactRef }
+}
+
+const visGridViews = new WeakMap<ArtifactRef, NonNullable<VoxelResult['visGrid']>>()
+
+/** the renderer's own typed copy of a run's grid; one object per run, so a view's
+ *  effect keyed on it does not re-fire on every render */
+export function materializeVisGrid(grid: VoxelRunResult['visGrid']): VoxelResult['visGrid'] {
+  if (!grid) return undefined
+  const known = visGridViews.get(grid.artifact)
+  if (known) return known
+  const data = readArtifact(grid.artifact)
+  if (!(data instanceof Uint16Array)) return undefined
+  const view = { res: grid.res, data }
+  visGridViews.set(grid.artifact, view)
+  return view
+}
 
 // ---- params (single sources of truth) --------------------------------------
 export const pDeltaExp = kakeya.param('kakeya.deltaExp', 4) // δ = 2^-exp ∈ [1/8 … 1/45]
@@ -86,7 +107,7 @@ export const voxelPreviewCell = kakeya.derive<ExperimentRun<VoxelMetrics>>(
 
 // exact (CALCULATED) measurement — Comlink RPC into the Web Worker, wrapped
 // in a full ExperimentRun (params/engine/duration/seed/evidence/runId)
-export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelResult>>(
+export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelRunResult>>(
   'kakeya.voxel',
   [tubesRunCell, pVoxelRes, pDeltaExp, pPacking, pNTubes],
   async ([tubesRun, res, deltaExp, packing, nTubes], token) =>
@@ -98,15 +119,18 @@ export const voxelCell = kakeya.asyncDerive<ExperimentRun<VoxelResult>>(
         res: res as number,
       },
       ENGINES.kakeyaWorker,
-      () => {
+      async () => {
         // superseded before dispatch (drag continued past the debounce
         // window): skip the worker round-trip entirely (#23)
         if (token.aborted) throw new Error('voxel superseded before dispatch')
-        return (isWorkerAvailable() ? measureVoxelCover : computeVoxelsSyncFallback)(
+        const { visGrid, ...metrics } = await (isWorkerAvailable() ? measureVoxelCover : computeVoxelsSyncFallback)(
           (tubesRun as ExperimentRun<Tube3[]>).result as Tube3[],
           res as number,
           VIS_RES,
         )
+        if (!visGrid) return metrics
+        const shape = [visGrid.res, visGrid.res, visGrid.res]
+        return { ...metrics, visGrid: { res: visGrid.res, artifact: sealArray(visGrid.data, { shape, engine: ENGINES.kakeyaWorker }) } }
       },
     ),
   {

@@ -22,7 +22,8 @@ import { afterEach, vi } from 'vitest'
 import { runAgentTurn } from './agentBridge'
 afterEach(() => vi.unstubAllGlobals())
 function response(events: unknown[]) {
-  return new Response(events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream' } })
+  const declared = [{ type: 'backend', provider: 'openai', backend: 'agentscope-openai' }, ...events]
+  return new Response(declared.map((e) => `data: ${JSON.stringify(e)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream' } })
 }
 it('executes every external call and resumes with a complete batch', async () => {
   const bodies: Array<Record<string, unknown>> = []
@@ -95,4 +96,24 @@ it('partial failure in a batch: successes resume normally, the error row carries
   const resume = bodies[1].resume as { executionResults: Array<{ toolCallId: string; status: string }> }
   const byId = Object.fromEntries(resume.executionResults.map((r) => [r.toolCallId, r.status]))
   expect(byId).toEqual({ ok1: 'ok', bad1: 'error' })
+})
+
+it('does not execute SOP as an AI turn or replay a failed provider', async () => {
+  const scientificExecute = vi.fn(async () => ({}))
+  for (const event of [{ type: 'backend', provider: 'sop', backend: 'sop-deterministic' }, { type: 'sop_fallback', reason: 'provider unavailable' }]) {
+    vi.stubGlobal('fetch', vi.fn(async () => response([event, { type: 'require_execution', replyId: 'r', toolCallId: 't', tool: 'scientific_execute' }])))
+    await expect(runAgentTurn('double a', { deskKind: 'formula', paperTitle: '', params: ['a'] }, 's', {
+      scientificExecute, canvasApply: async () => ({}),
+    })).rejects.toThrow('SOP')
+  }
+  expect(scientificExecute).not.toHaveBeenCalled()
+})
+
+it('rejects the real legacy SOP protocol with no backend declaration', async () => {
+  const scientificExecute = vi.fn(async () => ({}))
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('data: {"type":"require_execution","tool":"scientific_execute","toolCallId":"sop-1","replyId":"r"}\n\n')))
+  await expect(runAgentTurn('a double', { deskKind: 'formula', paperTitle: '', params: ['a'] }, 'sop', {
+    scientificExecute, canvasApply: async () => ({}),
+  })).rejects.toThrow('后端声明')
+  expect(scientificExecute).not.toHaveBeenCalled()
 })

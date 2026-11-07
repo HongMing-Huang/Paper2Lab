@@ -8,6 +8,7 @@ import type { SourceAnchor } from '../formula/spec'
 import type { FormulaAnalysis } from '../formula/analyze'
 import { getSkill, type ScientificSkill } from './registry'
 import type { PaperBinding } from './paperBinding'
+import { sha256Hex } from '../experiments/artifacts'
 
 export interface PlayPlanVariable {
   name: string
@@ -46,6 +47,25 @@ export interface PlayPlan {
 // the engine exposes a `plan` op / inline plan field for remote callers.
 const PLAN_REGISTRY = new Map<string, PlayPlan>()
 
+/** canonical JSON: key-sorted, no whitespace, undefined fields absent (they
+ *  have no JSON value — a key explicitly set to undefined equals a missing
+ *  key, so builder-vs-rebuilder shapes canonicalize identically) */
+export function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
+  if (Array.isArray(value)) return `[${value.map((v) => canonicalJson(v)).join(',')}]`
+  const keys = Object.keys(value as Record<string, unknown>)
+    .filter((k) => (value as Record<string, unknown>)[k] !== undefined)
+    .sort()
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson((value as Record<string, unknown>)[k])}`).join(',')}}`
+}
+
+/** canonical-JSON digest — SHA-256 (same implementation the artifact store
+ *  uses, so browser and Node agree); determinism is the point, not secrecy */
+export function planInputDigest(inputs: Record<string, unknown>): string {
+  return `sha256:${sha256Hex(new TextEncoder().encode(canonicalJson(inputs)))}`
+}
+
+
 /** orchestration/companion skills any experiment plan governs implicitly */
 export const PLAN_COMPANION_SKILLS = new Set([
   'experiment.fork',
@@ -59,14 +79,36 @@ export function registerPlan(plan: PlayPlan): PlayPlan {
   if (!plan || typeof plan.planId !== 'string' || typeof plan.skill !== 'string' || typeof plan.goal !== 'string') {
     throw new Error('registerPlan: plan must carry planId/skill/goal')
   }
-  // first registration wins — a replayed/duplicate planId cannot silently
-  // REPLACE an existing contract (idempotent re-register of equal content)
-  if (!PLAN_REGISTRY.has(plan.planId)) PLAN_REGISTRY.set(plan.planId, plan)
+  // first registration wins AND STAYS: a different contract arriving under an
+  // already-registered planId is a conflict, not a silent no-op (12 §1) —
+  // otherwise "replay this plan" could execute something never reviewed.
+  // createdAt is metadata, not contract: re-submitting the same plan later
+  // (the plan op's designed use) must stay idempotent.
+  const existing = PLAN_REGISTRY.get(plan.planId)
+  if (existing) {
+    const strip = (p: PlayPlan): Record<string, unknown> => {
+      const { createdAt: _createdAt, ...rest } = p
+      return rest as unknown as Record<string, unknown>
+    }
+    if (canonicalJson(strip(existing)) !== canonicalJson(strip(plan))) {
+      throw new Error(`plan conflict: planId '${plan.planId}' is already registered with different content`)
+    }
+    return existing
+  }
+  PLAN_REGISTRY.set(plan.planId, plan)
   return plan
 }
 
 export function getPlan(planId: string): PlayPlan | undefined {
   return PLAN_REGISTRY.get(planId)
+}
+
+/** any registered plan governing this skill (the fork materialisation path
+ *  must find one — a fork re-executes a compute, and §3.3 says even internal
+ *  replay keeps checking model/permission) */
+export function hasPlanCovering(skill: string): boolean {
+  for (const plan of PLAN_REGISTRY.values()) if (planCoversSkill(plan, skill)) return true
+  return false
 }
 
 export function planCoversSkill(plan: PlayPlan, skill: string): boolean {
@@ -79,6 +121,30 @@ export function planCoversSkill(plan: PlayPlan, skill: string): boolean {
     return (target.aliases?.includes(plan.skill) ?? false) || (planned.aliases?.includes(skill) ?? false)
   }
   return false
+}
+
+/**
+ * Structural subset check: every field the plan seeded must be present in the
+ * dispatch input with a deep-equal value (flattened dotted keys are FORBIDDEN —
+ * a literal `"bindings.a"` key must never satisfy a nested `bindings.a` seed).
+ * Extra input keys are the experiment's free parameters (N1 binds revisions).
+ * Empty plan.inputs (family contracts, engine plans) pass on coverage alone.
+ */
+export function planCoversInput(plan: PlayPlan, input: unknown): boolean {
+  const planned = plan.inputs ?? {}
+  if (Object.keys(planned).length === 0) return true
+  return structurallyCovers(planned, input, '')
+}
+
+function structurallyCovers(planned: unknown, input: unknown, path: string): boolean {
+  if (planned !== null && typeof planned === 'object' && !Array.isArray(planned)) {
+    if (input === null || typeof input !== 'object' || Array.isArray(input)) return false
+    const p = planned as Record<string, unknown>
+    const i = input as Record<string, unknown>
+    return Object.keys(p).every((k) => structurallyCovers(p[k], i[k], `${path}.${k}`))
+  }
+  // leaves (including arrays) compare by canonical value
+  return canonicalJson(planned) === canonicalJson(input)
 }
 
 /** remote/engine callers register a plan from parsed JSON (shape-checked) */

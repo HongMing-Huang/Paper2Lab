@@ -12,6 +12,7 @@ import { routeAdapter } from './adapterRouter'
 import { buildPaperSpec, governingSystem, initialsOf, nominalParams } from './paperSpec'
 import { executeSkill } from './executor'
 import { buildPlan } from './playPlan'
+import { buildCandidate, requestInput } from '../study/requestCandidate'
 
 function realDoc(name: string) {
   return normalizeDocling(JSON.parse(readFileSync(join('src/ingest/fixtures', `${name}.docling.json`), 'utf8')))
@@ -86,6 +87,44 @@ describe('paper-driven models — two non-same-template real papers (#51)', () =
     // signal (later peaks never re-cross the global midline) — that fact is
     // itself the observation, matching ode.phase's contract
     expect(result.period0).toBeNull()
+  })
+
+  it('a bare-symbol right-hand side (ẋ = y) solves — not only with a trailing comma', async () => {
+    // the docling fixture keeps "y ," which parses as a Tuple and used to hide
+    // that a bare renamed symbol compiled as the unbound subscript v_1
+    const input = { states: ['x', 'y'], rhs: { x: 'y', y: '- k x - c y' }, params: { k: 2, c: 0.5 }, initialState: { x: 1, y: 0 }, tSpan: [0, 20] }
+    const solve = await executeSkill('model.solve', input, buildPlan({ skill: 'model.solve', goal: 'bare rhs', inputs: input }))
+    if (solve.status !== 'ok' || !solve.run?.result) throw new Error((solve as { message?: string }).message ?? 'solve failed')
+    const x = (solve.run.result as unknown as SolveResult).series.find((s) => s.state === 'x')!.values
+    // ẋ = y at t=0 is 0 and ẏ = -k·1 < 0: x leaves 1 downward, it never stays flat
+    expect(x[0]).toBe(1)
+    expect(Math.min(...x)).toBeLessThan(0)
+  })
+
+  it('candidate contract: spring paper → model.solve candidate with paper-sourced values; negatives refuse', () => {
+    const doc = realDoc('ode-spring-params')
+    const formulas = doc.items.filter((i) => i.kind === 'formula' && i.latex).map((i) => ({ id: i.id, page: i.page, latex: i.latex as string, parser: 'docling@test' }))
+    const prose = doc.items.filter((i) => i.kind !== 'formula' && i.text).map((i) => ({ id: i.id, page: i.page, text: i.text as string, parser: 'docling@test' }))
+    // positive: paper values bound from the paper's own sentence, ready with a user span
+    const ready = buildCandidate(formulas[0], formulas, prose, { span: [0, 20] })
+    expect(ready.status).toBe('ready')
+    expect(ready.skill).toBe('model.solve')
+    expect(ready.params.map((p) => [p.name, p.value, p.source.kind]).sort()).toEqual([['c', 0.5, 'paper'], ['k', 2, 'paper']])
+    expect(ready.initials.map((p) => [p.name, p.value])).toEqual([['x', 1], ['y', 0]])
+    const input = requestInput(ready)
+    expect(input).toMatchObject({ states: ['x', 'y'], tSpan: [0, 20] })
+    // missing span → needs_input; nothing invented
+    expect(buildCandidate(formulas[0], formulas, prose).status).toBe('needs_input')
+    // relational equation → unsupported, never integrated
+    const rel = buildCandidate({ ...formulas[0], latex: '\\dot { x } = x \\le 3' }, [{ ...formulas[1] }], prose, { span: [0, 20] })
+    expect(rel.status).toBe('unsupported')
+    expect(rel.issues.some((i) => /关系式/.test(i.message))).toBe(true)
+    // explicit t → unsupported (autonomous-only kernel)
+    const nonAuto = buildCandidate({ ...formulas[0], latex: '\\dot { x } = y + \\sin(t)' }, [{ ...formulas[1] }], prose, { span: [0, 20] })
+    expect(nonAuto.status).toBe('unsupported')
+    // broken transcription → unsupported with the parse error
+    const broken = buildCandidate({ ...formulas[0], latex: '\\dot { x } = y +' }, [{ ...formulas[1] }], prose, { span: [0, 20] })
+    expect(broken.status).toBe('unsupported')
   })
 
   it('all five ODE corpus papers differ in template (state counts / param kinds)', async () => {

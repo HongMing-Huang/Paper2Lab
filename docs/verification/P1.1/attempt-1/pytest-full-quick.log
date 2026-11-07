@@ -1,0 +1,38 @@
+........................................................................ [ 38%]
+........................................................................ [ 77%]
+..........................................                               [100%]
+=============================== warnings summary ===============================
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy
+  test_agent_a02.py:24: PytestWarning: The test <Function test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_an_error_batch_keeps_its_semantics_in_the_degraded_summary
+  test_agent_a02.py:40: PytestWarning: The test <Function test_an_error_batch_keeps_its_semantics_in_the_degraded_summary> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_an_error_batch_keeps_its_semantics_in_the_degraded_summary(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_small_result_is_verbatim_and_registers_nothing
+  test_agent_a02.py:47: PytestWarning: The test <Function test_a_small_result_is_verbatim_and_registers_nothing> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_small_result_is_verbatim_and_registers_nothing(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_huge_comparison_never_busts_the_budget
+  test_agent_a02.py:53: PytestWarning: The test <Function test_a_huge_comparison_never_busts_the_budget> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_huge_comparison_never_busts_the_budget(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_metrics_tier_is_actually_reachable_when_it_fits
+  test_agent_a02.py:63: PytestWarning: The test <Function test_the_metrics_tier_is_actually_reachable_when_it_fits> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_metrics_tier_is_actually_reachable_when_it_fits(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_every_degradation_level_stays_within_budget_and_valid
+  test_agent_a02.py:75: PytestWarning: The test <Function test_every_degradation_level_stays_within_budget_and_valid> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_every_degradation_level_stays_within_budget_and_valid(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_artifact_registry_is_bounded_and_evicts_oldest
+  test_agent_a02.py:97: PytestWarning: The test <Function test_the_artifact_registry_is_bounded_and_evicts_oldest> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_artifact_registry_is_bounded_and_evicts_oldest(self):
+
+test_api.py::test_health_is_alive_and_ready_checks_dependencies
+  /Users/c14h14n3/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/events.py:88: RuntimeWarning: The executor did not finishing joining its threads within 300 seconds.
+    self._context.run(self._callback, *self._args)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+186 passed, 2 deselected, 8 warnings in 356.17s (0:05:56)

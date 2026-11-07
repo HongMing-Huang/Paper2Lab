@@ -36,11 +36,18 @@ export async function runPdfFirstUpload(
     onProgress?: (p: IngestProgress) => void
     existingUrl?: string
     mode?: IngestMode
+    /** CLI-151: job id as soon as the upload is accepted (enter the study
+     *  view mid-parse and keep polling fragments there) */
+    onJobId?: (jobId: string) => void
   } = {},
 ): Promise<UploadFlowState> {
   const pdfUrl = opts.existingUrl ?? objectUrlFor(file)
   try {
-    const doc = await ingestPdf(file, { onProgress: opts.onProgress, mode: opts.mode })
+    const doc = await ingestPdf(file, {
+      onProgress: opts.onProgress,
+      mode: opts.mode,
+      onJobId: opts.onJobId,
+    })
     // dynamic import: routing pulls the cortex engine — only needed once the
     // parse settles, never on the first-paint path
     const { routeAdapter } = await import('../skills/adapterRouter')

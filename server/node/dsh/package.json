@@ -1,0 +1,10 @@
+{
+  "name": "paper2lab-dsh",
+  "private": true,
+  "type": "module",
+  "description": "J1.2b — the DeepSeek Harness side of Paper2Lab: the official TS SDK (activation runner) and the product plugin that exposes the Registry's scientific tools through the Node science API. Kept as an isolated install: the DSH runtime tree (~0.5 GB, native addons) must not enter the product lockfile or image unless the agent is deployed.",
+  "dependencies": {
+    "@deepseek-ai/dsh-sdk-client": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1"
+  }
+}

@@ -26,9 +26,10 @@ registerSkillRunner('mujoco.simulate', async (input, opts) => {
       },
       seed: 0,
       model: { scene: i.scene, steps: i.steps, sampleEvery, params, scenesChecksum: scenesChecksum() },
+      source: opts.source,
     },
     MUJOCO_ENGINE,
     () => mujocoSimulate(i.scene, { steps: i.steps, sampleEvery, params }),
-    { parentRunId: opts.parentRunId },
+    opts,
   )
 })

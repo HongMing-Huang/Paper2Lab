@@ -18,8 +18,10 @@
 //   {id, op:"shutdown"}                                     → {id, ok} then exit
 import { createInterface } from 'node:readline'
 import { executeSkill, inputForRun } from '../src/skills/executor.ts'
+import { planInputDigest } from '../src/skills/playPlan.ts'
 import { runAgentSteps, type DeskKind } from '../src/skills/agentSteps.ts'
 import { SKILL_REGISTRY } from '../src/skills/registry.ts'
+import { toolCatalog, invokeScientificTool, invokeScientificOperation } from '../src/skills/toolPort.ts'
 import { exportExperimentRuns, getExperimentRun, listExperimentRuns, type ExperimentRun } from '../src/experiments/protocol.ts'
 import { importRuns } from '../src/experiments/runRepository.ts'
 // registers the engine-side mujoco.simulate runner (Node-only kernel)
@@ -35,6 +37,21 @@ const restoredRuns = restoreRuns()
 
 const t0 = Date.now()
 let queue: Promise<unknown> = Promise.resolve()
+
+/** A1.3: agent_steps operation ledger — in-process until J1 (same caveat as
+ *  toolPort's); keys carry one semantic batch each */
+const agentOpsLedger = new Map<string, { digest: string; result: unknown }>()
+
+/** agent-turn runs must persist too (the reply rows carry only summaries;
+ *  the full records live in this process's history) */
+function _persistAgentSteps(result: { runs: Array<{ runId: string }>; targetRunId?: string | null }): void {
+  for (const row of result.runs) {
+    const full = getExperimentRun(row.runId)
+    if (full?.status === 'resolved') persistRun(full as ExperimentRun)
+  }
+  const target = result.targetRunId ? getExperimentRun(result.targetRunId) : undefined
+  if (target?.status === 'resolved') persistRun(target as ExperimentRun)
+}
 
 function send(obj: unknown): void {
   process.stdout.write(JSON.stringify(obj) + '\n')
@@ -61,9 +78,50 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
       })),
     }
   }
+  if (op === 'tools') {
+    // A1.1: the framework-agnostic contract — full catalog WITH schemas, so
+    // AgentScope/Python surfaces generate their tool definitions from the
+    // registry instead of hand-writing a second list
+    return { ok: true, catalog: toolCatalog() }
+  }
+  if (op === 'tool_execute') {
+    // A1.1: one invocation → one receipt envelope over the SAME executor.
+    // Inline plan JSON registers first, exactly like the execute op — the
+    // port never relaxes the gate for its callers.
+    if (req.plan !== undefined) {
+      try {
+        registerPlanFromJson(req.plan)
+      } catch (err) {
+        return { ok: false, error: `invalid plan: ${err instanceof Error ? err.message : String(err)}` }
+      }
+    }
+    const baseOpts = {
+      planId: typeof req.planId === 'string' ? req.planId : undefined,
+      parentRunId: typeof req.parentRunId === 'string' ? req.parentRunId : undefined,
+      ...(req.source !== undefined ? { source: req.source } : {}),
+      ...(typeof req.invocationId === 'string' ? { invocationId: req.invocationId } : {}),
+    }
+    // A1.2: an operationId routes through the operation ledger — retries
+    // replay the recorded receipt; same key with a different payload conflicts
+    const receipt = typeof req.operationId === 'string'
+      ? await invokeScientificOperation(
+          {
+            operationId: req.operationId,
+            ...(typeof req.idempotencyKey === 'string' ? { idempotencyKey: req.idempotencyKey } : {}),
+            ...(typeof req.workspace === 'string' ? { workspace: req.workspace } : {}),
+            skill: String(req.skill),
+            input: req.input ?? {},
+          },
+          baseOpts,
+        )
+      : await invokeScientificTool(String(req.skill), req.input ?? {}, baseOpts)
+    return { ok: true, receipt }
+  }
   if (op === 'plan') {
     // #32: remote callers register a full PlayPlan (shape-checked); execute
-    // then accepts its planId. First registration wins (idempotent).
+    // then accepts its planId. Re-submitting the SAME contract (createdAt
+    // aside) is idempotent; a DIFFERENT contract under a known planId is a
+    // conflict error.
     try {
       const plan = registerPlanFromJson(req.plan)
       return { ok: true, planId: plan.planId, known: getPlan(plan.planId) === plan }
@@ -82,6 +140,8 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
     const outcome = await executeSkill(String(req.skill), req.input ?? {}, {
       planId: typeof req.planId === 'string' ? req.planId : undefined,
       parentRunId: typeof req.parentRunId === 'string' ? req.parentRunId : undefined,
+      // S1.1 follow-through: provenance anchor from the HTTP/agent caller
+      ...(req.source !== undefined ? { source: req.source } : {}),
     })
     return { ok: true, outcome }
   }
@@ -95,20 +155,49 @@ async function handle(req: Record<string, unknown>): Promise<Record<string, unkn
         return { ok: false, error: `invalid plan: ${err instanceof Error ? err.message : String(err)}` }
       }
     }
+    // A1.3: a baseRunId chains the batch onto the RECORDED run's replayable
+    // input (the agent turn's latest run) instead of a re-read original base
+    let base = (req.base ?? {}) as Record<string, unknown>
+    if (typeof req.baseRunId === 'string') {
+      const resolved = inputForRun(req.baseRunId)
+      if ('error' in resolved) {
+        return { ok: false, error: `baseRunId cannot be resolved: ${resolved.error}` }
+      }
+      base = resolved.input as Record<string, unknown>
+    }
+    // A1.3: one operationId → one execution. An identical retry replays the
+    // recorded result (zero duplicate forks); a different payload under the
+    // same id is refused. In-process until J1 persists the ledger.
+    if (typeof req.operationId === 'string') {
+      const digest = planInputDigest({ desk: req.deskKind, steps: req.steps, base })
+      const hit = agentOpsLedger.get(req.operationId)
+      if (hit) {
+        if (hit.digest !== digest) {
+          return { ok: false, error: `operation conflict: '${req.operationId}' is recorded with a different batch` }
+        }
+        return { ok: true, result: hit.result, replayed: true }
+      }
+      const result = await runAgentSteps(
+        String(req.deskKind) as DeskKind,
+        Array.isArray(req.steps) ? (req.steps as never) : [],
+        base,
+        typeof req.planId === 'string' ? req.planId : `plan-engine-${Date.now()}`,
+      )
+      _persistAgentSteps(result)
+      if (agentOpsLedger.size >= 256) {
+        const oldest = agentOpsLedger.keys().next().value
+        if (oldest !== undefined) agentOpsLedger.delete(oldest)
+      }
+      agentOpsLedger.set(req.operationId, { digest, result })
+      return { ok: true, result }
+    }
     const result = await runAgentSteps(
       String(req.deskKind) as DeskKind,
       Array.isArray(req.steps) ? (req.steps as never) : [],
-      (req.base ?? {}) as Record<string, unknown>,
+      base,
       typeof req.planId === 'string' ? req.planId : `plan-engine-${Date.now()}`,
     )
-    // agent-turn runs must persist too (the reply rows carry only summaries;
-    // the full records live in this process's history — persist them here)
-    for (const row of result.runs) {
-      const full = getExperimentRun(row.runId)
-      if (full?.status === 'resolved') persistRun(full as ExperimentRun)
-    }
-    const target = result.targetRunId ? getExperimentRun(result.targetRunId) : undefined
-    if (target?.status === 'resolved') persistRun(target as ExperimentRun)
+    _persistAgentSteps(result)
     return { ok: true, result }
   }
   if (op === 'run_input') {

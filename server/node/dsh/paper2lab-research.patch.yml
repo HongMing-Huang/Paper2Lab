@@ -1,0 +1,143 @@
+# J1.2b — the Paper2Lab research profile overlay for DeepSeek Harness.
+#
+# Applied as a --patch overlay by the activation runner (server/node/dsh/activate.ts)
+# on top of the stock `sdk` profile. The stock profile's rows keep their ids;
+# this layer disables every general-purpose tool surface and mounts the
+# Paper2Lab science plugin. Qwen is served through llm-pi-ai's
+# openai-completions adapter against the OpenAI-compatible endpoint (DashScope
+# international by default; PAPER2LAB_QWEN_BASE_URL / PAPER2LAB_QWEN_MODEL /
+# PAPER2LAB_QWEN_CONTEXT_WINDOW / PAPER2LAB_QWEN_MAX_TOKENS override at the
+# runner's level, which regenerates this file before spawning the runtime).
+#
+# The model entry mirrors the legacy chain's defaults (server/agent_provider.py:
+# qwen-plus), so both agent paths answer for the same model. Credentials stay
+# server-side env only (PAPER2LAB_QWEN_API_KEY); nothing is written to the
+# browser, the database or the logs.
+---
+- id: session-telemetry-otel
+  config:
+    mode: DISABLED
+
+- id: agent-default-model
+  config:
+    provider: qwen
+    model: qwen-plus
+
+- id: llm-pi-ai
+  config:
+    providers:
+      qwen:
+        apiKeyEnv: PAPER2LAB_QWEN_API_KEY
+        api: openai-completions
+        baseURL: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+        models:
+          - id: qwen-plus
+            name: Qwen Plus
+            contextWindow: 131072
+            maxTokens: 8192
+            input: [text]
+            reasoningEfforts: false
+            compat:
+              supportsStore: false
+              supportsDeveloperRole: false
+              supportsReasoningEffort: false
+              supportsUsageInStreaming: true
+              supportsFinishReason: true
+              maxTokensField: max_tokens
+              requiresToolResultName: false
+              requiresAssistantAfterToolResult: false
+              requiresThinkingAsText: false
+              requiresReasoningContentOnAssistantMessages: false
+              thinkingFormat: openai
+              chatTemplateKwargs: {}
+              chatTemplateArgs: {}
+              supportsThinkingTokenBudget: false
+              thinkingTokenBudgetField: thinking_budget
+              vllmPriority: 0
+              supportsStrictMode: true
+              cacheControlFormat: anthropic
+              supportsLongCacheRetention: false
+
+- id: system-prompt
+  config:
+    personaPrefix: >-
+      You are the Paper2Lab research assistant. You study a mathematical paper
+      by RUNNING REAL EXPERIMENTS: every number you report comes from the
+      science tools, and you may never invent or estimate a result. Your tools
+      submit experiments to the Paper2Lab executor; committed runs are
+      immutable evidence you can read, fork (explicitly, from a run you name)
+      and compare. Finite-scale numerical experiments never prove a theorem —
+      state findings as observations with the run ids they came from. If a tool
+      answers needs_input or unsupported, say what is missing instead of
+      guessing. You have no shell, file, network or sub-agent tools in this
+      profile, and you must not role-play having them.
+
+# ---- disable every general-purpose tool surface (the plugin guard denies
+# them at execution too; this removes them from the model's view entirely) ---
+- id: tool-bash
+  disabled: true
+- id: tool-pwsh
+  disabled: true
+- id: tool-jobs
+  disabled: true
+- id: tool-fs
+  disabled: true
+- id: tool-fs-search
+  disabled: true
+- id: tool-skill
+  disabled: true
+- id: skill
+  disabled: true
+- id: skill-filesystem
+  disabled: true
+- id: skill-office
+  disabled: true
+- id: tool-web
+  disabled: true
+- id: web
+  disabled: true
+- id: web-search-deepseek
+  disabled: true
+- id: web-fetch-http
+  disabled: true
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent-control
+  disabled: true
+- id: tool-workflow
+  disabled: true
+- id: workflow-ptc
+  disabled: true
+- id: tool-todo
+  disabled: true
+- id: tool-goal
+  disabled: true
+- id: goal
+  disabled: true
+- id: goal-round-driver
+  disabled: true
+- id: command-goal
+  disabled: true
+- id: tool-schedule
+  disabled: true
+- id: schedule
+  disabled: true
+- id: tool-ask-user
+  disabled: true
+- id: tool-present
+  disabled: true
+- id: tool-plugin-manager
+  disabled: true
+- id: workspace-dependencies
+  disabled: true
+- id: fs-observation-policy
+  disabled: true
+
+# ---- mount the Paper2Lab science tools ------------------------------------
+- insert:
+    - id: paper2lab-science
+      name: ./paper2lab-science-plugin.mjs
+      config:
+        scienceUrl: http://127.0.0.1:8790

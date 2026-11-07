@@ -1,0 +1,6 @@
+i1: completed | run= formula-value-mw3xrrm2-gk8e2-0 | replayed= undefined | code= undefined | inv= call-1
+i2: completed | run= formula-value-mw3xrrm2-gk8e2-0 | replayed= true | code= undefined | inv= call-2-retry
+i3: error | run= undefined | replayed= undefined | code= operation_conflict | inv= call-3-tamper
+i4: completed | run= formula-value-mw3xrrm4-bqssr-1 | replayed= undefined | code= undefined | inv= call-4-newkey
+i5: error | run= undefined | replayed= undefined | code= unknown_skill | inv= undefined
+i6: completed | run= formula-value-mw3xrrm5-4ddda-2 | replayed= undefined | code= undefined | inv= after-unknown

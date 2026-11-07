@@ -1,0 +1,2 @@
+artifact write failed as expected: ForeignKeyViolation
+orphan documents after the failed artifact write (old sequence): 1

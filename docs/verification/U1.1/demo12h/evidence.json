@@ -1,0 +1,22 @@
+{
+  "entry": "http://127.0.0.1:5178/?demo=kakeya",
+  "scope": "existing Kakeya finite-scale world, not generated MathWorld or DSH live AI",
+  "actual": "browser pointer packing0→1; formalRun; challenge submit; JSON download; reload; local restore; recomputed newRun",
+  "tests": "none created or executed per user instruction",
+  "review": "independent read-only static review: no remaining blocker; browser/build run by main agent",
+  "files": {
+    "src/App.tsx": "c8d587c2338a80cdfbc275a8e64dad7cdd188c385851f3ff43b2526028c79100",
+    "src/desk/Home.tsx": "7efadd2873e5ab3ebb5854d1c71b5d3018090f9a3ac65653465afc142149632e",
+    "src/canvas/DeskCanvas.tsx": "2cfdfcbf6ffbc3e4ef097448c8c0b8cb0c4031b27aa103b163a959fce74539ee",
+    "src/canvas/DemoGuide.tsx": "454e02f7856abc13b21259a2df0c905542164d8865a9299c84a7e36d0139f966",
+    "src/canvas/PaperModeNode.tsx": "7d667baf76892fb7930499197083e74ed2e14abd61334409fb05e09dcde3f264",
+    "src/canvas/nodes.tsx": "57d1117df71b56d7c6e417e9e5c226ed11c5c7c3ede47e47e1e06af0762ee539",
+    "src/styles/paper.css": "a06a479cc8ddb7cbf67b23be80cec4f7e6e6cad2f9caedf028be2589bb6c5e3c"
+  },
+  "remaining": [
+    "No LLM credentials configured",
+    "DSH product integration not implemented",
+    "Scientific PostgreSQL transaction/restart work remains with J1 owner",
+    "No generic generated world or Intel device measurement"
+  ]
+}

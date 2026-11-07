@@ -1,0 +1,63 @@
+
+> paper2lab@0.1.0 build /Users/c14h14n3/Desktop/Paper2Lab
+> tsc -b && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+[plugin vite:resolve] Module "module" has been externalized for browser compatibility, imported by "/Users/c14h14n3/Desktop/Paper2Lab/node_modules/.pnpm/@mujoco+mujoco@3.12.0/node_modules/@mujoco/mujoco/mujoco.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+✓ 2274 modules transformed.
+node_modules/.pnpm/jsxgraph@1.13.3/node_modules/jsxgraph/src/parser/jessiecode.js (670:26): Use of eval in "node_modules/.pnpm/jsxgraph@1.13.3/node_modules/jsxgraph/src/parser/jessiecode.js" is strongly discouraged as it poses security risks and may cause issues with minification.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /Users/c14h14n3/Desktop/Paper2Lab/src/kakeya/directions.ts is dynamically imported by /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts but also statically imported by /Users/c14h14n3/Desktop/Paper2Lab/src/paper/kakeyaGraph.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/skills/executor.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/skills/index.ts, dynamic import will not move module into another chunk.
+
+[plugin vite:reporter] 
+(!) /Users/c14h14n3/Desktop/Paper2Lab/src/kakeya/tubes.ts is dynamically imported by /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts but also statically imported by /Users/c14h14n3/Desktop/Paper2Lab/src/paper/kakeyaGraph.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/skills/executor.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/skills/index.ts, dynamic import will not move module into another chunk.
+
+[plugin vite:reporter] 
+(!) /Users/c14h14n3/Desktop/Paper2Lab/src/kakeya/voxels3d.ts is dynamically imported by /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/workers/voxelClient.ts but also statically imported by /Users/c14h14n3/Desktop/Paper2Lab/src/paper/kakeyaGraph.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/skills/executor.ts, /Users/c14h14n3/Desktop/Paper2Lab/src/skills/index.ts, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/assets/pyodide.worker-CtLPC4gq.js                     0.42 kB
+dist/index.html                                            0.76 kB │ gzip:     0.47 kB
+dist/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2             4.93 kB
+dist/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2             5.21 kB
+dist/assets/python.worker-CITaA-MW.js                      5.25 kB
+dist/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2             5.47 kB
+dist/assets/voxel.worker-B_wA0RQR.js                       6.68 kB
+dist/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2       6.91 kB
+dist/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2          6.91 kB
+dist/assets/KaTeX_Script-Regular-D3wIWfF6.woff2            9.64 kB
+dist/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2        10.34 kB
+dist/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2          11.32 kB
+dist/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2             11.35 kB
+dist/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2         12.03 kB
+dist/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2           12.22 kB
+dist/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2       13.57 kB
+dist/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2          16.40 kB
+dist/assets/KaTeX_Math-Italic-t53AETM-.woff2              16.44 kB
+dist/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2          16.78 kB
+dist/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2              16.99 kB
+dist/assets/KaTeX_Main-Bold-Cx986IdX.woff2                25.32 kB
+dist/assets/KaTeX_Main-Regular-B22Nviop.woff2             26.27 kB
+dist/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2              28.08 kB
+dist/assets/pdf.worker.min-yatZIOMy.mjs                1,375.84 kB
+dist/assets/mujoco-Bp43jdDU.wasm                      10,125.42 kB │ gzip: 2,494.32 kB
+dist/assets/index-Chx8wPqn.css                            74.10 kB │ gzip:    16.85 kB
+dist/assets/PaperDesk-1bfdDVUf.css                        80.75 kB │ gzip:    14.99 kB
+dist/assets/llmPlanner-wLDwMCIM.js                         6.66 kB │ gzip:     2.69 kB
+dist/assets/sanitizeSvg-BRz1NfP5.js                        7.32 kB │ gzip:     2.98 kB
+dist/assets/adapterRouter-CmauigF3.js                      8.10 kB │ gzip:     3.78 kB
+dist/assets/ChallengesLab-CJ-Ys1bP.js                     11.33 kB │ gzip:     4.54 kB
+dist/assets/DeskCanvas-BYeLO0aX.js                       119.11 kB │ gzip:    30.39 kB
+dist/assets/PhysicsLab-KaGiA2zQ.js                       145.68 kB │ gzip:    47.07 kB
+dist/assets/executor-C8pOILbq.js                         856.50 kB │ gzip:   237.09 kB
+dist/assets/index-P8buyVKS.js                          1,964.26 kB │ gzip:   579.82 kB
+dist/assets/PaperDesk-UhXsJ4Xl.js                      3,042.78 kB │ gzip:   835.06 kB
+dist/assets/analyze-rYBc7yjW.js                        3,656.16 kB │ gzip: 1,062.11 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 8.90s

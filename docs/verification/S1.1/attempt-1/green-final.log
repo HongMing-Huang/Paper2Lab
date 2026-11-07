@@ -1,0 +1,16 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ✓ src/skills/registry.test.ts (5 tests) 3ms
+ ✓ src/experiments/protocol.test.ts (2 tests) 3ms
+ ✓ src/skills/playPlan.test.ts (2 tests) 154ms
+ ✓ src/skills/executor.test.ts (17 tests) 175ms
+ ✓ src/skills/executorProof.test.ts (19 tests) 208ms
+ ✓ src/skills/contract.test.ts (13 tests) 543ms
+ ✓ src/skills/runProvenance.test.ts (59 tests) 937ms
+
+ Test Files  7 passed (7)
+      Tests  117 passed (117)
+   Start at  01:14:51
+   Duration  1.95s (transform 375ms, setup 0ms, collect 1.66s, tests 2.02s, environment 4ms, prepare 616ms)
+

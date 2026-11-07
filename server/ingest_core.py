@@ -77,10 +77,39 @@ def _ocr_probe() -> str:
         return f"FAILED {type(exc).__name__}: {exc}"[:400]
 
 
-def convert_pdf(path: str, title_hint: str = "Untitled paper") -> dict[str, Any]:
+def warm_pipeline() -> None:
+    """load the PDF pipeline's models NOW. Docling builds them lazily inside
+    the first convert(), so without this the model load is invisibly billed
+    to the conversion (and the 'warming' stage ends before it even starts)."""
+    get_converter().initialize_pipeline(InputFormat.PDF)
+
+
+def convert_pdf(
+    path: str,
+    title_hint: str = "Untitled paper",
+    page_range: tuple[int, int] | None = None,
+) -> dict[str, Any]:
+    """page_range: inclusive 1-based pages to parse (the paper-study flow reads
+    only the page a question is about). The returned page numbers and bboxes
+    stay GLOBAL to the source PDF; `coverage` says what was actually parsed so
+    a partial result can never pass for the whole paper."""
     import docling
 
-    doc = get_converter().convert(path).document
+    if page_range:
+        # check the range against the REAL page count before paying for any
+        # conversion (a slice of a non-existent page is a caller error)
+        import pypdfium2 as _pdfium
+
+        total_check = len(_pdfium.PdfDocument(path))
+        if page_range[0] > total_check:
+            raise RuntimeError(f"页码超出范围：论文共 {total_check} 页，请求第 {page_range[0]} 页")
+
+    kwargs: dict[str, Any] = {"page_range": page_range} if page_range else {}
+    conv = get_converter().convert(path, **kwargs)
+    doc = conv.document
+    total_pages = int(conv.input.page_count or 0)
+    if page_range and total_pages and page_range[0] > total_pages:
+        raise RuntimeError(f"页码超出范围：论文共 {total_pages} 页，请求第 {page_range[0]} 页")
     # a scanned PDF with missing/failing OCR yields an EMPTY document — the
     # old code returned "done" with 0 items and the failure only surfaced
     # later as a confusing routing refusal. Fail HERE with the real cause.
@@ -170,6 +199,11 @@ def convert_pdf(path: str, title_hint: str = "Untitled paper") -> dict[str, Any]
         # cloud-side cause (engine init failure / model load error) ships
         # in the error message instead of staying silent.
         raise RuntimeError(f"解析产出 0 个条目——扫描件需要 OCR 但未产出文本。OCR 探针：{_ocr_probe()}")
+    parsed_pages = sorted(p["page"] for p in pages)
+    stages: dict[str, int] = {}
+    for name, item in (getattr(conv, "timings", None) or {}).items():
+        times = getattr(item, "times", None) or []
+        stages[str(name)] = round(sum(times) * 1000)
     return {
         "docId": f"doc-{uuid.uuid4().hex[:10]}",
         "engine": "docling",
@@ -177,4 +211,10 @@ def convert_pdf(path: str, title_hint: str = "Untitled paper") -> dict[str, Any]
         "title": title or title_hint,
         "pages": pages,
         "items": items,
+        "coverage": {
+            "parsedPages": parsed_pages,
+            "totalPages": total_pages or len(parsed_pages),
+            "complete": bool(total_pages) and len(parsed_pages) >= total_pages,
+        },
+        "_doclingStagesMs": stages,
     }

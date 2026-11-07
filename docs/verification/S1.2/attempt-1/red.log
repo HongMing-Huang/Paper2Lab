@@ -1,0 +1,439 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ❯ src/experiments/protocol.test.ts (24 tests | 22 failed) 11ms
+   × Run results are JSON values > rejects NaN inside a typed array: error run, output_invalid, no result 3ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a finite typed array: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a nested typed array: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects an ArrayBuffer: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a SharedArrayBuffer: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a DataView: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a Map: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a Set: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a Date: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a class instance: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a function: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects a bigint: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects undefined inside an array: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > rejects NaN: error run, output_invalid, no result 1ms
+     → expected undefined to be 'output_invalid' // Object.is equality
+   × Run results are JSON values > rejects Infinity in an array: error run, output_invalid, no result 0ms
+     → expected undefined to be 'output_invalid' // Object.is equality
+   × Run results are JSON values > rejects no result at all: error run, output_invalid, no result 0ms
+     → expected the run to fail
+   × Run results are JSON values > stores its own copy: the producer can keep mutating what it returned 0ms
+     → Cannot assign to read only property '0' of object '[object Array]'
+   × Run results are JSON values > drops undefined fields and keeps explicit nulls 1ms
+     → expected { a: undefined, b: null, c: [ null ] } to strictly equal { b: null, c: [ null ] }
+   × Run results are JSON values > a thrown compute stays execution_failed 0ms
+     → expected undefined to be 'execution_failed' // Object.is equality
+   × Run results are JSON values > a contract validator can veto a finite, JSON-valid result 0ms
+     → expected the run to fail
+   × Run results are JSON values > the validator sees the stored copy, not the producer object 0ms
+     → expected undefined to strictly equal { b: 1 }
+   × Run results are JSON values > an imported resolved run is held to the same boundary 1ms
+     → expected [Function] to throw an error
+   ✓ immutable experiment history > retains model, source, parent, and original inputs after the caller changes them 1ms
+   ✓ immutable experiment history > records a failed run without pretending it resolved 0ms
+ ❯ src/skills/outputContract.test.ts (25 tests | 11 failed) 326ms
+   × registered output contract vs real kernels > scalar: real output satisfies the schema and the declared run kind 54ms
+     → expected 'formula.value' to be 'formula.curve' // Object.is equality
+   ✓ registered output contract vs real kernels > curve: real output satisfies the schema and the declared run kind 1ms
+   × registered output contract vs real kernels > tubes: real output satisfies the schema and the declared run kind 1ms
+     → expected 'kakeya.generate: expected object' to be null
+   ✓ registered output contract vs real kernels > voxels: real output satisfies the schema and the declared run kind 2ms
+   ✓ registered output contract vs real kernels > sweep: real output satisfies the schema and the declared run kind 1ms
+   ✓ registered output contract vs real kernels > perron tree: real output satisfies the schema and the declared run kind 8ms
+   ✓ registered output contract vs real kernels > needle sweep: real output satisfies the schema and the declared run kind 1ms
+   ✓ registered output contract vs real kernels > lv ode: real output satisfies the schema and the declared run kind 2ms
+   ✓ registered output contract vs real kernels > phase ode: real output satisfies the schema and the declared run kind 33ms
+   ✓ registered output contract vs real kernels > model build: real output satisfies the schema and the declared run kind 1ms
+   × registered output contract vs real kernels > model solve: real output satisfies the schema and the declared run kind 2ms
+     → expected 'model.solve.period0: expected number' to be null
+   ✓ registered output contract vs real kernels > mujoco: real output satisfies the schema and the declared run kind 88ms
+   × registered output contract vs real kernels > projectile: real output satisfies the schema and the declared run kind 52ms
+     → expected 'challenge.attempt: missing field resu…' to be null
+   × registered output contract vs real kernels > pendulum: real output satisfies the schema and the declared run kind 41ms
+     → expected 'challenge.attempt: missing field resu…' to be null
+   × registered output contract vs real kernels > tubes challenge: real output satisfies the schema and the declared run kind 3ms
+     → expected 'challenge.attempt: missing field resu…' to be null
+   ✓ registered output contract vs real kernels > period0 is declared nullable where a decaying signal really yields null 9ms
+   ✓ registered output contract vs real kernels > period0 is a number where the orbit really closes 11ms
+   ✓ registered output contract vs real kernels > run-less skills: fork, compare and trace payloads satisfy their schemas 1ms
+   × registered output contract vs real kernels > a skill name with a registered fork target keeps the registered kind on its fork 1ms
+     → expected 'formula.value' to be 'formula.curve' // Object.is equality
+   × output that breaks the contract becomes an error run > a wrong shape: output_invalid, recorded as an error, no result to project 0ms
+     → expected 'ok' to be 'error' // Object.is equality
+   × output that breaks the contract becomes an error run > a raw typed array: output_invalid, recorded as an error, no result to project 0ms
+     → expected 'ok' to be 'error' // Object.is equality
+   × output that breaks the contract becomes an error run > a NaN metric: output_invalid, recorded as an error, no result to project 0ms
+     → expected 'execution_failed' to be 'output_invalid' // Object.is equality
+   ✓ output that breaks the contract becomes an error run > a kernel throwing stays execution_failed, not output_invalid 0ms
+   × ode.phase declares only what its kernel does > rejects system.params instead of silently ignoring them 7ms
+     → expected 'ok' to be 'error' // Object.is equality
+   ✓ ode.phase declares only what its kernel does > still accepts the empty params the desk store sends 7ms
+ ❯ src/paper/kakeyaGraph.test.ts (2 tests | 1 failed) 990ms
+   × kakeya.voxel occupancy grid (S1.2 binary boundary) > the run holds a sealed reference; the renderer gets a typed copy that cannot reach the evidence 167ms
+     → expected undefined to match object { artifact: 'ndarray', …(2) }
+   ✓ kakeya.sweep on-demand (#23) > off → resolves to [] with no grid points; on → full SWEEP_NS series; off again → []  821ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/experiments/artifacts.test.ts [ src/experiments/artifacts.test.ts ]
+Error: Cannot find module './artifacts' imported from '/Users/c14h14n3/Desktop/Paper2Lab/src/experiments/artifacts.test.ts'
+ ❯ src/experiments/artifacts.test.ts:4:1
+      2| import { createHash } from 'node:crypto'
+      3| import { describe, expect, it } from 'vitest'
+      4| import { readArtifact, sealArray, sha256Hex } from './artifacts'
+       | ^
+      5| import { ENGINES, executeSpec, exportExperimentRuns } from './protocol'
+      6| import { importRuns } from './runRepository'
+
+Caused by: Error: Failed to load url ./artifacts (resolved id: ./artifacts) in /Users/c14h14n3/Desktop/Paper2Lab/src/experiments/artifacts.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/.pnpm/vite@7.3.6_@types+node@26.6.3_tsx@4.23.15/node_modules/vite/dist/node/chunks/config.js:22739:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/35]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 34 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects NaN inside a typed array: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a finite typed array: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a nested typed array: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects an ArrayBuffer: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a SharedArrayBuffer: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a DataView: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a Map: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a Set: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a Date: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a class instance: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a function: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects a bigint: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects undefined inside an array: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects no result at all: error run, output_invalid, no result
+Error: expected the run to fail
+ ❯ failure src/experiments/protocol.test.ts:13:11
+     11|       return error as ExperimentExecutionError
+     12|     }
+     13|     throw new Error('expected the run to fail')
+       |           ^
+     14|   }
+     15|   class NotPlain { value = 1 }
+ ❯ src/experiments/protocol.test.ts:35:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/35]⎯
+
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects NaN: error run, output_invalid, no result
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > rejects Infinity in an array: error run, output_invalid, no result
+AssertionError: expected undefined to be 'output_invalid' // Object.is equality
+
+- Expected: 
+"output_invalid"
+
++ Received: 
+undefined
+
+ ❯ src/experiments/protocol.test.ts:37:24
+     35|     const error = await failure(() => value)
+     36|     expect(error).toBeInstanceOf(ExperimentExecutionError)
+     37|     expect(error.code).toBe('output_invalid')
+       |                        ^
+     38|     expect(error.run.status).toBe('error')
+     39|     expect(error.run.result).toBeUndefined()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/35]⎯
+
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > stores its own copy: the producer can keep mutating what it returned
+TypeError: Cannot assign to read only property '0' of object '[object Array]'
+ ❯ src/experiments/protocol.test.ts:46:22
+     44|     const produced = { points: [1, 2], meta: { peak: 3 } }
+     45|     const stored = await run(() => produced)
+     46|     produced.points[0] = 99
+       |                      ^
+     47|     produced.meta.peak = 99
+     48|     expect(stored.result).toEqual({ points: [1, 2], meta: { peak: 3 } …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/35]⎯
+
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > drops undefined fields and keeps explicit nulls
+AssertionError: expected { a: undefined, b: null, c: [ null ] } to strictly equal { b: null, c: [ null ] }
+
+- Expected
++ Received
+
+  {
++   "a": undefined,
+    "b": null,
+    "c": [
+      null,
+    ],
+  }
+
+ ❯ src/experiments/protocol.test.ts:55:27
+     53|   it('drops undefined fields and keeps explicit nulls', async () => {
+     54|     const stored = await run(() => ({ a: undefined, b: null, c: [null]…
+     55|     expect(stored.result).toStrictEqual({ b: null, c: [null] })
+       |                           ^
+     56|   })
+     57| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/35]⎯
+
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > a thrown compute stays execution_failed
+AssertionError: expected undefined to be 'execution_failed' // Object.is equality
+
+- Expected: 
+"execution_failed"
+
++ Received: 
+undefined
+
+ ❯ src/experiments/protocol.test.ts:60:24
+     58|   it('a thrown compute stays execution_failed', async () => {
+     59|     const error = await failure(() => { throw new Error('domain error'…
+     60|     expect(error.code).toBe('execution_failed')
+       |                        ^
+     61|     expect(error.run.errors).toEqual(['domain error'])
+     62|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/35]⎯
+
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > a contract validator can veto a finite, JSON-valid result
+Error: expected the run to fail
+ ❯ failure src/experiments/protocol.test.ts:13:11
+     11|       return error as ExperimentExecutionError
+     12|     }
+     13|     throw new Error('expected the run to fail')
+       |           ^
+     14|   }
+     15|   class NotPlain { value = 1 }
+ ❯ src/experiments/protocol.test.ts:65:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/35]⎯
+
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > the validator sees the stored copy, not the producer object
+AssertionError: expected undefined to strictly equal { b: 1 }
+
+- Expected: 
+{
+  "b": 1,
+}
+
++ Received: 
+undefined
+
+ ❯ src/experiments/protocol.test.ts:75:18
+     73|     let seen: unknown
+     74|     await run(() => produced, { validateOutput: (r: unknown) => { seen…
+     75|     expect(seen).toStrictEqual({ b: 1 })
+       |                  ^
+     76|     expect(seen).not.toBe(produced)
+     77|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/35]⎯
+
+ FAIL  src/experiments/protocol.test.ts > Run results are JSON values > an imported resolved run is held to the same boundary
+AssertionError: expected [Function] to throw an error
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ ❯ src/experiments/protocol.test.ts:84:96
+     82|       engine: 'test', engineVersion: '0', durationMs: 0, evidence: 'CA…
+     83|     })
+     84|     expect(() => registerImportedRun(resolved('import-binary', { data:…
+       |                                                                                                ^
+     85|     expect(() => registerImportedRun(resolved('import-nan', { peak: Na…
+     86|     expect(getExperimentRun('import-binary')).toBeUndefined()
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/35]⎯
+
+ FAIL  src/paper/kakeyaGraph.test.ts > kakeya.voxel occupancy grid (S1.2 binary boundary) > the run holds a sealed reference; the renderer gets a typed copy that cannot reach the evidence
+AssertionError: expected undefined to match object { artifact: 'ndarray', …(2) }
+
+- Expected: 
+{
+  "artifact": "ndarray",
+  "dtype": "uint16",
+  "shape": [
+    16,
+    16,
+    16,
+  ],
+}
+
++ Received: 
+undefined
+
+ ❯ src/paper/kakeyaGraph.test.ts:31:29
+     29|       expect(run.status).toBe('resolved')
+     30|       const grid = run.result!.visGrid!
+     31|       expect(grid.artifact).toMatchObject({ artifact: 'ndarray', dtype…
+       |                             ^
+     32|       expect(getExperimentRun(run.runId)?.result).toEqual(run.result)
+     33|       const exported = JSON.parse(exportExperimentRuns([run.runId]))[0…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/35]⎯
+
+ FAIL  src/skills/outputContract.test.ts > registered output contract vs real kernels > scalar: real output satisfies the schema and the declared run kind
+AssertionError: expected 'formula.value' to be 'formula.curve' // Object.is equality
+
+Expected: "formula.curve"
+Received: "formula.value"
+
+ ❯ src/skills/outputContract.test.ts:42:31
+     40|     if (out.status !== 'ok' || !out.run) throw new Error('no run')
+     41|     const declared = getSkill(skill)!
+     42|     expect(out.run.spec.kind).toBe(declared.runKind)
+       |                               ^
+     43|     expect(schemaError(declared.outputSchema, out.run.result, skill)).…
+     44|   }, 120_000)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/35]⎯
+
+ FAIL  src/skills/outputContract.test.ts > registered output contract vs real kernels > tubes: real output satisfies the schema and the declared run kind
+AssertionError: expected 'kakeya.generate: expected object' to be null
+
+- Expected: 
+null
+
++ Received: 
+"kakeya.generate: expected object"
+
+ ❯ src/skills/outputContract.test.ts:43:71
+     41|     const declared = getSkill(skill)!
+     42|     expect(out.run.spec.kind).toBe(declared.runKind)
+     43|     expect(schemaError(declared.outputSchema, out.run.result, skill)).…
+       |                                                                       ^
+     44|   }, 120_000)
+     45| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/35]⎯
+
+ FAIL  src/skills/outputContract.test.ts > registered output contract vs real kernels > model solve: real output satisfies the schema and the declared run kind
+AssertionError: expected 'model.solve.period0: expected number' to be null
+
+- Expected: 
+null
+
++ Received: 
+"model.solve.period0: expected number"
+
+ ❯ src/skills/outputContract.test.ts:43:71
+     41|     const declared = getSkill(skill)!
+     42|     expect(out.run.spec.kind).toBe(declared.runKind)
+     43|     expect(schemaError(declared.outputSchema, out.run.result, skill)).…
+       |                                                                       ^
+     44|   }, 120_000)
+     45| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/35]⎯
+
+ FAIL  src/skills/outputContract.test.ts > registered output contract vs real kernels > projectile: real output satisfies the schema and the declared run kind
+ FAIL  src/skills/outputContract.test.ts > registered output contract vs real kernels > pendulum: real output satisfies the schema and the declared run kind
+ FAIL  src/skills/outputContract.test.ts > registered output contract vs real kernels > tubes challenge: real output satisfies the schema and the declared run kind
+AssertionError: expected 'challenge.attempt: missing field resu…' to be null
+
+- Expected: 
+null
+
++ Received: 
+"challenge.attempt: missing field result"
+
+ ❯ src/skills/outputContract.test.ts:43:71
+     41|     const declared = getSkill(skill)!
+     42|     expect(out.run.spec.kind).toBe(declared.runKind)
+     43|     expect(schemaError(declared.outputSchema, out.run.result, skill)).…
+       |                                                                       ^
+     44|   }, 120_000)
+     45| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/35]⎯
+
+ FAIL  src/skills/outputContract.test.ts > registered output contract vs real kernels > a skill name with a registered fork target keeps the registered kind on its fork
+AssertionError: expected 'formula.value' to be 'formula.curve' // Object.is equality
+
+Expected: "formula.curve"
+Received: "formula.value"
+
+ ❯ src/skills/outputContract.test.ts:83:32
+     81|     const fork = await executeSkill('experiment.fork', { sourceRunId: …
+     82|     if (fork.status !== 'ok' || !fork.run) throw new Error('no fork')
+     83|     expect(fork.run.spec.kind).toBe(getSkill('formula.evaluate')!.runK…
+       |                                ^
+     84|   })
+     85| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/35]⎯
+
+ FAIL  src/skills/outputContract.test.ts > output that breaks the contract becomes an error run > a wrong shape: output_invalid, recorded as an error, no result to project
+ FAIL  src/skills/outputContract.test.ts > output that breaks the contract becomes an error run > a raw typed array: output_invalid, recorded as an error, no result to project
+AssertionError: expected 'ok' to be 'error' // Object.is equality
+
+Expected: "error"
+Received: "ok"
+
+ ❯ src/skills/outputContract.test.ts:103:24
+    101|   ])('%s: output_invalid, recorded as an error, no result to project',…
+    102|     const out = await runWith(bad)
+    103|     expect(out.status).toBe('error')
+       |                        ^
+    104|     expect(out.status === 'error' && out.code).toBe('output_invalid')
+    105|     const run = failedRun(out)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/35]⎯
+
+ FAIL  src/skills/outputContract.test.ts > output that breaks the contract becomes an error run > a NaN metric: output_invalid, recorded as an error, no result to project
+AssertionError: expected 'execution_failed' to be 'output_invalid' // Object.is equality
+
+Expected: "output_invalid"
+Received: "execution_failed"
+
+ ❯ src/skills/outputContract.test.ts:104:48
+    102|     const out = await runWith(bad)
+    103|     expect(out.status).toBe('error')
+    104|     expect(out.status === 'error' && out.code).toBe('output_invalid')
+       |                                                ^
+    105|     const run = failedRun(out)
+    106|     expect(run?.status).toBe('error')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/35]⎯
+
+ FAIL  src/skills/outputContract.test.ts > ode.phase declares only what its kernel does > rejects system.params instead of silently ignoring them
+AssertionError: expected 'ok' to be 'error' // Object.is equality
+
+Expected: "error"
+Received: "ok"
+
+ ❯ src/skills/outputContract.test.ts:121:24
+    119|   it('rejects system.params instead of silently ignoring them', async …
+    120|     const out = await executeSkill('ode.phase', { system: { ...orbit.s…
+    121|     expect(out.status).toBe('error')
+       |                        ^
+    122|     expect(out.status === 'error' && out.message).toMatch(/params/)
+    123|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/35]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  34 failed | 17 passed (51)
+   Start at  01:28:03
+   Duration  1.64s (transform 181ms, setup 0ms, collect 342ms, tests 1.33s, environment 0ms, prepare 329ms)
+

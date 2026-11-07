@@ -41,7 +41,7 @@ class TestSupersedeCancelsVlm:
 
         state = {"cancelled": False, "started": False}
 
-        async def slow_parse(pdf_path, provider, on_stage=None):
+        async def slow_parse(pdf_path, provider, on_stage=None, **_kwargs):
             state["started"] = True
             try:
                 await asyncio.sleep(600)  # a long multi-page vision parse
@@ -141,7 +141,7 @@ class TestVlmAdmissionAndQueue:
     slot finally frees."""
 
     def _fake_slow(self, main_mod, started: dict, duration: float = 600.0):
-        async def slow_parse(pdf_path, provider, on_stage=None):
+        async def slow_parse(pdf_path, provider, on_stage=None, **_kwargs):
             started[pdf_path] = True
             try:
                 await asyncio.sleep(duration)

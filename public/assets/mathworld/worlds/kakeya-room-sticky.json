@@ -1,0 +1,136 @@
+{
+  "schema": "paper2lab.mathworld/v1",
+  "id": "kakeya-room-sticky",
+  "title": "方向之室 · 进阶：三簇合围粘性芯",
+  "origin": {
+    "kind": "dev-sample",
+    "note": "开发样例：δ-管族来自 Wang–Zahl 方向集思想（Fibonacci 均匀方向 + 固定半径/管长），16 管四簇（三动一固）的合围关卡为手写的有限尺度游戏设计；不是 PDF 解析结果，也不是 Qwen 生成，更不是论文证明"
+  },
+  "premise": "16 根 δ=2⁻⁴、管长 0.7 的管散布在计分立方体里，分成四个空间簇：三簇彩色可整簇拖动，灰色一簇固定不动。比入门关更多的管、更紧的预算——想想 Wang–Zahl 构造里『把方向排开、把管叠起来』的思路。",
+  "objective": "把三簇可动管都叠向灰色固定簇所在区域，让全族并集体积降到立方体的 12.3% 以下（开局约 13.2%）。",
+  "model": {
+    "kind": "kakeya",
+    "deltaExp": 4,
+    "nTubes": 16,
+    "length": 0.7,
+    "packing": 0,
+    "res": 64,
+    "refineRes": 96,
+    "clusters": [
+      {
+        "id": "g0",
+        "label": "北簇",
+        "tubes": [
+          0,
+          9,
+          10
+        ],
+        "operable": true
+      },
+      {
+        "id": "g1",
+        "label": "东簇",
+        "tubes": [
+          1,
+          3,
+          4,
+          5,
+          11
+        ],
+        "operable": true
+      },
+      {
+        "id": "g2",
+        "label": "南簇",
+        "tubes": [
+          6,
+          8,
+          14
+        ],
+        "operable": true
+      },
+      {
+        "id": "g3",
+        "label": "粘性芯",
+        "tubes": [
+          2,
+          7,
+          12,
+          13,
+          15
+        ],
+        "operable": false
+      }
+    ]
+  },
+  "controls": [
+    {
+      "kind": "cluster-drag",
+      "id": "drag-g0",
+      "cluster": "g0",
+      "label": "北簇"
+    },
+    {
+      "kind": "cluster-drag",
+      "id": "drag-g1",
+      "cluster": "g1",
+      "label": "东簇"
+    },
+    {
+      "kind": "cluster-drag",
+      "id": "drag-g2",
+      "cluster": "g2",
+      "label": "南簇"
+    }
+  ],
+  "goal": {
+    "attempts": 10,
+    "constraints": [
+      {
+        "kind": "kakeya-volume",
+        "id": "vol",
+        "label": "并集体积",
+        "maxVolume": 0.123,
+        "convTol": 0.01
+      }
+    ]
+  },
+  "scene": {
+    "axes": {
+      "x": {
+        "source": "x",
+        "min": 0,
+        "max": 1,
+        "length": 8,
+        "label": "x"
+      },
+      "y": {
+        "source": "y",
+        "min": 0,
+        "max": 1,
+        "length": 8,
+        "label": "y"
+      },
+      "z": {
+        "source": "z",
+        "min": 0,
+        "max": 1,
+        "length": 8,
+        "label": "z"
+      }
+    }
+  },
+  "rules": [
+    "拖动彩色管整簇时只做粗网格预览（同一内核、res=22），不计分；松手才提交正式 kakeya.measure（res=64，另跑 res=96 加密对照）。",
+    "管的方向、长度、半径固定；整根胶囊（含半径）必须留在计分域 [0,1]³ 内，越界的布局直接拒绝。",
+    "两种分辨率的体积估计相差超过 convTol 时判 unknown；有限尺度估计不构成对 Kakeya 猜想的任何证明。"
+  ],
+  "paperRef": {
+    "url": "/papers/wang-zahl-kakeya3d.pdf",
+    "title": "Wang–Zahl: Kakeya sets and the maximal function (3D 版论文原文)",
+    "anchor": {
+      "page": 2,
+      "note": "方向之室关卡设计所参照的方向集思想出处；关卡本身是手写的有限尺度游戏设计，非论文结论"
+    }
+  }
+}

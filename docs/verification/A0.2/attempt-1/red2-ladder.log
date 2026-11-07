@@ -1,0 +1,90 @@
+...FFF..                                                                 [100%]
+=================================== FAILURES ===================================
+_ TestStructuredSummaryWithSelectors.test_a_huge_comparison_never_busts_the_budget _
+
+self = <test_agent_a02.TestStructuredSummaryWithSelectors object at 0x107f66840>
+
+    def test_a_huge_comparison_never_busts_the_budget(self):
+        huge_cmp = {"rows": [{"key": f"k{i}", "a": 1, "b": 2, "delta": 3, "pad": "c" * 400} for i in range(20)]}
+        big = {"status": "ok", "runs": [{"runId": "r1", "metrics": {"peak": 1}}], "comparison": huge_cmp}
+        s = _tool_output_json(big)
+>       assert len(s) <= 8000, f"comparison guard failed: {len(s)}"
+E       AssertionError: comparison guard failed: 9449
+E       assert 9449 <= 8000
+E        +  where 9449 = len('{"truncated": true, "note": "full result exceeded the 8000-char tool-output budget — retained in full behind artifact...ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}]}}')
+
+server/tests/test_agent_a02.py:57: AssertionError
+_ TestStructuredSummaryWithSelectors.test_the_metrics_tier_is_actually_reachable_when_it_fits _
+
+self = <test_agent_a02.TestStructuredSummaryWithSelectors object at 0x107f66b10>
+
+    def test_the_metrics_tier_is_actually_reachable_when_it_fits(self):
+        # two moderately-large metric blobs: full > budget, but the summary
+        # WITH metrics fits → metrics must be attached (no dead tier)
+        big = {"status": "ok", "runs": [{"runId": f"r{i}", "metrics": {"m": "v" * 3500}} for i in range(2)]}
+        s = _tool_output_json(big)
+        slim = json.loads(s)
+>       assert slim["truncated"] is True and len(slim["runIds"]) == 2
+               ^^^^^^^^^^^^^^^^^
+E       KeyError: 'truncated'
+
+server/tests/test_agent_a02.py:69: KeyError
+_ TestStructuredSummaryWithSelectors.test_every_degradation_level_stays_within_budget_and_valid _
+
+self = <test_agent_a02.TestStructuredSummaryWithSelectors object at 0x107e31220>
+
+    def test_every_degradation_level_stays_within_budget_and_valid(self):
+        for pad_metrics, pad_cmp, n_runs, is_error in [
+            (3000, 0, 4, False), (100, 9000, 2, False), (3500, 0, 2, False),
+            (3000, 0, 4, True), (100, 9000, 2, True), (6000, 6000, 6, True),
+        ]:
+            payload = {
+                "status": "error" if is_error else "ok",
+                "runs": [{"runId": f"r{i}", "metrics": {"m": "x" * pad_metrics}} for i in range(n_runs)],
+            }
+            if pad_cmp:
+                payload["comparison"] = {"pad": "y" * pad_cmp}
+            if is_error:
+                payload["message"] = "terminal op failed"
+            s = _tool_output_json(payload)
+>           assert len(s) <= 8000, (pad_metrics, pad_cmp, n_runs, len(s))
+E           AssertionError: (100, 9000, 2, 9366)
+E           assert 9366 <= 8000
+E            +  where 9366 = len('{"truncated": true, "note": "full result exceeded the 8000-char tool-output budget — retained in full behind artifact...yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"}}')
+
+server/tests/test_agent_a02.py:86: AssertionError
+=============================== warnings summary ===============================
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy
+  test_agent_a02.py:24: PytestWarning: The test <Function test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_oversized_result_degrades_to_a_summary_pointing_at_the_full_copy(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_an_error_batch_keeps_its_semantics_in_the_degraded_summary
+  test_agent_a02.py:40: PytestWarning: The test <Function test_an_error_batch_keeps_its_semantics_in_the_degraded_summary> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_an_error_batch_keeps_its_semantics_in_the_degraded_summary(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_small_result_is_verbatim_and_registers_nothing
+  test_agent_a02.py:47: PytestWarning: The test <Function test_a_small_result_is_verbatim_and_registers_nothing> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_small_result_is_verbatim_and_registers_nothing(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_huge_comparison_never_busts_the_budget
+  test_agent_a02.py:53: PytestWarning: The test <Function test_a_huge_comparison_never_busts_the_budget> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_a_huge_comparison_never_busts_the_budget(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_metrics_tier_is_actually_reachable_when_it_fits
+  test_agent_a02.py:63: PytestWarning: The test <Function test_the_metrics_tier_is_actually_reachable_when_it_fits> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_metrics_tier_is_actually_reachable_when_it_fits(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_every_degradation_level_stays_within_budget_and_valid
+  test_agent_a02.py:72: PytestWarning: The test <Function test_every_degradation_level_stays_within_budget_and_valid> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_every_degradation_level_stays_within_budget_and_valid(self):
+
+test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_artifact_registry_is_bounded_and_evicts_oldest
+  test_agent_a02.py:93: PytestWarning: The test <Function test_the_artifact_registry_is_bounded_and_evicts_oldest> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_artifact_registry_is_bounded_and_evicts_oldest(self):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED server/tests/test_agent_a02.py::TestStructuredSummaryWithSelectors::test_a_huge_comparison_never_busts_the_budget
+FAILED server/tests/test_agent_a02.py::TestStructuredSummaryWithSelectors::test_the_metrics_tier_is_actually_reachable_when_it_fits
+FAILED server/tests/test_agent_a02.py::TestStructuredSummaryWithSelectors::test_every_degradation_level_stays_within_budget_and_valid
+3 failed, 5 passed, 7 warnings in 0.19s

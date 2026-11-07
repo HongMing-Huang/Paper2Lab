@@ -51,6 +51,9 @@ async function main() {
     await page.locator('button.home-drop').click()
     const chooser = await chooserP
     await chooser.setFiles([SAMPLE])
+    // CLI-151: a dropped PDF opens the paper study space first; the full
+    // parse → experiment desk is its explicit action
+    await page.getByTestId('study-full-parse').click()
     // REAL Docling parse on the shared CI runner takes >180s (2-page PDF,
     // CPU OCR+layout); locally ~45s warm. 480s keeps CI honest without
     // flaking — the pipeline is genuine compute, not a mocked instant.

@@ -1,0 +1,39 @@
+{
+  "at": "2026-11-06T11:57:40.313889+00:00",
+  "issue": "CLI-111",
+  "scope": "bounded UI/launch/stdio defect repair; not whole U1.1 or C1",
+  "head": "37352d9e09f2e2c5f63017b3cfffc33471e708e0",
+  "files": {
+    "src/desk/PaperDesk.tsx": "e794ea64df0c9e6cd8a1d3bd5eac1c7deea9207ae5161ebf2355d2f2229a851a",
+    "src/desk/agentBridge.ts": "93661eb2932a5bcb7cff90b0cae4088066aae03fed536f9db2acda49e6bda3b7",
+    "src/desk/agentActions.ts": "75f8e301e869c4b78eb07b48f9d711eb18d9c8e1020e0c41a24d764af95ccb17",
+    "src/skills/formulaPlan.ts": "ac4e2139dbcf2527d70f10b3d3c032f9dddc0efd7253152618793c05a747d045",
+    "src/skills/formulaExecutor.ts": "eb8f415f82134455602d1e6a410b27e41d67422b0699d0105e84ab0cb9d4ab53",
+    "scripts/devservers.sh": "74973dac63f5af169cd7ca601fd4a56e0d6f6619e9de022479ff0679ea98f54c",
+    "scripts/engine_once.ts": "f2b7d50bdab9d91cb4781c5c0a4ae5b01bb589afe2875adb2290f2b34b56aa5c",
+    "scripts/engine_once.mjs": "c471986db0fff50ac8fd79e06f7717f9e41e116d422ebdf750199581b5c24bff",
+    "vite.config.ts": "9efd5844a45911a64c62ba999fc39e1c3c07218c5b1b5502293a9677f6fc2ddc"
+  },
+  "observed": {
+    "real_pdf": "public/papers/sample-harmonic.pdf (worked mathematical note; not unseen-paper C1 acceptance)",
+    "parser": "Docling 2.131.0; 2 pages / 18 items / 2 formulas",
+    "browser": "PDF upload → Playable → Play → explicit local parameter command → actual fork/compare → invalid a=99 refused → Agent SOP refused → JSON download",
+    "formal_runs": "formula-curve-mw4x1yqf-tj3oa-0",
+    "http": "before502 after200;361points;new Run visible in GET /api/engine/runs and own JSONL",
+    "review": "independent read-only agent reviewed; no remaining blocker; did not independently rerun browser",
+    "finalBuild": "tsc -b and vite build passed after final parser correction; 9.95s"
+  },
+  "not_completed": [
+    "DSH/Qwen live turn",
+    "PostgreSQL scientific transaction/restart recovery",
+    "generic generated MathWorld",
+    "OpenVINO model service/device integration",
+    "new Intel hardware performance"
+  ],
+  "limits": [
+    "No PG/Redis destructive tests",
+    "No new dependencies or test files",
+    "Build retains existing large bundle / JSXGraph eval / MuJoCo externalization warnings",
+    "Preserved original ZCode backend/CI dirty work; only engine_once tail and derived bundle increment repaired"
+  ]
+}

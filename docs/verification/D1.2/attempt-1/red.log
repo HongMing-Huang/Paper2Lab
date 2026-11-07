@@ -1,0 +1,17 @@
+
+==================================== ERRORS ====================================
+____________________ ERROR collecting test_db_import_d12.py ____________________
+ImportError while importing test module '/Users/c14h14n3/Desktop/Paper2Lab/server/tests/test_db_import_d12.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+server/tests/test_db_import_d12.py:20: in <module>
+    from server.db_import import import_doc_snapshots, import_run_log, import_report  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'server.db_import'
+=========================== short test summary info ============================
+ERROR server/tests/test_db_import_d12.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.10s

@@ -1,12 +1,12 @@
 // Small helpers turning kernel outputs into chart-ready rows.
-import type { VoxelResult } from './voxels3d'
+import type { VoxelMetrics } from './voxels3d'
 
 export interface HistRow {
   multiplicity: number
   count: number
 }
 
-export function histogramRows(result: VoxelResult, maxM?: number): HistRow[] {
+export function histogramRows(result: VoxelMetrics, maxM?: number): HistRow[] {
   const cap = Math.min(maxM ?? result.maxMultiplicity, result.histogram.length - 1)
   const rows: HistRow[] = []
   for (let m = 1; m <= cap; m++) rows.push({ multiplicity: m, count: result.histogram[m] ?? 0 })
@@ -14,7 +14,7 @@ export function histogramRows(result: VoxelResult, maxM?: number): HistRow[] {
 }
 
 /** overlap efficiency: |⋃T| / Σ|T| — 1 means no overlap at all. */
-export function unionEfficiency(result: VoxelResult): number {
+export function unionEfficiency(result: VoxelMetrics): number {
   return result.sumTubeVolume > 0 ? Math.min(1, result.occupiedVolume / result.sumTubeVolume) : 0
 }
 

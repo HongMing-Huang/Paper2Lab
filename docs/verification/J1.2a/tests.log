@@ -1,0 +1,16 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ✓ server/node/science.test.ts (9 tests) 45008ms
+   ✓ J1.2a — real compute through the transactional worker > a formula.plot operation commits one real Run and replays idempotently  832ms
+   ✓ J1.2a — real compute through the transactional worker > a formal skill without a plan refuses (needs_input), committing nothing  416ms
+   ✓ J1.2a — real compute through the transactional worker > a fork chains onto the PostgreSQL parent with correct lineage and values  1020ms
+   ✓ J1.2a — cancel, isolation and health during long computes > cancelling a running long compute kills only ITS engine; a parallel task completes  1429ms
+   ✓ J1.2a — cancel, isolation and health during long computes > health stays green and the lease renews while a long compute runs  9787ms
+   ✓ J1.2a — fencing and crash recovery > a worker crash before commit leaves no run; redelivery commits exactly one  31400ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  22:20:53
+   Duration  45.47s (transform 55ms, setup 0ms, collect 167ms, tests 45.01s, environment 0ms, prepare 44ms)
+

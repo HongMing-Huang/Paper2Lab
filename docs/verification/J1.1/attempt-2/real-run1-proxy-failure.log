@@ -1,0 +1,40 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ TestRealParse.test_real_docling_paper_is_parsed_by_the_queue_worker ______
+
+self = <test_jobs_j11.TestRealParse object at 0x12a01f710>
+env = PosixPath('/private/var/folders/6r/1091n5750q556h5jgw52s5vr0000gn/T/pytest-of-c14h14n3/pytest-108/test_real_docling_paper_is_par0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12a05c140>
+
+    def test_real_docling_paper_is_parsed_by_the_queue_worker(self, env, monkeypatch):
+        """the REAL parse task (PLAN J1.1 gate): an actual paper PDF through
+        the queue worker's warm docling child — named real_docling so the
+        quick CI set (-k "not real_docling") excludes it like the other
+        model-loading tests; the daily full job runs it"""
+        monkeypatch.delenv("PAPER2LAB_TEST_CONVERT")
+        pdf = (ROOT / "public" / "papers" / "ode-lotka-volterra.pdf").read_bytes()
+        with TestClient(app) as client:
+            res = client.post(
+                "/api/ingest",
+                files={"file": ("ode-lotka-volterra.pdf", io.BytesIO(pdf), "application/pdf")},
+                data={"mode": "docling"},
+            )
+            assert res.status_code == 202, res.text
+            submit = res.json()
+            assert submit["status"] == "queued"
+            assert _run_worker(join_timeout=600) == 0
+            status = client.get(f"/api/ingest/{submit['jobId']}").json()
+>       assert status["status"] == "done", status
+E       AssertionError: {'jobId': '1f136a4ee1d7', 'filename': 'ode-lotka-volterra.pdf', 'status': 'error', 'stage': None, ...}
+E       assert 'error' == 'done'
+E         
+E         - done
+E         + error
+
+server/tests/test_jobs_j11.py:331: AssertionError
+============================= slowest 2 durations ==============================
+9.44s call     test_jobs_j11.py::TestRealParse::test_real_docling_paper_is_parsed_by_the_queue_worker
+0.04s setup    test_jobs_j11.py::TestRealParse::test_real_docling_paper_is_parsed_by_the_queue_worker
+=========================== short test summary info ============================
+FAILED server/tests/test_jobs_j11.py::TestRealParse::test_real_docling_paper_is_parsed_by_the_queue_worker
+1 failed, 10 deselected in 12.60s

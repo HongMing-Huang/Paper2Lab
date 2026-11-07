@@ -1,0 +1,279 @@
+{
+  "root": "/Users/c14h14n3/Desktop/Paper2Lab",
+  "checked": 54,
+  "readable": 54,
+  "errors": [],
+  "scope": "local file readability only; not tracked/remote availability or product acceptance",
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "bytes": 79651,
+      "sha256": "4db64fc317ac3c360c1090d6ccfd1a4af2a96a743813bd2943076c75bdf05d6d"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3521,
+      "sha256": "026436c77fd871145287532bdc99b9635e3c1ae77f019cd9ba5fef7710cec9ce"
+    },
+    {
+      "path": "DEVELOPMENT_PROMPT.md",
+      "bytes": 12063,
+      "sha256": "9aa5d55584c575c50fd3e0b7d5c85ed0d30e129f775738645db41f8b6c08e79b"
+    },
+    {
+      "path": "PLAN.md",
+      "bytes": 45960,
+      "sha256": "5b19bbf309aae17f214554f4cca5dcded9cd78521196ae9bfae2e80e2ffaf026"
+    },
+    {
+      "path": "LOOP.md",
+      "bytes": 18383,
+      "sha256": "c072a59991b23f0a9c464e70aa93bf32baf78678c9357f0fd1733daef65fc07a"
+    },
+    {
+      "path": "STATE.md",
+      "bytes": 12106,
+      "sha256": "897000aaf41c8d7fe8cb4def8e05f9c9c0539396946fe4bae734e74b3b809848"
+    },
+    {
+      "path": "docs/development/codebase-map.md",
+      "bytes": 9521,
+      "sha256": "c19a6418d9dbaaa4eaa0d006a94d3ed958112df381d5c422bb658d5402fdf774"
+    },
+    {
+      "path": "docs/development/zcode-loop.md",
+      "bytes": 5542,
+      "sha256": "f11d4cf38d2df49d7dc1f9da5af1b373421bacf3e6b90ace8fd2a279afc85dd3"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1599,
+      "sha256": "4b1465553889fd5ccddfb317ab92263027d6a528c5a62b269b1937fe6d96a08c"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 204822,
+      "sha256": "ed5c8afe1ebb47c1c95fb27247c38ae8bc3491d2161177e9366320cc6a29c52d"
+    },
+    {
+      "path": "vite.config.ts",
+      "bytes": 737,
+      "sha256": "446cfb9a5bb6e86c5372862759e3f0cc5c0c2b6a67d178e2e644358933e97ca4"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 564,
+      "sha256": "4c37cabf8bac39cdec4ae58aac5ba82a091ab9836269146503a514adc3dc013c"
+    },
+    {
+      "path": "src/main.tsx",
+      "bytes": 737,
+      "sha256": "93a4905969e3e91293e515836ccb0f39e4df921cb85e23e2d388e15620b09fbb"
+    },
+    {
+      "path": "src/App.tsx",
+      "bytes": 2842,
+      "sha256": "7978288007195f10f02942ea9a73e466012a324d7c2e60e45797673c12813591"
+    },
+    {
+      "path": "src/desk/Home.tsx",
+      "bytes": 11958,
+      "sha256": "dd197bff3b2bf04805280940d3d07e0a2205e3cdf876bcaa0d4bd8187e2a901c"
+    },
+    {
+      "path": "src/desk/uploadFlow.ts",
+      "bytes": 2254,
+      "sha256": "c91ba23a9c724e4f5301add41c6a3b2e42f4589a95e0c608e4fcea0de1d01f50"
+    },
+    {
+      "path": "src/desk/PaperDesk.tsx",
+      "bytes": 34503,
+      "sha256": "cfd93918b4bf8c413febef6a5b4fc93b51b28d4d6adb8ad4c1f42e6874508e8c"
+    },
+    {
+      "path": "src/desk/explorerStore.ts",
+      "bytes": 10818,
+      "sha256": "74926370b5ca2fe908453152ab8183158461a34db52d54c20777bcb8c7068c51"
+    },
+    {
+      "path": "src/desk/run3dStore.ts",
+      "bytes": 5682,
+      "sha256": "b9f507055eb2c4ce252248a0a83d31aad31d506a77ca91647c0ebf8334c3bb62"
+    },
+    {
+      "path": "src/desk/agentBridge.ts",
+      "bytes": 6903,
+      "sha256": "a9f25ce2c5a57ed58f026bd954d48eba5f6fb7a46afa9def3a9e1e3462b37709"
+    },
+    {
+      "path": "src/desk/agentActions.ts",
+      "bytes": 12192,
+      "sha256": "f0a5fe2166dc4f269351e287beb272cb03789c9bae857d40d263f7b13004a8f6"
+    },
+    {
+      "path": "src/desk/agentState.ts",
+      "bytes": 1890,
+      "sha256": "9bfe787494dbd8c4651d3d6845e51c31b7be420eb2777b7ad87d8d525f3fe768"
+    },
+    {
+      "path": "src/skills/registry.ts",
+      "bytes": 17846,
+      "sha256": "d2719741759f89bdfbac7495b1df83c7cc1783065e593b22a87d9fec0ab8506d"
+    },
+    {
+      "path": "src/skills/executor.ts",
+      "bytes": 48116,
+      "sha256": "ef7e006d5a91469263189efcc9312a07ed0df22171304c5586e1487dfee821b4"
+    },
+    {
+      "path": "src/skills/playPlan.ts",
+      "bytes": 9568,
+      "sha256": "fe922f61e4c0dffb3a583157fc3167ac51d10b01be80723dee952496bb4f448c"
+    },
+    {
+      "path": "src/skills/paperSpec.ts",
+      "bytes": 11767,
+      "sha256": "dade8284b90d5285aa578dfa0ef8de7899482b4e05b9e2f73f69e376620b3eb5"
+    },
+    {
+      "path": "src/experiments/protocol.ts",
+      "bytes": 7129,
+      "sha256": "8929a4114a37ec530aca6d2c91930f57cba7691c53fe2307233ea3472d74a6eb"
+    },
+    {
+      "path": "src/runtime/cell.ts",
+      "bytes": 14830,
+      "sha256": "9f6ac15be877ba241f5476326bdb6a850a3879886faebf33db22d1548426d458"
+    },
+    {
+      "path": "server/main.py",
+      "bytes": 34111,
+      "sha256": "24bf5a19595fb9666a0764d0eaf7ab0edf3c0f3516b7c5bc0ecf73097412b7fb"
+    },
+    {
+      "path": "server/README.md",
+      "bytes": 3309,
+      "sha256": "61c851d4b2f99ee79ab2263a7872921f9c495df599536f285a4d8a1e0b20f884"
+    },
+    {
+      "path": "server/agent.py",
+      "bytes": 68236,
+      "sha256": "f4c64a74b92b5e6b9657fad665c847dee1d85dfd477e7b9b99f187c5529dc16a"
+    },
+    {
+      "path": "server/agent_provider.py",
+      "bytes": 11786,
+      "sha256": "16bd16cb1217cb74fdab560f5eb065fbeb129e7ab4960e014a6f0a90d5a2c40f"
+    },
+    {
+      "path": "server/engine_api.py",
+      "bytes": 7555,
+      "sha256": "4d65ac350f46a07b5c669eec22dc1c0bc69517bec5c8911dc878c59f36b61d57"
+    },
+    {
+      "path": "server/engine_bridge.py",
+      "bytes": 11035,
+      "sha256": "b7c7ac01fcb05b5988ea67f6cd1d2a7aa3616ece2b836ab341be5984113e495f"
+    },
+    {
+      "path": "server/ingest_core.py",
+      "bytes": 6756,
+      "sha256": "002da47c5ac6e77838a62610f2c0be7adfff4a50a2fbbf156b483db940fb9b99"
+    },
+    {
+      "path": "scripts/engine_server.ts",
+      "bytes": 7482,
+      "sha256": "7ac3b6cb6d5c1d886c77f9610ea47d2f713067f75ba1e96953cefa8c17cefc30"
+    },
+    {
+      "path": "scripts/engine_once.ts",
+      "bytes": 2045,
+      "sha256": "d1ea858d6b5cd05e1b09bfdf2f7ae7685c55326d25080126971c0ffea1d7bb53"
+    },
+    {
+      "path": "scripts/engine_persist.ts",
+      "bytes": 2810,
+      "sha256": "b2655e50036c8791fa34574b4521764512d7c3980159d4fa69bd69a01ccb2eeb"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/README.md",
+      "bytes": 7706,
+      "sha256": "013aa74e1b23c2cf2cd417676ea6f864a181d28ec28f9d7ef69e21fdae9e400a"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/WHITEPAPER.md",
+      "bytes": 19377,
+      "sha256": "5c48d77e7c6a5de406f561021cb43a4caefe858bd20874925efeb7eb0640d0be"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/ACCEPTANCE.md",
+      "bytes": 11327,
+      "sha256": "555516bf6247fe1b82365fa5c1505c68526b3498db91ae35588c29275c4c0b17"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/02-harness.md",
+      "bytes": 28497,
+      "sha256": "107dc91ab3846fcd4db490ce638f7d91e903cbe6108ce46467cbd86d7bdcb1eb"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/04-library-jobs.md",
+      "bytes": 33372,
+      "sha256": "741a6cac35805120136306a9e7da28316d9afe5a412b2c5bc5a98fe31948ffc5"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/05-system-contracts.md",
+      "bytes": 22276,
+      "sha256": "e735c75532bc81a38b9a981ca2f089417d6676934ccee1b6dea6b3ad2cd17d53"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/06-spatial-product.md",
+      "bytes": 8604,
+      "sha256": "a0e8a26cff4b6383481c5ef445b4ee1eb8ea74c70e5513a5fca3206449c26b5e"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/12-next-stage-foundation.md",
+      "bytes": 20372,
+      "sha256": "ee2c5410efea41ca47cf89a90832e23f4558e996d9a707f6044399b9f26c11f9"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/13-mathematical-game-engine.md",
+      "bytes": 28576,
+      "sha256": "beba1e88f3319d6e7b05b44de2e3740bef8f7e6c4269fcabb7c75b12fecbce6f"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/14-mathworld-runtime.md",
+      "bytes": 28753,
+      "sha256": "6ee1ff1d38c9c01db663634eff8f0e20614014c6de5aef999de3a47a92770cdc"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/15-mathworld-execution-evidence.md",
+      "bytes": 7960,
+      "sha256": "21425767c1e42a8c5adbadff26fb95d44164e113db15ca58a1b23dec8f81584f"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/16-game-engine-decision.md",
+      "bytes": 18358,
+      "sha256": "b38c98ee0dda8c11f535038eef333ee828d2caa848a10ec35019b7ffd0bf5cb4"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/17-generative-world-program.md",
+      "bytes": 28793,
+      "sha256": "9b035d393d1696d81530242675c3b29cca5eb25b9208cab86c0459a95593c878"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/implementation-review-20261105.md",
+      "bytes": 6927,
+      "sha256": "88c1f6cddf41df7ea8d91b1cb39a5c87619b8b17972945337852ff835608f029"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/development-source-map.md",
+      "bytes": 6235,
+      "sha256": "4e179860e6f67fe17922882e7b1f3ba9d10b4dc9af8567cd2acd16bd7352dc13"
+    },
+    {
+      "path": "docs/research/playable-mathematics-2026-11-02/materials/README.md",
+      "bytes": 5042,
+      "sha256": "8f2837c51d5cd8739fb048b9a9b19a58be9476c12ae313f7aff04768bd3187c5"
+    }
+  ]
+}

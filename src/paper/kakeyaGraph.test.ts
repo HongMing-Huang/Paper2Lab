@@ -4,8 +4,9 @@
 // full SWEEP_NS series; off again clears it. Lazy cells mean the whole graph
 // also parks when nothing observes it.
 import { describe, expect, it } from 'vitest'
-import { kakeya, sweepCell, pSweepOn, SWEEP_NS } from './kakeyaGraph'
+import { kakeya, sweepCell, pSweepOn, SWEEP_NS, voxelCell, materializeVisGrid, type VoxelRunResult } from './kakeyaGraph'
 import type { CurvePoint } from '../kakeya/metrics'
+import { getExperimentRun, exportExperimentRuns, type ExperimentRun } from '../experiments/protocol'
 
 function waitFor(cond: () => boolean, timeoutMs = 5000): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -18,6 +19,33 @@ function waitFor(cond: () => boolean, timeoutMs = 5000): Promise<void> {
     check()
   })
 }
+
+describe('kakeya.voxel occupancy grid (S1.2 binary boundary)', () => {
+  it('the run holds a sealed reference; the renderer gets a typed copy that cannot reach the evidence', async () => {
+    const unsub = kakeya.subscribe(voxelCell.id, () => {})
+    try {
+      await waitFor(() => kakeya.get(voxelCell.id).status === 'resolved', 20000)
+      const run = kakeya.get<ExperimentRun<VoxelRunResult>>(voxelCell.id).value!
+      expect(run.status).toBe('resolved')
+      const grid = run.result!.visGrid!
+      expect(grid.artifact).toMatchObject({ artifact: 'ndarray', dtype: 'uint16', shape: [grid.res, grid.res, grid.res] })
+      expect(getExperimentRun(run.runId)?.result).toEqual(run.result)
+      const exported = JSON.parse(exportExperimentRuns([run.runId]))[0].result.visGrid
+      expect(exported).toEqual({ res: grid.res, artifact: grid.artifact })
+
+      const view = materializeVisGrid(grid)!
+      expect(view.res).toBe(grid.res)
+      expect(view.data).toBeInstanceOf(Uint16Array)
+      expect(view.data.length).toBe(grid.res ** 3)
+      expect(view.data.some((m) => m > 0)).toBe(true)
+      // stable per run, so a view's effect does not re-fire on every render
+      expect(materializeVisGrid(grid)).toBe(view)
+      expect(materializeVisGrid(undefined)).toBeUndefined()
+    } finally {
+      unsub()
+    }
+  }, 30000)
+})
 
 describe('kakeya.sweep on-demand (#23)', () => {
   it('off → resolves to [] with no grid points; on → full SWEEP_NS series; off again → []', async () => {

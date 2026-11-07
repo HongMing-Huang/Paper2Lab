@@ -49,16 +49,27 @@ _EXTRACT_PROMPT = (
 )
 
 
-def render_pages(pdf_path: str, max_pages: int = _MAX_PAGES) -> tuple[list[tuple[int, bytes]], int]:
-    """render up to max_pages pages to PNG bytes (page numbers are 1-based).
+def render_pages(
+    pdf_path: str,
+    max_pages: int = _MAX_PAGES,
+    page_range: tuple[int, int] | None = None,
+) -> tuple[list[tuple[int, bytes]], int]:
+    """render up to max_pages pages to PNG bytes (page numbers are 1-based and
+    global to the source PDF). page_range picks an inclusive slice instead.
     Returns (rendered, total_pages) — the caller enforces the cap (over-limit
     papers are REJECTED, never silently half-parsed)."""
     import pypdfium2 as pdfium
 
     pdf = pdfium.PdfDocument(pdf_path)
     total = len(pdf)
+    if page_range:
+        if page_range[0] > total:
+            raise RuntimeError(f"页码超出范围：论文共 {total} 页，请求第 {page_range[0]} 页")
+        indices = range(page_range[0] - 1, min(page_range[1], total))
+    else:
+        indices = range(min(total, max_pages))
     out: list[tuple[int, bytes]] = []
-    for idx in range(min(total, max_pages)):
+    for idx in indices:
         bitmap = pdf[idx].render(scale=_RENDER_SCALE)
         buf = io.BytesIO()
         bitmap.to_pil().save(buf, format="PNG", optimize=True)
@@ -201,10 +212,21 @@ async def parse_pdf_with_vlm(
     pdf_path: str,
     provider: dict[str, Any],
     on_stage=None,
+    on_page=None,
+    page_range: tuple[int, int] | None = None,
 ) -> dict[str, Any]:
     """fast-path parse: render + concurrent VLM extraction → IngestedDoc
     shape. provider = {"base_url","api_key","model","timeout_s"} resolved by
-    the caller from the env-only provider layer (never user input)."""
+    the caller from the env-only provider layer (never user input).
+
+    on_page(page_no, raw_page_items) fires AS EACH PAGE finishes (out of page
+    order — pages run concurrently): the CLI-151 paper-study flow shows these
+    as progressive fragments while the parse is still running. The fragment
+    items are the raw per-page extractions; ids/anchors are only assigned in
+    the FINAL assembly, so fragments are advisory previews, never the doc.
+
+    page_range reads only that inclusive slice; `coverage` in the result says
+    so — the page cap applies to the pages actually read."""
     # fail fast on an invalid endpoint before rendering anything
     vlm_chat_url(str(provider["base_url"]))
     api_key = str(provider["api_key"])
@@ -213,21 +235,27 @@ async def parse_pdf_with_vlm(
     base_url = str(provider["base_url"])
 
     t0 = time.time()
-    pages, total_pages = await asyncio.to_thread(render_pages, pdf_path)
+    render_started = time.perf_counter()
+    pages, total_pages = await asyncio.to_thread(render_pages, pdf_path, _MAX_PAGES, page_range)
+    render_ms = round((time.perf_counter() - render_started) * 1000)
     if not pages:
         raise RuntimeError("VLM 解析：PDF 没有可渲染的页面")
-    if total_pages > _MAX_PAGES:
+    read_count = len(pages) if page_range else total_pages
+    if read_count > _MAX_PAGES:
         # reviewer consensus (Copilot+Codex): never hand back a partial
         # corpus as success — the router/agent/experiments would reason over
         # half a paper. Refuse with the actionable alternative.
         raise VLMLimitError(
-            f"论文共 {total_pages} 页，超过快速理解上限 {_MAX_PAGES} 页——"
+            f"论文共 {read_count} 页，超过快速理解上限 {_MAX_PAGES} 页——"
             "请改用「精读定位」模式解析完整论文"
         )
     if on_stage:
         on_stage("vlm-reading")
 
     sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
+    # concurrent requests overlap: each span is that page's own duration and
+    # they must not be summed as if they ran one after another
+    page_spans: list[dict[str, Any]] = []
 
     async def bounded(pn: int, png: bytes) -> tuple[int, list[dict[str, Any]]]:
         async with sem:
@@ -236,9 +264,24 @@ async def parse_pdf_with_vlm(
             # page-level evidence instead of a paper-level "0 items"
             last_err: Exception | None = None
             for _attempt in (1, 2):
+                started = time.perf_counter()
                 try:
                     _, page_items = await _extract_page(pn, png, base_url, api_key, model, timeout)
+                    page_spans.append(
+                        {
+                            "name": "vlm.infer",
+                            "page": pn,
+                            "attempt": _attempt,
+                            "ms": round((time.perf_counter() - started) * 1000),
+                            "pngBytes": len(png),
+                        }
+                    )
                     if page_items:
+                        if on_page is not None:
+                            try:
+                                on_page(pn, page_items)
+                            except Exception:  # noqa: BLE001 — a fragment callback must never fail the parse
+                                pass
                         return pn, page_items
                     last_err = RuntimeError("model returned no parsable items")
                 except Exception as exc:  # noqa: BLE001 — retried, then raised
@@ -302,9 +345,17 @@ async def parse_pdf_with_vlm(
         "title": title or "Untitled paper",
         "pages": [{"page": pn, "width": 612, "height": 792} for pn, _ in pages],
         "items": items,
+        "coverage": {
+            "parsedPages": [pn for pn, _ in pages],
+            "totalPages": total_pages,
+            "complete": len(pages) >= total_pages,
+        },
         "_vlm": {
             "model": model,
             "pages": len(pages),
             "durationMs": int((time.time() - t0) * 1000),
+        },
+        "_timing": {
+            "spans": [{"name": "vlm.render", "ms": render_ms, "pages": len(pages)}, *page_spans],
         },
     }

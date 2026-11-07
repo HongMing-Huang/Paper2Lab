@@ -1,0 +1,17 @@
+
+==================================== ERRORS ====================================
+_________________ ERROR collecting test_parse_artifacts_p12.py _________________
+ImportError while importing test module '/Users/c14h14n3/Desktop/Paper2Lab/server/tests/test_parse_artifacts_p12.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+server/tests/test_parse_artifacts_p12.py:22: in <module>
+    from server.main import _anchor_precision_for  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ImportError: cannot import name '_anchor_precision_for' from 'server.main' (/Users/c14h14n3/Desktop/Paper2Lab/server/main.py)
+=========================== short test summary info ============================
+ERROR server/tests/test_parse_artifacts_p12.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 3.67s

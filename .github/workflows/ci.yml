@@ -46,8 +46,41 @@ jobs:
         run: pnpm build
 
   backend:
-    name: 后端协议 + Agent 编排 + 引擎桥
+    name: 后端协议 + Agent 编排 + 引擎桥 + 数据库/队列
     runs-on: ubuntu-latest
+    # J1.CI: the destructive DB/queue suites get REAL services here — with
+    # PAPER2LAB_TEST_REQUIRE_SERVICES=1 an unreachable service (or a filter
+    # that empties the suites) FAILS the job instead of a green skip-wave
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: paper2lab_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # cred-free URL: the password travels via PGPASSWORD (libpq), never
+      # inside a URL that other processes/stack traces could log
+      PAPER2LAB_TEST_DATABASE: postgresql://postgres@localhost:5432/paper2lab_ci_test
+      PGPASSWORD: postgres
+      PAPER2LAB_TEST_REDIS_URL: redis://127.0.0.1:6379/15
+      PAPER2LAB_TEST_REQUIRE_SERVICES: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

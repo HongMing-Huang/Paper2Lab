@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /Users/c14h14n3/Desktop/Paper2Lab
+
+ ✓ src/skills/executorProof.test.ts (19 tests) 87ms
+ ✓ src/skills/runProvenance.test.ts (59 tests) 472ms
+
+ Test Files  2 passed (2)
+      Tests  78 passed (78)
+   Start at  01:11:01
+   Duration  1.10s (transform 114ms, setup 0ms, collect 375ms, tests 560ms, environment 0ms, prepare 97ms)
+
