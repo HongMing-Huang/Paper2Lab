@@ -1,0 +1,20 @@
+{
+  "order": ["NPU", "GPU", "CPU"],
+  "routes": [
+    {
+      "device": "NPU",
+      "baseUrl": "http://127.0.0.1:8002/v3/",
+      "models": { "chat": "qwen3-0.6-npu" }
+    },
+    {
+      "device": "GPU",
+      "baseUrl": "http://127.0.0.1:8001/v3/",
+      "models": { "chat": "qwen3-0.6-gpu" }
+    },
+    {
+      "device": "CPU",
+      "baseUrl": "http://127.0.0.1:8000/v3/",
+      "models": { "chat": "qwen3-0.6" }
+    }
+  ]
+}

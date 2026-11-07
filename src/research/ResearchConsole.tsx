@@ -273,7 +273,7 @@ export function ResearchConsole({ onExit }: { onExit: () => void }) {
         <button type="button" className="research-exit" onClick={onExit}>← 返回</button>
         <h1>研究控制台</h1>
         <span className={`research-provider${health?.ok ? ' ok' : ' blocked'}`}>
-          {health === null ? '…' : health.ok ? `Qwen · ${health.model}` : health.configured ? 'DSH 未就绪' : '未配置凭据（真实 AI 回合将被阻塞，如实用错误返回）'}
+          {health === null ? '…' : health.ok ? 'AI 已连接' : health.configured ? 'AI 未就绪' : '未配置凭据（真实 AI 回合将被阻塞，如实用错误返回）'}
         </span>
       </header>
 
@@ -289,7 +289,7 @@ export function ResearchConsole({ onExit }: { onExit: () => void }) {
                     {t.steps.map((s) => <StepRow key={`${s.kind}-${s.callId}-${s.seq}`} step={s} />)}
                   </ul>
                 )}
-                {t.finalResponse && <div className="research-answer"><span className="research-answer-tag">模型回答（{t.model || t.provider || 'AI'}）</span>{t.finalResponse}</div>}
+                {t.finalResponse && <div className="research-answer"><span className="research-answer-tag">模型回答</span>{t.finalResponse}</div>}
                 {t.error && <div className="research-error">{t.error}</div>}
                 {t.status === 'running' && <div className="research-running"><span className="home-spin">◌</span> 模型正在研究…</div>}
               </article>

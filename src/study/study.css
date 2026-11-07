@@ -174,3 +174,59 @@
 
 .study-ai .research-turn,
 .study-block .research-turn { border: 1px solid #e8dfcf; border-radius: 8px; padding: 6px 9px; background: #fffdf8; margin-bottom: 6px; }
+/* The product workspace: source on the left, the live game stage on the right. */
+.study-paper { flex:0 0 43%; }
+.study-play-side { flex:1; min-width:0; max-width:none; position:relative; overflow:hidden; }
+.study-stage-slot { flex:1; min-height:0; }
+.study-game-placeholder { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px; box-sizing:border-box; background:radial-gradient(ellipse at center,#fffdf8,#f0eadf); }
+.study-game-placeholder span { font-size:12px; color:#8a6b43; }
+.study-game-placeholder h2 { font-size:25px; max-width:440px; line-height:1.5; font-weight:500; }
+.study-game-placeholder p { font-size:14px; line-height:1.8; max-width:410px; color:#74695b; }
+.study-setup-toggle { border:0; border-top:1px solid #ddd2bf; padding:10px; cursor:pointer; background:#faf6ee; text-align:left; color:#6b6154; flex:none; }
+.study-setup-drawer { position:absolute; inset:0 0 38px; z-index:35; background:#fffdf8f5; overflow:auto; }
+.study-setup-drawer[hidden] { display:none; }
+.study-reader-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:12px; }
+.study-reader-toolbar button { border:1px solid #d9d0bf; border-radius:7px; background:#fffdf8; padding:6px 8px; cursor:pointer; }
+.study-reader-toolbar button[aria-pressed=true] { background:#e3ecf7; border-color:#2f5d8a; }
+.study-reading-page { margin:0 auto 22px; background:white; box-shadow:0 2px 8px #45351b20; }
+.study-reading-number { font-size:11px; color:#8a7c6c; padding:5px 8px; background:#faf7f0; }
+.study-reading-area { position:relative; }
+.study-region-layer { position:absolute; inset:0; cursor:crosshair; touch-action:none; z-index:5; }
+.study-region-mark { position:absolute; border:2px solid #2f5d8a; background:#729ecc22; box-sizing:border-box; pointer-events:none; z-index:6; }
+@media(max-width:800px) { .study-main { flex-direction:column; } .study-paper { flex:0 0 44%; } .study-play-side { min-height:340px; } }
+.study-header-actions { position:relative; font-size:12px; }
+.study-header-actions > summary { cursor:pointer; }
+.study-header-actions[open] { display:block; }
+.study-header-actions[open] .study-mode { padding-top:8px; }
+
+/* --- native PDF text selection (CLI-111 第一优先) --- */
+/* 官方 pdf_viewer.css 的 .textLayer 已提供定位/透明文字/选择光标；这里只补
+   阅读器内交互细节：文字层不吃整页点击（区域框选 z 更高）、菜单样式。 */
+.study-text-layer { z-index:2; }
+.study-selmenu { position:fixed; z-index:90; display:flex; align-items:center; gap:2px; background:#fffdf8; border:1px solid #cfc4ae; border-radius:9px; box-shadow:0 4px 16px #45351b2a; padding:4px; }
+.study-selmenu button { border:0; background:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:13px; color:#2f5d8a; }
+.study-selmenu button:hover { background:#e3ecf7; }
+.study-selmenu-src { font-size:11px; color:#a39685; padding:0 8px 0 4px; }
+
+/* --- CLI-111 三选区并存 + 选区集合 --- */
+.study-mode-group { display:flex; gap:4px; }
+.study-mode-group button { border:1px solid #d9d0bf; border-radius:7px; background:#fffdf8; padding:6px 10px; cursor:pointer; font-size:12px; }
+.study-mode-group button[aria-pressed=true] { background:#e3ecf7; border-color:#2f5d8a; }
+.study-lasso-layer { cursor:crosshair; }
+.study-lasso-draw { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:7; }
+.study-lasso-draw polyline { stroke:#9a3b2e; stroke-width:0.7; stroke-dasharray:1.6 1.2; vector-effect:non-scaling-stroke; }
+.study-region-mark-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:6; }
+.study-region-mark-svg polygon, .study-region-mark-svg rect { fill:#729ecc22; stroke:#2f5d8a; stroke-width:0.5; vector-effect:non-scaling-stroke; }
+.study-region-mark-svg.active polygon, .study-region-mark-svg.active rect { fill:#729ecc44; stroke-width:0.9; }
+.study-clippings { border-top:1px solid #ddd2bf; padding:6px 10px; font-size:12px; max-height:180px; overflow:auto; }
+.study-clippings-head { color:#6b6154; padding:2px 0 6px; }
+.study-clippings ul { list-style:none; margin:0; padding:0; display:grid; gap:4px; }
+.study-clipping { display:grid; grid-template-columns:auto auto 1fr auto; gap:6px; align-items:baseline; border-bottom:1px dotted #e4dbc9; padding-bottom:3px; }
+.study-clipping-kind { font-size:10px; padding:1px 5px; border-radius:6px; border:1px solid; }
+.study-clipping-kind.k-text { color:#2f5d8a; border-color:#9db8d4; }
+.study-clipping-kind.k-rect { color:#8a6b43; border-color:#d4bf9d; }
+.study-clipping-kind.k-lasso { color:#9a3b2e; border-color:#d49d94; }
+.study-clipping-page { color:#a39685; font-size:11px; }
+.study-clipping-text { color:#74695b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.study-clipping-ops button { border:0; background:none; color:#2f5d8a; cursor:pointer; padding:0 4px; font-size:12px; }
+.study-clipping-ops button:hover { text-decoration:underline; }

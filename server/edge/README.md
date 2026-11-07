@@ -44,6 +44,29 @@ Paper URL必须指向真实Paper2Lab解析/文档服务；可改成现有8788。
 
 NPU模型制品与驱动需独立准备；不能把CPU的INT4文件不加验证地宣称支持NPU。GPU/NPU参数和模型支持按下面官方文档核对。现有ARM Mac不证明Intel设备兼容。
 
+### 多设备启动样例（NPU > GPU > CPU 回退）
+
+每个设备一个独立 OVMS 实例（不同 `--rest_port` 与 `--target_device`），只启动实际要用的设备；单设备场景只需 CPU 那一行：
+
+```sh
+# CPU（fetch-models.zsh 拉取的官方 INT4 导出）
+ovms --model_path /opt/paper2lab/models/Qwen3-0.6B-int4-ov --model_name qwen3-0.6     --rest_port 8000 --task text_generation --target_device CPU
+# GPU（Intel 核显；同一官方导出按官方文档核对 GPU 支持后再启动）
+ovms --model_path /opt/paper2lab/models/Qwen3-0.6B-int4-ov --model_name qwen3-0.6-gpu --rest_port 8001 --task text_generation --target_device GPU
+# NPU：制品名与参数以官方 NPU demo 为准（ovms_demos_llm_npu.html），本仓库脚本拉取的
+# INT4 导出不预先宣称可在 NPU 运行；官方确认制品后按同一形态启动：
+# ovms --model_path <NPU制品目录> --model_name qwen3-0.6-npu --rest_port 8002 --task text_generation --target_device NPU
+```
+
+对应适配器配置见 `config.multi-device.example.json`（order 为 NPU > GPU > CPU）。启动适配器：
+
+```sh
+PAPER2LAB_EDGE_CONFIG=server/edge/config.multi-device.example.json \
+PAPER2LAB_PAPER_BASE_URL=http://127.0.0.1:8788/ node --import tsx server/edge/main.ts
+```
+
+调用时可带 `"device": "GPU"`（或 `"NPU"`/`"CPU"`）把该设备排到本次尝试最前；未带则按 order。每次成功响应的 `inference.configuredDevice` 标明走了哪条配置路由，`fallback` 数组记录此前失败的设备与原因；`actualDevice` 保持 null 直到目标机实测。`GET /capabilities` 会列出全部已配置路由及 `verification: "not_hardware_verified"`。
+
 ## 接入边界与剩余工作
 
 已接现有论文文档读取端点。前端与DSH目前未自动接入此独立服务；DSH如使用OVMS OpenAI协议应配置实际OVMS `/v3/` provider端点，不能把本适配器带metadata的响应误当OpenAI协议。尚未完成：目标机模型启动/质量和性能、设备枚举实机验证、embedding索引入库、跨论文检索、DSH provider/profile正式连接。

@@ -25,7 +25,8 @@ export const inject = ['tools']
 
 const TERMINAL = new Set(['succeeded', 'failed', 'cancelled'])
 const POLL_MS = 250
-export const SCIENCE_TOOL_NAMES = ['science_run', 'science_fork', 'science_compare', 'science_read_run', 'science_list_runs']
+const WORLD_ACTION_TERMINAL = new Set(['applied', 'rejected', 'expired'])
+export const SCIENCE_TOOL_NAMES = ['science_run', 'science_fork', 'science_compare', 'science_read_run', 'science_list_runs', 'world_read', 'world_set_params']
 
 function operationIdFor(exec) {
   const session = exec?.agent?.session?.id ?? 'nosession'
@@ -275,6 +276,78 @@ export async function apply(ctx, config) {
       const res = await call('GET', `/api/v1/science/runs?limit=${limit}`, undefined, exec.signal)
       if (res.status !== 200) throw new Error(`run listing failed (HTTP ${res.status})`)
       return { runs: res.json.runs.map((r) => summarizeRun(r.record)) }
+    },
+  }))
+
+  // ---- the authorized world tools (CLI-150): read the browser host's
+  // published world, and change parameters THROUGH the same host.commit entry
+  // the player uses — the tool waits for the browser's real receipt (it can
+  // fail: not connected, revision expired, out-of-domain); the server never
+  // records success the browser didn't produce ----
+  const sessionIdOf = (exec) => String(exec?.agent?.session?.id ?? '')
+
+  ctx.tools.register(defineTool({
+    name: 'world_read',
+    description: "Read the user's CURRENT interactive math world: model, live parameters, revision, budget, the latest formal assessment (from real runs) and its run ids. Use before proposing any change: parameter changes must state expected_revision from THIS read. If it answers 'no world published', the user has not opened the game stage — ask them to open it instead of guessing.",
+    parameters: {},
+    output: {
+      schema: { type: 'object', additionalProperties: true },
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+      presentationMeta: (_args, value) => ({ tool: 'world_read', world: value }),
+    },
+    timeoutMs: 30_000,
+    isConcurrencySafe: () => true,
+    execute: async (_args, exec) => {
+      const sessionId = sessionIdOf(exec)
+      if (!sessionId) throw new Error('no research session on this activation — cannot address a world')
+      const res = await call('GET', `/api/v1/world/state?sessionId=${encodeURIComponent(sessionId)}`)
+      if (res.status === 404) return { state: 'no-world', message: res.json.message }
+      if (res.status !== 200) throw new Error(`world state read failed (HTTP ${res.status})`)
+      return res.json
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'world_set_params',
+    description: "Change numeric parameters or initial values of the user's CURRENT world. This goes through the SAME validated entry the player uses: domain-checked, preview-free, a real run is computed and independently assessed in the user's browser, and THIS tool returns only the browser's actual receipt (new revision, parameters, assessment with per-constraint numbers, run ids). It FAILS honestly when: the game stage is not open (expired), the world moved (revision mismatch — re-read and retry once), a value is outside its declared domain, or the compute failed. Provide expected_revision from a fresh world_read.",
+    parameters: {
+      changes: { type: 'object', additionalProperties: true, required: true, description: 'Parameter name → new numeric value (names/domains come from world_read).' },
+      expectedRevision: { type: 'integer', required: true, description: 'The revision this change is based on (from world_read).' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: true },
+      render: (_args, value) => [{ type: 'text', text: value.status === 'applied' ? `APPLIED revision ${value.receipt?.revision ?? '?'} params=${JSON.stringify(value.receipt?.params ?? {})} assessment=${JSON.stringify(value.receipt?.assessment?.summary ?? value.receipt?.assessment ?? null)} runs=${(value.receipt?.runIds ?? []).join(',')}` : `NOT APPLIED (${value.status}): ${value.receipt?.reason ?? ''}` }],
+      presentationMeta: (_args, value) => value,
+    },
+    timeoutMs: 180_000,
+    execute: async (args, exec) => {
+      const sessionId = sessionIdOf(exec)
+      if (!sessionId) throw new Error('no research session on this activation — cannot address a world')
+      // address the world EXPLICITLY: read the browser-published state first
+      const state = await call('GET', `/api/v1/world/state?sessionId=${encodeURIComponent(sessionId)}`)
+      if (state.status === 404) return { status: 'no-world', reason: state.json.message }
+      if (state.status !== 200) throw new Error(`world state read failed (HTTP ${state.status})`)
+      const operationId = operationIdFor(exec) + '-world'
+      const submitted = await call('POST', '/api/v1/world/actions', {
+        sessionId,
+        operationId,
+        worldId: state.json.worldId,
+        expectedRevision: Number(args.expectedRevision),
+        patch: args.changes,
+      }, exec.signal)
+      if (![200, 202].includes(submitted.status)) {
+        return { status: 'refused', reason: `submit refused (HTTP ${submitted.status}): ${String(submitted.json?.message ?? '')}` }
+      }
+      // wait for the BROWSER host to execute and post its receipt (or expire)
+      for (;;) {
+        if (exec.signal.aborted) throw new Error('cancelled while waiting for the browser host to execute the world change')
+        const res = await call('GET', `/api/v1/world/actions/${encodeURIComponent(operationId)}`)
+        if (res.status !== 200) throw new Error(`world action read failed (HTTP ${res.status})`)
+        if (WORLD_ACTION_TERMINAL.has(res.json.status)) {
+          return { status: res.json.status, reason: res.json.receipt?.reason ?? null, receipt: res.json.receipt ?? null }
+        }
+        await new Promise((r) => setTimeout(r, 1000))
+      }
     },
   }))
 

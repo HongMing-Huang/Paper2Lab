@@ -77,8 +77,8 @@ export async function settleResearchTurn(
   taskId: number,
   outcome:
     | { kind: 'succeeded'; sessionId: string; finishReason: string | null; finalResponse: string; steps: Array<Record<string, unknown>>; assistantTexts: Array<Record<string, unknown>>; usage: Array<Record<string, unknown>>; runIds: string[]; provider: string; model: string }
-    | { kind: 'failed'; error: string; provider: string; model: string }
-    | { kind: 'cancelled'; reason: string },
+    | { kind: 'failed'; error: string; provider: string; model: string; sessionId?: string }
+    | { kind: 'cancelled'; reason: string; sessionId?: string },
 ): Promise<boolean> {
   const status = outcome.kind === 'succeeded' ? 'succeeded' : outcome.kind
   const client = await pool.connect()
@@ -95,7 +95,13 @@ export async function settleResearchTurn(
         [status, outcome.sessionId, outcome.finishReason, outcome.finalResponse, JSON.stringify(outcome.steps), JSON.stringify(outcome.assistantTexts), JSON.stringify(outcome.usage), JSON.stringify(outcome.runIds), outcome.provider, outcome.model, taskId],
       )
     } else {
-      await client.query('UPDATE research_turns SET status = $1, error = $2, finished_at = now() WHERE task_id = $3', [status, outcome.kind === 'failed' ? outcome.error : outcome.reason, taskId])
+      // a failed/cancelled turn KEEPS its DSH session binding when the runtime
+      // got far enough to create one — the next turn then resumes the same
+      // conversation instead of silently starting a fresh session
+      await client.query(
+        'UPDATE research_turns SET status = $1, error = $2, session_id = COALESCE($3, session_id), finished_at = now() WHERE task_id = $4',
+        [status, outcome.kind === 'failed' ? outcome.error : outcome.reason, outcome.sessionId ?? null, taskId],
+      )
     }
     await client.query('INSERT INTO outbox_events (task_id, event_type, body) VALUES ($1, $2, $3::jsonb)', [taskId, `task.${status === 'succeeded' ? 'succeeded' : status}` , JSON.stringify({ kind: RESEARCH_KIND })])
     await client.query('COMMIT')

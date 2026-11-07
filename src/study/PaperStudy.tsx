@@ -11,10 +11,13 @@
 //         状态，并把各进程各自测到的分段时间并列展示（嵌套跨度不相加）。
 //   AI：有凭据才发真实 Qwen 回合；论文内容作为不可信数据传入；AI 只能
 //         指向公式，数值从不作为论文证据。没有凭据就如实说未执行。
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../research/research.css'
 import './study.css'
-import { PdfCanvas } from '../desk/PdfCanvas'
+import { ContinuousPaper, unionBbox, type Clipping, type PaperRegion } from './ContinuousPaper'
+import type { WorldDefinition } from '../mathworld/definition'
+import { host as gameHost } from '../mathworld/host'
+const StudyGamePanel = lazy(() => import('./StudyGamePanel').then((m) => ({ default: m.StudyGamePanel })))
 import { extractPage, pageCount, sha256OfFile, TEXT_PARSER, type PageSource, type TextLine } from './pdfSource'
 import { ingestPdf, ingestJobRecord, ingestClientId, type IngestMode } from '../ingest/upload'
 import type { IngestedDoc, IngestedItem } from '../ingest/doclingSchema'
@@ -31,7 +34,7 @@ import {
 } from './requestCandidate'
 import { buildPlan } from '../skills/playPlan'
 import { runPdfFirstUpload } from '../desk/uploadFlow'
-import { worldFromOdeCandidate, type GameRules } from './worldFromRun'
+import { worldFromOdeCandidate, worldFromFormulaCandidate, type GameRules } from './worldFromRun'
 import { AgentDock } from './AgentDock'
 import './agent-dock.css'
 
@@ -185,6 +188,21 @@ export function PaperStudy({
   const [texts, setTexts] = useState<Record<number, PageSource>>({})
   const [parses, setParses] = useState<Record<number, PageParse>>({})
   const [page, setPage] = useState(1)
+  const [readerJump, setReaderJump] = useState<{ page: number; token: number }>()
+  const [region, setRegion] = useState<(PaperRegion & { text: string }) | null>(null)
+  /** CLI-111 多选区集合：文字/矩形/圈选全部累积，可删除/可定位，不覆盖 */
+  const [clippings, setClippings] = useState<Clipping[]>([])
+  const addClipping = (c: Omit<Clipping, 'id' | 'at'>) => {
+    setClippings((prev) => [...prev.slice(-19), { ...c, id: `c${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, at: Date.now() }])
+  }
+  const [questionRequest, setQuestionRequest] = useState<{ id: number; text: string }>()
+  /** the shared research session id (AgentDock reports it; the game-panel host
+   *  bridge addresses world actions with it) */
+  const [researchSessionId, setResearchSessionId] = useState<string | null>(null)
+  const [playWorld, setPlayWorld] = useState<WorldDefinition | null>(null)
+  const [showSetup, setShowSetup] = useState(false)
+  const goToPage = (p: number) => { setPage(p); setReaderJump({ page: p, token: Date.now() }) }
+
   const [parseMode, setParseMode] = useState<IngestMode>(payload.mode)
   const [selection, setSelection] = useState<Selection | null>(null)
   const [choices, setChoices] = useState<UserChoices>({})
@@ -346,13 +364,19 @@ export function PaperStudy({
   )
 
   const select = (s: Selection) => {
+    setShowSetup(true)
     setSelection(s)
     setChoices({})
     setComputation(null)
-    setPage(s.kind === 'formula' ? s.fragment.page : s.line.page)
+    goToPage(s.kind === 'formula' ? s.fragment.page : s.line.page)
   }
 
-  const highlight = selection?.kind === 'formula' ? (selection.fragment.page === page ? selection.fragment.bbox ?? null : null) : selection?.kind === 'line' && selection.line.page === page ? selection.line.bbox : null
+  /** structured picks (formula/line) become the active region too, so their
+   *  on-page bbox stays highlighted through the same reader path */
+  const pickHighlight = selection?.kind === 'formula'
+    ? (selection.fragment.page === page ? selection.fragment.bbox ?? null : null)
+    : selection?.kind === 'line' && selection.line.page === page ? selection.line.bbox : null
+  const activeReaderHighlight = region ?? (pickHighlight ? { page, bbox: pickHighlight, text: '' } : null)
 
   /** candidate → Node operation → real Run; every span from where it was measured */
   const compute = useCallback(
@@ -470,6 +494,7 @@ export function PaperStudy({
     initialRanges: {},
     goal: [],
     attempts: 8,
+    mode: 'explore',
   })
   const [worldResult, setWorldResult] = useState<{ ok: boolean; message: string; href?: string } | null>(null)
 
@@ -481,7 +506,9 @@ export function PaperStudy({
       ranges: Object.fromEntries(
         candidate.params.map((p) => {
           const v = p.value ?? 1
-          return [p.name, prev.ranges[p.name] ?? { min: Number((v * 0.5).toPrecision(4)), max: Number((v * 1.5).toPrecision(4)) }]
+          const pad = Math.max(Math.abs(v) * 0.5, 0.1)
+          const old = prev.ranges[p.name]
+          return [p.name, old && old.min <= v && v <= old.max ? old : { min: Number((v - pad).toPrecision(4)), max: Number((v + pad).toPrecision(4)) }]
         }),
       ),
       draggable: prev.draggable && candidate.states.includes(prev.draggable[0]) && candidate.states.includes(prev.draggable[1]) ? prev.draggable : null,
@@ -495,23 +522,16 @@ export function PaperStudy({
 
   const generateWorld = useCallback(() => {
     if (!candidate || !computation?.run || !sha) return
-    const built = worldFromOdeCandidate(
-      candidate,
-      { runId: computation.run.runId, perState: computation.run.result.perState as Array<{ state: string; min: number; max: number }> },
-      worldRules,
-      { fileName: file.name, fileSha256: sha, pages: [...new Set(candidate.equations.map((e) => e.page))] },
-    )
-    if ('errors' in built) {
-      setWorldResult({ ok: false, message: built.errors.join('；') })
-      return
-    }
-    const handoffId = `w-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-    try {
-      localStorage.setItem(`p2l-world-handoff:${handoffId}`, JSON.stringify(built.world))
-      setWorldResult({ ok: true, message: `世界已生成并验证，转入 MathWorld（世界 id ${built.world.id}）`, href: `/mathworld.html?handoff=${handoffId}` })
-    } catch (err) {
-      setWorldResult({ ok: false, message: `世界过大无法暂存：${err instanceof Error ? err.message : err}` })
-    }
+    const prov = { fileName: file.name, fileSha256: sha, pages: [...new Set(candidate.equations.map((e) => e.page))] }
+    const built = candidate.structure === 'autonomous-ode'
+      ? worldFromOdeCandidate(candidate,
+        { runId: computation.run.runId, perState: computation.run.result.perState as Array<{ state: string; min: number; max: number }> }, worldRules, prov)
+      : worldFromFormulaCandidate(candidate,
+        { runId: computation.run.runId, points: computation.run.result.points as Array<[number, number]> }, { ...worldRules, mode: 'explore', goal: [] }, prov)
+    if ('errors' in built) { setWorldResult({ ok: false, message: built.errors.join('；') }); return }
+    setPlayWorld(built.world)
+    setShowSetup(false)
+    setWorldResult({ ok: true, message: '当前论文的数学模型已交给右侧游戏台，场景将由同一内核重新计算。' })
   }, [candidate, computation, sha, worldRules, file.name])
 
   /** 结果二: the committed Run no longer matches the candidate inputs → stale */
@@ -524,17 +544,16 @@ export function PaperStudy({
     try {
       inputs = requestInput(candidate)
     } catch {
-      return false
+      return true
     }
+    if (!model) return true
+    const normalized = (x: unknown): string => JSON.stringify(x, (_, v: unknown) =>
+      v && typeof v === 'object' && !Array.isArray(v)
+        ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v)
     if (candidate.skill === 'model.solve') {
-      const want = inputs as { states: string[]; rhs: Record<string, string>; params: Record<string, number>; initialState: Record<string, number> }
-      const same = (a: Record<string, number> | undefined, b: Record<string, number>) =>
-        Boolean(a) && Object.keys(b).every((k) => Number(a![k]) === b[k]) && Object.keys(a!).length === Object.keys(b).length
-      const rhsSame = model?.rhs && Object.keys(want.rhs).every((k) => String(model.rhs![k]).replace(/\s+/g, '') === want.rhs[k].replace(/\s+/g, ''))
-      return !(model && rhsSame && same(model.params, want.params) && same(model.initialState, want.initialState) && JSON.stringify(model.states) === JSON.stringify(want.states))
+      return ['states', 'rhs', 'params', 'initialState', 'tSpan'].some((k) => normalized((model as Record<string, unknown>)[k]) !== normalized(inputs[k]))
     }
-    const want = inputs as { expression: string; values: Record<string, number> }
-    return !(model && String(model.expression ?? '').replace(/\s+/g, '') === want.expression.replace(/\s+/g, '') && Object.keys(want.values).every((k) => Number(model.values?.[k]) === want.values[k]))
+    return ['expression', 'independent', 'range', 'values', 'parameters', 'samples'].some((k) => normalized((model as Record<string, unknown>)[k]) !== normalized(inputs[k]))
   }, [computation, candidate])
 
   /** 结果二: cancel the in-flight operation (server kills its engine) */
@@ -567,13 +586,13 @@ export function PaperStudy({
     <div className="study-root" data-testid="study-root">
       <header className="study-header">
         <button type="button" className="research-exit" onClick={onExit}>← 返回</button>
-        <h1>论文研究空间</h1>
+        <h1>Paper2Lab · 读与玩</h1>
         <span className="study-file" title={file.name}>{file.name}</span>
         <span className="study-coverage" data-testid="study-coverage">
           {numPages === null ? (pdfError ? `原文无法打开：${pdfError}` : '正在打开原文…') : `共 ${numPages} 页 · 文本层已读 ${textPagesRead} 页 · 精读 ${parsedPages} 页`}
         </span>
         <span className="study-sha" title={sha ?? ''}>{sha ? `sha256 ${sha.slice(0, 10)}…` : ''}</span>
-        <div className="study-header-actions">
+        <details className="study-header-actions"><summary>阅读设置</summary>
           <label className="study-mode">
             精读引擎
             <select value={parseMode} onChange={(e) => setParseMode(e.target.value as IngestMode)} data-testid="study-parse-mode">
@@ -584,27 +603,78 @@ export function PaperStudy({
           <button type="button" className="desk-btn" data-testid="study-full-parse" disabled={fullParse?.status === 'running'} onClick={() => void openDesk()}>
             {fullParse?.status === 'running' ? '完整解析中…' : '完整解析 → 实验台'}
           </button>
-        </div>
+        </details>
       </header>
       {fullParse && fullParse.status !== 'running' && <div className={`study-banner ${fullParse.status}`} data-testid="study-full-parse-result">{fullParse.message}</div>}
       {notice && <div className="study-banner error" data-testid="study-notice">{notice}</div>}
 
       <div className="study-main">
         <section className="study-paper" ref={paperRef} data-testid="study-paper">
-          <div className="study-paper-nav">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
-            <span>第 {page} / {numPages ?? '…'} 页</span>
-            <button type="button" disabled={numPages !== null && page >= numPages} onClick={() => setPage((p) => p + 1)}>›</button>
-            {highlight === null && selection?.kind === 'formula' && selection.fragment.page === page && (
-              <span className="study-paper-note">该来源只有页级锚点（无区域框）</span>
-            )}
-          </div>
-          <div className="study-paper-scroll">
-            <PdfCanvas url={pdfUrl} page={page} width={paperWidth} highlight={highlight} onRendered={onRendered} />
-          </div>
+          {numPages && <ContinuousPaper url={pdfUrl} pages={numPages} width={paperWidth} onRendered={onRendered} jump={readerJump} onVisible={setPage}
+            highlights={[
+              // active (last pick or structured formula/line pick) first → the
+              // strong mark; the same clipping is newest, so drop it from the tail
+              ...(activeReaderHighlight ? [{ page: activeReaderHighlight.page, bbox: activeReaderHighlight.bbox, ...(activeReaderHighlight.path ? { path: activeReaderHighlight.path } : {}) }] : []),
+              ...clippings.slice(0, region ? -1 : undefined).map((c) => ({ page: c.page, bbox: c.bbox, ...(c.path ? { path: c.path } : {}) })),
+            ]}
+            onTextPick={(quote, action) => {
+              // freeze the quote as the reader region: highlight + context carry
+              // the ORIGINAL text with per-page rects (never re-attributed)
+              const first = quote.pages[0]!
+              const all = quote.pages.flatMap((p) => p.rects)
+              const joined = quote.pages.map((p) => `【第${p.page}页】${p.text}`).join('\n')
+              setRegion({ page: first.page, bbox: unionBbox(all), text: joined })
+              addClipping({ kind: 'text', page: first.page, bbox: unionBbox(all), text: joined })
+              setPage(first.page)
+              if (action === 'try') {
+                // 试一试：真实的结构化识别 + 让 AI 从选区指向可计算公式；
+                // 复制的 PDF 文本本身不当公式证据
+                setShowSetup(true)
+                void parsePage(first.page, parseMode)
+                setQuestionRequest({ id: Date.now(), text: '我想亲手试试刚才选中的内容：请指出其中可计算的公式和它需要的全部条件（初值/参数）；如果选区文本不能确认公式结构（上下标/符号可能在复制中丢失），明确说需要哪一步识别，不要猜。' })
+              } else if (action === 'why') {
+                setQuestionRequest({ id: Date.now(), text: '为什么：结合选中段落（上下文里有原文），解释这一步推理/定义为什么成立，以及它在论文中起什么作用；若与右侧世界或已算 Run 相关，用真实数值说明。' })
+              } else {
+                setQuestionRequest({ id: Date.now(), text: '请解释我选中的这段（上下文里有原文与页码）：先一句直观说明，再说明它与论文公式、可操作实验的关系。' })
+              }
+            }}
+            onRegion={(picked) => {
+              void extractPage(pdfUrl, picked.page).then((source) => {
+                const b = picked.bbox
+                const text = source.lines.filter((l) => l.bbox.x < b.x + b.w && l.bbox.x + l.bbox.w > b.x && l.bbox.y < b.y + b.h && l.bbox.y + l.bbox.h > b.y).map((l) => l.text).join('\n')
+                setRegion({ ...picked, text }); setPage(picked.page)
+                addClipping({ kind: picked.path ? 'lasso' : 'rect', page: picked.page, bbox: picked.bbox, ...(picked.path ? { path: picked.path } : {}), text })
+                setQuestionRequest({ id: Date.now(), text: text ? `请解释我${picked.path ? '圈选' : '框选'}的内容，先直观说明，再说明与论文公式和可操作实验的关系。` : `这处${picked.path ? '圈选' : '框选'}没有可读文本，请告诉我还需要哪些识别结果，不要猜测公式。` })
+              }).catch((e: unknown) => setNotice(String(e)))
+            }} />}
+          {clippings.length > 0 && (
+            <div className="study-clippings" data-testid="study-clippings">
+              <div className="study-clippings-head">选区集合（{clippings.length}）· 新选区会累积，不覆盖</div>
+              <ul>
+                {[...clippings].reverse().map((c) => (
+                  <li key={c.id} className={`study-clipping k-${c.kind}`}>
+                    <span className={`study-clipping-kind k-${c.kind}`}>{c.kind === 'text' ? '文字' : c.kind === 'rect' ? '矩形' : '圈选'}</span>
+                    <span className="study-clipping-page">p{c.page}</span>
+                    <span className="study-clipping-text">{c.text ? c.text.replace(/【第\d+页】/g, '').slice(0, 60) : '（无可读文本）'}</span>
+                    <span className="study-clipping-ops">
+                      <button type="button" title="回到原文位置" onClick={() => { setReaderJump({ page: c.page, token: Date.now() }); setRegion({ page: c.page, bbox: c.bbox, text: c.text, ...(c.path ? { path: c.path } : {}) }); setPage(c.page) }}>定位</button>
+                      <button type="button" title="就该选区提问" onClick={() => setQuestionRequest({ id: Date.now(), text: `请解释选区集合里这条（p${c.page}）：${(c.text || '无可读文本').slice(0, 120)}` })}>发问</button>
+                      <button type="button" title="从集合删除" onClick={() => setClippings((prev) => prev.filter((x) => x.id !== c.id))}>删除</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
 
-        <aside className="study-side">
+        <aside className="study-side study-play-side">
+          <div className="study-stage-slot">
+            {playWorld ? <Suspense fallback={<div className="study-game-placeholder">正在加载数学游戏台…</div>}><StudyGamePanel world={playWorld} sessionId={researchSessionId} onChallenge={setPlayWorld} onQuestion={(text) => setQuestionRequest({ id: Date.now(), text })} /></Suspense>
+              : <div className="study-game-placeholder"><span>论文里的数学，放到这里亲手试</span><h2>圈住不懂的地方，问一句“能让我试试吗？”</h2><p>先识别当前论文的公式与条件，真实计算后在这里展开。不会自动装载预设关卡。</p><button type="button" className="desk-btn" onClick={() => { setShowSetup(true); void parsePage(page, parseMode) }}>识别当前页，选择一个公式</button></div>}
+          </div>
+          <button type="button" className="study-setup-toggle" onClick={() => setShowSetup((v) => !v)}>{showSetup ? '收起公式与计算设置' : '公式、条件与计算设置'}</button>
+          <div className="study-setup-drawer" hidden={!showSetup}>
           <section className="study-block" data-testid="study-fragments">
             <div className="study-block-head">
               <h2>第 {page} 页来源</h2>
@@ -683,7 +753,7 @@ export function PaperStudy({
                     rows={1}
                     data-testid="study-eq-latex"
                   />
-                  <button type="button" className="study-source-link" onClick={() => setPage(e.page)}>第 {e.page} 页 · {e.parser}</button>
+                  <button type="button" className="study-source-link" onClick={() => goToPage(e.page)}>第 {e.page} 页 · {e.parser}</button>
                 </div>
               ))}
               <table className="study-values">
@@ -714,7 +784,7 @@ export function PaperStudy({
                   disabled={candidate.status !== 'ready' || !sha || (computation !== null && ['submitting', 'queued', 'running'].includes(computation.status))}
                   onClick={() => void compute(candidate, (computation?.sample ?? 0) + 1)}
                 >
-                  {computation?.status === 'completed' ? '同输入再算一次（新任务）' : '提交真实计算'}
+                  {computation?.status === 'completed' ? '按当前条件重新计算' : '计算这个公式'}
                 </button>
                 <span className="study-cand-note">候选＝结构匹配+来源核对，尚未计算；数值结果只来自提交后的 Run。</span>
               </div>
@@ -754,9 +824,10 @@ export function PaperStudy({
                   </div>
                 </div>
               )}
-              {candidate?.structure === 'autonomous-ode' && computation?.status === 'completed' && computation.run && !runStale && (
+              {candidate && computation?.status === 'completed' && computation.run && !runStale && (
                 <div className="study-world-gen">
-                  <div className="study-subhead">由这条 Run 生成可操作世界（你设定规则；方程/取值来自候选来源）</div>
+                  <div className="study-subhead">当前论文 → 游戏台（探索范围是游戏设置，不是论文结论）</div>
+                  {candidate.structure === 'autonomous-ode' && <label className="study-note"><input type="checkbox" checked={worldRules.mode === 'challenge'} onChange={(e) => setWorldRules((r) => ({ ...r, mode: e.target.checked ? 'challenge' : 'explore' }))} /> 设定挑战目标（默认自由探索，无需填写）</label>}
                   <table className="study-values study-ranges">
                     <tbody>
                       {candidate.params.map((p) => (
@@ -770,7 +841,7 @@ export function PaperStudy({
                       ))}
                     </tbody>
                   </table>
-                  <div className="study-span">
+                  <div className="study-span" hidden={worldRules.mode !== 'challenge'}>
                     目标（t 结束时）
                     {candidate.states.map((s) => (
                       <span key={s} className="study-goal-state">
@@ -791,8 +862,8 @@ export function PaperStudy({
                     ))}
                   </div>
                   <div className="study-cand-actions">
-                    <button type="button" className="desk-btn" data-testid="study-generate-world" disabled={worldRules.goal.length === 0} onClick={generateWorld}>
-                      生成并进入 MathWorld →
+                    <button type="button" className="desk-btn" data-testid="study-generate-world" disabled={worldRules.mode !== 'explore' && worldRules.goal.length === 0} onClick={generateWorld}>
+                      在右侧展开，开始试一试 →
                     </button>
                     {worldResult && (
                       worldResult.ok && worldResult.href
@@ -821,17 +892,45 @@ export function PaperStudy({
               </tbody>
             </table>
           </section>
+          </div>
         </aside>
       </div>
       {/* CLI-151b: the persistent, foldable agent dock (bottom centre) — the
           same real research-turn chain, now shared with the world view */}
       <AgentDock
         dockId="study"
+        defaultOpen={false}
+        questionRequest={questionRequest}
         initialQuestion={payload.initialQuestion}
+        onSessionId={setResearchSessionId}
         contextBuilder={() => {
           const ctx: string[] = []
+          if (researchSessionId) ctx.push(`[research-session] ${researchSessionId}（世界工具用它定位；右侧游戏台打开时可用）`)
+          ctx.push('[世界工具] world_read 读用户当前世界（模型/参数/revision/最近判定与Run）；world_set_params 以 world_read 的 expected_revision 为前提改参数——它由用户浏览器里的同一验证入口执行并返回真实回执，revision 过期/越域/未打开都会如实失败')
+          if (region) ctx.push(`[用户选区 p${region.page} 区域 ${JSON.stringify(region.bbox)}] ${region.text || '无可读文本层，尚不能解释图像内容'}`)
+          if (clippings.length > 1) {
+            ctx.push(`[选区集合 ${clippings.length} 条] ${clippings.map((c) => `p${c.page}${c.kind === 'text' ? '文字' : c.kind === 'rect' ? '矩形' : '圈选'}:${(c.text || '无可读文本').slice(0, 60)}`).join(' | ').slice(0, 1200)}`)
+          }
+          if (playWorld) {
+            ctx.push(`[右侧游戏台模型] ${JSON.stringify(playWorld.model)}`)
+            const game = gameHost.getSession()
+            if (game?.world.id === playWorld.id) {
+              ctx.push(`[当前游戏条件] ${JSON.stringify(game.params)}`)
+              ctx.push(`[游戏最新正式Run] ${game.attempts.at(-1)?.runIds.join(',') ?? '尚未完成'}`)
+              if (game.committed) ctx.push(`[游戏正式反馈] ${JSON.stringify(game.committed.assessment)}`)
+              if (game.pending) ctx.push('[游戏状态] 新条件尚在计算，不可将旧结果视为新结果')
+            }
+          }
           if (candidate) ctx.push(`[候选 ${candidate.status}] ${candidate.equations.map((e) => `p${e.page}: ${e.latex}`).join(' ; ')}`)
+          if (computation?.run) ctx.push(`[真实计算指标] ${JSON.stringify(computation.run.result.perState ?? { peak: computation.run.result.peak, integral: computation.run.result.integral })}`)
           if (computation?.run) ctx.push(`[已提交 Run] ${computation.run.runId} ${computation.run.kind} ${computation.run.status}${runStale ? '（对当前候选已过期）' : ''}`)
+          // Run 输入完整绑定：模型能看到这条 Run 的确切输入（不只指标），
+          // 才能对比条件差异；过期时以当前候选输入为准解释
+          if (candidate) {
+            try {
+              ctx.push(`[${runStale ? '当前候选输入（Run 已过期）' : 'Run 输入'}] ${JSON.stringify(requestInput(candidate))}`)
+            } catch { /* candidate not ready — nothing to bind */ }
+          }
           for (const f of formulas) ctx.push(`[p${f.page}·公式·${f.parser}] ${f.latex}`)
           const order = [page, ...Object.keys(texts).map(Number).filter((p) => p !== page).sort((a, b) => a - b)]
           for (const p of order) for (const l of texts[p]?.lines ?? []) ctx.push(`[p${p}·文本层] ${l.text}`)

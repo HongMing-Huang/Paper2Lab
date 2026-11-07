@@ -282,7 +282,9 @@ export function validateWorld(raw: unknown): ValidationResult {
     }
   }
   if (!isStr(w.objective)) errors.push('objective（目标一句话）缺失')
-  if (!w.goal || !Array.isArray(w.goal.constraints) || w.goal.constraints.length === 0) errors.push('goal.constraints 至少一条')
+  if (w.goal?.mode !== undefined && w.goal.mode !== 'explore' && w.goal.mode !== 'challenge') errors.push('goal.mode 不合法')
+  if (w.goal?.mode === 'explore' && Array.isArray(w.goal.constraints) && w.goal.constraints.length) errors.push('自由探索不接受隐藏计分约束')
+  if (!w.goal || !Array.isArray(w.goal.constraints) || (w.goal.constraints.length === 0 && w.goal.mode !== 'explore')) errors.push('挑战需至少一条约束；无目标请显式选择explore')
   else {
     const ids = new Set<string>()
     for (const k of w.goal.constraints) {

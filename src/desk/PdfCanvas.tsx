@@ -64,6 +64,7 @@ export function PdfCanvas({
     let cancelled = false
     const canvas = canvasRef.current
     if (!canvas) return
+    let rendering: ReturnType<import('pdfjs-dist').PDFPageProxy['render']> | undefined
     void (async () => {
       try {
         const doc = await getDoc(url)
@@ -80,14 +81,16 @@ export function PdfCanvas({
         setHeight(Math.floor(viewport.height))
         const ctx = canvas.getContext('2d')!
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-        await p.render({ canvasContext: ctx, viewport }).promise
+        rendering = p.render({ canvasContext: ctx, viewport })
+        await rendering.promise
         if (!cancelled) onRendered?.(page)
       } catch (err) {
-        console.error('[PdfCanvas] render', err)
+        if (!cancelled) console.error('[PdfCanvas] render', err)
       }
     })()
     return () => {
       cancelled = true
+      rendering?.cancel()
     }
     // onRendered is a notification only — re-rendering on its identity would loop
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -23,6 +23,8 @@
 
 ## 科学和游戏合同
 
+- 当前Study集成使用同屏连续论文/内嵌游戏Host，不通过独立HTML或样例catalog替代论文来源。goal.mode=explore可显式无约束，不计分、不假通关；用户结果目标需真实Run与独立Goal见证验证，异步发布核session/revision。框选仅文本层可读内容，扫描图像未识别不猜公式；本轮未验浏览器或Agent自主生成，不能据代码声明其完成。
+
 1. CALCULATED只来自真实Runtime的ExperimentRun；图表/Metric/几何/Observation引用runId。PAPER/CALCULATED/AI_INFERENCE分开；有限尺度不称定理证明，组件不得硬编码科学结果。
 2. 科学参数单一真值、Reactive失效重算、generation拒乱序；Canvas只持引用/布局，Agent持工具决策，Host持权限/预算/正式判定，guest只写GameplayState/意图。不造万能Store或重复科学状态。
 3. 参数在公式/对象内部操作；drag同模型preview，释放正式计算，preview不计分。反向拖动受ControlPolicy/域/分支/残差门约束；无解/多解/病态不得静默改数学含义。

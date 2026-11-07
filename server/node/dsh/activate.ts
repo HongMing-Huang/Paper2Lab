@@ -50,6 +50,77 @@ export function readQwenConfig(env: NodeJS.ProcessEnv = process.env): Activation
   }
 }
 
+/** the quota-exhaustion fallback provider (PAPER2LAB_QWEN_FALLBACK_*): used
+ *  automatically when the primary answers with a quota/auth-class error, so
+ *  research continues on the备用 model without user intervention */
+export function readFallbackConfig(env: NodeJS.ProcessEnv = process.env): ActivationConfig | null {
+  const apiKey = env.PAPER2LAB_QWEN_FALLBACK_API_KEY ?? ''
+  if (!apiKey) return null
+  return {
+    provider: 'qwen',
+    model: env.PAPER2LAB_QWEN_FALLBACK_MODEL ?? env.PAPER2LAB_QWEN_MODEL ?? 'qwen-plus',
+    baseURL: env.PAPER2LAB_QWEN_FALLBACK_BASE_URL ?? env.PAPER2LAB_QWEN_BASE_URL ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+    apiKey,
+    contextWindow: Number(env.PAPER2LAB_QWEN_FALLBACK_CONTEXT_WINDOW ?? env.PAPER2LAB_QWEN_CONTEXT_WINDOW ?? 131072),
+    maxTokens: Number(env.PAPER2LAB_QWEN_FALLBACK_MAX_TOKENS ?? env.PAPER2LAB_QWEN_MAX_TOKENS ?? 8192),
+    scienceUrl: env.PAPER2LAB_SCIENCE_URL ?? 'http://127.0.0.1:8790',
+    wallClockMs: Number(env.PAPER2LAB_RESEARCH_WALLCLOCK_MS ?? 15 * 60_000),
+  }
+}
+
+/** did the provider answer with a quota/auth-class error worth a fallback? */
+export function isQuotaClassFailure(trace: { finishReason: string | null; finalResponse: string; assistantTexts: Array<{ text: string }> }, errorText?: string): boolean {
+  const hay = `${trace.finishReason ?? ''} ${errorText ?? ''} ${trace.assistantTexts.map((t) => t.text).join(' ').slice(-500)}`.toLowerCase()
+  return /quota|arrearage|insufficient|balance|401|402|403|invalid_api_key|rate.?limit|throttl/.test(hay) && !trace.finalResponse
+}
+
+/** 用户提供的百炼模型池：主模型不可用（配额/认证/模型不存在或已下线类
+ *  错误）时，同一 API key 内按序切换下一个 ID 重试，不等用户干预。 */
+export const BAILIAN_MODEL_POOL = [
+  'qwen3.8-27b',
+  'qwen3.8-flash',
+  'kimi-k3',
+  'qwen3.8-max-0902',
+  'deepseek-v4.1-flash-1017',
+  'deepseek-v4.1-flash',
+  'glm-5.3',
+  'deepseek-v4-pro-0813',
+  'qwen3.8-2.4t-a95b',
+] as const
+
+/** ordered model ids to try per turn: the configured primary first, then the
+ *  pool (deduped). PAPER2LAB_QWEN_MODEL_CHAIN overrides the whole order. */
+export function readModelChain(env: NodeJS.ProcessEnv = process.env): string[] {
+  const explicit = (env.PAPER2LAB_QWEN_MODEL_CHAIN ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+  if (explicit.length > 0) return [...new Set(explicit)]
+  const primary = (env.PAPER2LAB_QWEN_MODEL ?? BAILIAN_MODEL_POOL[0]).trim()
+  return [primary, ...BAILIAN_MODEL_POOL.filter((m) => m !== primary)]
+}
+
+/** "model unusable" class: the model id doesn't exist / isn't available /
+ *  decommissioned on this endpoint, an upstream 5xx — or the provider round
+ *  died with finishReason=error producing NOTHING (no answer, no assistant
+ *  text, no tool step). Worth switching id; never fires when anything was
+ *  produced (a partial answer is delivered, not retried on another model). */
+export function isModelUnusableFailure(trace: { finishReason: string | null; finalResponse: string; assistantTexts: Array<{ text: string }>; steps?: Array<unknown> }, errorText?: string): boolean {
+  if (trace.finalResponse) return false
+  const producedNothing = trace.assistantTexts.length === 0 && (!trace.steps || trace.steps.length === 0)
+  if ((trace.finishReason === 'error' || trace.finishReason === null) && producedNothing) return true
+  const hay = `${trace.finishReason ?? ''} ${errorText ?? ''} ${trace.assistantTexts.map((t) => t.text).join(' ').slice(-500)}`.toLowerCase()
+  return (
+    /model[^\n]{0,60}(not[ _]?(found|exist|available|exist)|does[^\n]{0,10}not[^\n]{0,10}exist|unavailable|decommission|deprecated|no[ _]longer)/.test(hay) ||
+    /invalid[ _]?(model|model.?id)/.test(hay) ||
+    /no[ _]such[ _]model/.test(hay) ||
+    /\b(error|failed)\b[^\n]{0,40}\bmodel\b/.test(hay) ||
+    /503|502|service[ _]unavailable/.test(hay)
+  )
+}
+
+/** any failure worth an automatic same-key model-id switch */
+export function isFallbackWorthyFailure(trace: Parameters<typeof isQuotaClassFailure>[0], errorText?: string): boolean {
+  return isQuotaClassFailure(trace, errorText) || isModelUnusableFailure(trace, errorText)
+}
+
 /** generate the effective patch overlay for one activation (env-driven model
  *  and endpoint), in a private temp dir beside the plugin so the loader's
  *  relative `name: ./paper2lab-science-plugin.mjs` anchor still resolves */
@@ -137,7 +208,13 @@ export async function runResearchActivation(cfg: ActivationConfig, prompt: strin
     }
   }
   const staging = mkdtempSync(join(sessionsRoot, 'activation-'))
-  const home = staging
+  // a RESUME runs with the persisted dir as its home — the SDK discovers
+  // session history under its own dshHome, and the stored journal path embeds
+  // the home it was created in, so a fresh staging dir can never see it (the
+  // follow-up turn then fails "session not found"). Fresh sessions run in the
+  // staging dir and are renamed into place after close. Same-session
+  // concurrency is already excluded by the API's session-busy guard.
+  const home = sessionId ? join(sessionsRoot, sessionId) : staging
   const { patchPath } = materializePatch(cfg)
   const runtime = new DeepSeekHarness({
     dshHome: home,
@@ -168,8 +245,17 @@ export async function runResearchActivation(cfg: ActivationConfig, prompt: strin
   try {
     await runtime.start()
     const session = sessionId ? await runtime.resumeSession(sessionId) : runtime.session()
-    const sessionHandle = session as unknown as { id: string }
+    const sessionHandle = session as unknown as { id: string; setWorkingDirectory?: (path: string) => Promise<string> }
     trace.sessionId = sessionId ?? sessionHandle.id ?? ''
+    if (sessionId) {
+      // resume fix: the persisted journal records its ORIGINAL staging home as
+      // the working directory — after the staging→session rename that path no
+      // longer exists and the first turn dies with `working-directory: directory
+      // does not exist`. Point the session back at its persisted home before
+      // running (origin/permissions unchanged; the SDK validates the path).
+      const fix = sessionHandle.setWorkingDirectory
+      if (typeof fix === 'function') await fix.call(session, home)
+    }
     // cooperative cancel: poll the caller's flag; on cancel, close the runtime
     // (reaps the subprocess) and settle as cancelled — the partial model output
     // never becomes the turn's answer

@@ -17,6 +17,7 @@ import { resolveEngineCommand } from './engine.ts'
 import { buildScienceApi } from './api.ts'
 import { startScienceWorker } from './worker.ts'
 import { buildResearchApi } from './researchApi.ts'
+import { buildWorldApi } from './worldApi.ts'
 import { startResearchWorker } from './researchWorker.ts'
 import { readQwenConfig } from './dsh/activate.ts'
 import { PgBoss } from 'pg-boss'
@@ -67,8 +68,9 @@ async function main(): Promise<void> {
 
   const api = buildScienceApi({ pool, boss })
   // one listener, one route surface: the research routes register on the
-  // science app itself
+  // science app itself; the world-action routes (agent → browser host) too
   buildResearchApi({ pool, boss, app: api })
+  buildWorldApi({ pool, app: api })
   await api.listen({ port, host: '127.0.0.1' })
   const qwen = readQwenConfig()
   console.log(`[paper2lab-node] API on http://127.0.0.1:${port} — science (worker ${worker.owner}) + research${researchWorker ? ` (worker ${researchWorker.owner})` : ' (NOT started)'}; Qwen ${'error' in qwen ? 'UNCONFIGURED — real turns will settle blocked-credential' : (qwen.model)}`)

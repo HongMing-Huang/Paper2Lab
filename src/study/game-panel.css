@@ -1,0 +1,25 @@
+.study-game { display:flex; flex-direction:column; min-height:0; height:100%; background:#faf6ee; color:#2b2620; position:relative; }
+.study-game-toolbar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:10px 12px; border-bottom:1px solid #e5ddcf; background:#fffdf8; z-index:35; }
+.study-game-toolbar b { margin-right:auto; }
+.study-game button { cursor:pointer; border:1px solid #d9d0bf; border-radius:7px; background:#fffdf8; padding:6px 9px; font-size:12px; }
+.study-game button:disabled { opacity:.4; cursor:default; }
+.study-game-stage { position:relative; flex:1; min-height:380px; overflow:hidden; }
+.study-game .mw-scene { inset:0; }
+.study-game-mission { position:absolute; top:14px; left:16px; right:16px; z-index:20; pointer-events:none; }
+.study-game-mission b { display:block; font-size:20px; max-width:650px; text-shadow:0 1px 6px #fff; }
+.study-game-mission span { display:block; font-size:12px; margin-top:6px; color:#6b6154; }
+.study-game-formula { position:absolute; left:12px; bottom:94px; width:min(310px,calc(100% - 24px)); z-index:25; max-height:36%; overflow:auto; }
+.study-game .mw-card { padding:10px; }
+.study-game-feedback { position:absolute; bottom:12px; left:12px; right:12px; z-index:25; display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#fffdf8ec; padding:10px; border-radius:10px; border:1px solid #d9d0bf; }
+.study-game-feedback b { font-size:14px; color:#2f5d8a; }
+.study-game-feedback span { font-size:12px; flex:1; min-width:150px; }
+.study-game .mw-timeplayer { left:auto; right:12px; bottom:94px; width:min(300px,calc(100% - 24px)); box-sizing:border-box; }
+.study-game-source { font-size:10px; color:#6b6154; padding:5px 10px; max-height:36px; overflow:auto; }
+.study-game-source code { display:block; overflow-wrap:anywhere; }
+.study-game-empty,.study-game-error { position:absolute; inset:0; display:grid; place-content:center; padding:30px; text-align:center; }
+.study-game-error { color:#9a3b2e; z-index:30; background:#faf6eeeb; }
+.study-game:fullscreen { width:100vw; height:100vh; }
+@media (max-width:1200px) { .study-game .mw-timeplayer { bottom:260px; } .study-game-formula { max-height:140px; } }
+.study-game-menu { position:relative; font-size:12px; }
+.study-game-menu summary { cursor:pointer; padding:6px 9px; border:1px solid #d9d0bf; border-radius:7px; }
+.study-game-menu > div { position:absolute; right:0; top:34px; width:120px; padding:8px; display:grid; gap:6px; background:#fffdf8; border:1px solid #d9d0bf; border-radius:8px; box-shadow:0 6px 18px #33220d20; z-index:50; }

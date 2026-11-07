@@ -166,6 +166,33 @@ export const MIGRATIONS: Migration[] = [
       await c.query('CREATE INDEX IF NOT EXISTS research_turns_session_idx ON research_turns (workspace_id, session_id, id)')
     },
   },
+  {
+    // CLI-150 最小授权世界工具链：Agent 世界动作的客户端执行回执。
+    // world_actions 只记录与转发——浏览器宿主（与玩家同一 host.commit 入口）
+    // 轮询领取、执行、回传唯一事实（revision/判定/Run 列表）；pending 行由
+    // 读取方按 TTL 惰性过期（不建第二个队列/worker）。world_state 是浏览器
+    // 宿主发布的当前世界快照（Agent world_read 读它，不做第二份数学真值）。
+    version: 19,
+    recorded: 'CREATE TABLE world_actions (id, workspace_id, operation_id UNIQUE, session_id, world_id, expected_revision, patch, status, receipt, created_at, settled_at); CREATE INDEX world_actions_session_idx; CREATE TABLE world_state (workspace_id, session_id UNIQUE, world_id, revision, snapshot, updated_at)',
+    rollback: 'DROP TABLE world_state; DROP INDEX world_actions_session_idx; DROP TABLE world_actions',
+    apply: async (c) => {
+      await c.query('CREATE TABLE IF NOT EXISTS world_actions (id BIGSERIAL PRIMARY KEY, workspace_id TEXT NOT NULL, operation_id TEXT NOT NULL UNIQUE)')
+      await c.query("ALTER TABLE world_actions ADD COLUMN IF NOT EXISTS session_id TEXT NOT NULL DEFAULT ''")
+      await c.query("ALTER TABLE world_actions ADD COLUMN IF NOT EXISTS world_id TEXT NOT NULL DEFAULT ''")
+      await c.query('ALTER TABLE world_actions ADD COLUMN IF NOT EXISTS expected_revision INT NOT NULL DEFAULT 0')
+      await c.query("ALTER TABLE world_actions ADD COLUMN IF NOT EXISTS patch JSONB NOT NULL DEFAULT '{}'")
+      await c.query("ALTER TABLE world_actions ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'")
+      await c.query('ALTER TABLE world_actions ADD COLUMN IF NOT EXISTS receipt JSONB')
+      await c.query('ALTER TABLE world_actions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now()')
+      await c.query('ALTER TABLE world_actions ADD COLUMN IF NOT EXISTS settled_at TIMESTAMPTZ')
+      await c.query('CREATE INDEX IF NOT EXISTS world_actions_session_idx ON world_actions (workspace_id, session_id, id)')
+      await c.query("CREATE TABLE IF NOT EXISTS world_state (workspace_id TEXT NOT NULL, session_id TEXT NOT NULL, UNIQUE (workspace_id, session_id))")
+      await c.query("ALTER TABLE world_state ADD COLUMN IF NOT EXISTS world_id TEXT NOT NULL DEFAULT ''")
+      await c.query('ALTER TABLE world_state ADD COLUMN IF NOT EXISTS revision INT NOT NULL DEFAULT 0')
+      await c.query("ALTER TABLE world_state ADD COLUMN IF NOT EXISTS snapshot JSONB NOT NULL DEFAULT '{}'")
+      await c.query('ALTER TABLE world_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()')
+    },
+  },
 ]
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version

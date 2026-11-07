@@ -549,7 +549,7 @@ class MathWorldHost {
     if (bad) return reject(bad)
     const free = actor === 'restore' || actor === 'init'
     if (s.phase === 'lost' && !free) return reject('尝试次数已用完：请重置后再挑战')
-    const exploration = s.phase === 'won' && !free
+    const exploration = (s.world.goal.mode === 'explore' || s.phase === 'won') && !free
     if (!exploration && !free && s.budgetLeft <= 0) return reject('尝试次数已用完：请重置后再挑战')
 
     const params = { ...s.params, ...patch }
@@ -644,7 +644,10 @@ class MathWorldHost {
       : m.kind === 'kakeya'
         ? params // kakeya tunables ARE the cluster offsets the goal rebinds
         : Object.fromEntries(m.params.map((p) => [p.name, params[p.name]]))
-    const assessment = evaluateGoal(world, goalParams, initial, evidence)
+    let assessment = evaluateGoal(world, goalParams, initial, evidence)
+    if (world.goal.mode === 'explore' && assessment.outcome === 'success') {
+      assessment = { ...assessment, outcome: 'unknown', summary: '已按当前条件真实计算。这是自由探索，没有通关或失败判定。' }
+    }
     const counted = !exploration && !free
     const consumes = counted && (assessment.outcome === 'success' || assessment.outcome === 'fail')
     const seq = consumes ? world.goal.attempts - now.budgetLeft + 1 : null

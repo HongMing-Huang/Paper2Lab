@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto'
 import type { PgBoss } from 'pg-boss'
 import type { Pool } from './db.ts'
 import { RESEARCH_QUEUE, claimResearchTurn, settleResearchTurn } from './researchLedger.ts'
-import { ActivationCancelled, readQwenConfig, runResearchActivation, type ActivationConfig, type ActivationTrace } from './dsh/activate.ts'
+import { ActivationCancelled, isFallbackWorthyFailure, readFallbackConfig, readModelChain, readQwenConfig, runResearchActivation, type ActivationConfig, type ActivationTrace } from './dsh/activate.ts'
 import { loadRun } from './runs.ts'
 
 export interface ResearchWorkerOptions {
@@ -59,6 +59,8 @@ export async function startResearchWorker(opts: ResearchWorkerOptions): Promise<
         await settleResearchTurn(pool, taskId, { kind: 'failed', error: cfg.error, provider: 'qwen', model: 'unconfigured' })
         return
       }
+      // who actually answers this turn (primary unless the fallback fired)
+      let activeProvider = cfg
       // seed the turn with what already exists, so the model can pick up the
       // session's committed runs by id instead of re-listing everything
       const seed = claim.sessionId ? await sessionSeed(pool, claim.workspace, claim.sessionId) : ''
@@ -76,8 +78,28 @@ export async function startResearchWorker(opts: ResearchWorkerOptions): Promise<
       }, 1_000)
       const isAborted = () => abortFlag
       let trace: ActivationTrace
+      const triedModels: string[] = []
       try {
-        trace = await runActivation(cfg, prompt, claim.sessionId || undefined, isAborted)
+        // 百炼模型 ID 故障切换链：主模型不可用（配额/认证/模型不存在类，
+        // 且没有产生任何回答）时，同一 key 按序立刻换下一个 ID；一轮最多
+        // 试 3 个（这类失败通常秒级返回），谁先答上谁就是本回合的模型。
+        const chain = readModelChain().slice(0, 3)
+        trace = undefined as unknown as ActivationTrace
+        for (const model of chain) {
+          const modelCfg: ActivationConfig = model === cfg.model ? cfg : { ...cfg, model }
+          const t = await runActivation(modelCfg, prompt, (trace as ActivationTrace | undefined)?.sessionId || claim.sessionId || undefined, isAborted)
+          trace = t
+          triedModels.push(modelCfg.model)
+          activeProvider = modelCfg
+          if (t.finalResponse || !isFallbackWorthyFailure(t)) break
+        }
+        // quota-exhaustion fallback with a SEPARATE key (if configured) runs
+        // after the same-key model chain is exhausted. Cancellation is never retried.
+        const fallback = readFallbackConfig()
+        if (fallback && isFallbackWorthyFailure(trace)) {
+          trace = await runActivation(fallback, prompt, trace.sessionId || claim.sessionId || undefined, isAborted)
+          activeProvider = fallback
+        }
       } catch (err) {
         if (err instanceof ActivationCancelled) {
           await settleResearchTurn(pool, taskId, { kind: 'cancelled', reason: 'cancelled while the model was running; runtime closed, partial output discarded' })
@@ -90,7 +112,7 @@ export async function startResearchWorker(opts: ResearchWorkerOptions): Promise<
       if (!trace.runtimeClosed) {
         // the answer exists but the runtime did not confirm shutdown — report
         // it; never present a turn whose host may still be mutating
-        await settleResearchTurn(pool, taskId, { kind: 'failed', error: `DSH runtime close failed (finishReason ${trace.finishReason ?? 'unknown'})`, provider: cfg.provider, model: cfg.model })
+        await settleResearchTurn(pool, taskId, { kind: 'failed', error: `DSH runtime close failed (finishReason ${trace.finishReason ?? 'unknown'})`, provider: activeProvider.provider, model: activeProvider.model })
         return
       }
       const runIds: string[] = []
@@ -99,17 +121,33 @@ export async function startResearchWorker(opts: ResearchWorkerOptions): Promise<
         if (meta?.run?.runId) runIds.push(String(meta.run.runId))
         if (Array.isArray(meta?.runIds)) for (const id of meta.runIds) runIds.push(String(id))
       }
+      // a turn whose runtime reported finishReason=error produced NO model
+      // answer — settling it "succeeded" with an empty finalResponse would
+      // surface as a blank success in the UI. Some providers stream text but
+      // never send a final block: the last assistant text is then the answer.
+      const lastAssistant = trace.assistantTexts.at(-1)?.text?.trim() ?? ''
+      const answer = trace.finalResponse || lastAssistant
+      if (!answer && (trace.finishReason === 'error' || trace.finishReason === null)) {
+        await settleResearchTurn(pool, taskId, {
+          kind: 'failed',
+          error: `模型回合以 finishReason=${trace.finishReason ?? 'unknown'} 结束且没有产生回答（供应商错误或凭据问题；已按序尝试 ${triedModels.join(' → ')}；provider=${activeProvider.provider} model=${activeProvider.model}${trace.sessionId ? `；会话 ${trace.sessionId} 历史已保留` : ''}）`,
+          provider: activeProvider.provider,
+          model: activeProvider.model,
+          sessionId: trace.sessionId || undefined,
+        })
+        return
+      }
       await settleResearchTurn(pool, taskId, {
         kind: 'succeeded',
         sessionId: trace.sessionId,
         finishReason: trace.finishReason,
-        finalResponse: trace.finalResponse,
+        finalResponse: answer,
         steps: trace.steps as unknown as Array<Record<string, unknown>>,
         assistantTexts: trace.assistantTexts as unknown as Array<Record<string, unknown>>,
         usage: trace.usage as Array<Record<string, unknown>>,
         runIds: [...new Set(runIds)],
-        provider: cfg.provider,
-        model: cfg.model,
+        provider: activeProvider.provider,
+        model: activeProvider.model,
       })
     } catch (err) {
       await settleResearchTurn(pool, taskId, { kind: 'failed', error: err instanceof Error ? err.message : String(err), provider: 'qwen', model: '' }).catch(() => {})

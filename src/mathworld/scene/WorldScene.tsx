@@ -770,12 +770,13 @@ export function WorldScene({ s, inspecting = true }: { s: Session; inspecting?: 
   // CLI-151b: the paper-time player state lives OUTSIDE the canvas so the DOM
   // controls and the in-canvas marker share one mutable clock
   const timePlayer = useRef<PlayerState>({ playing: false, t: 0, speed: 1 })
-  const hasTraj = s.world.model.kind === 'ode' && committedTrajectory(s) !== null
-  const traj = hasTraj ? (committedTrajectory(s) as { t: number[]; series: number[][] }) : null
+  const traj = useMemo(() => s.world.model.kind === 'ode' ? committedTrajectory(s) : null,
+    [s.world, s.committed])
   if (traj && timePlayer.current.t < traj.t[0]) timePlayer.current.t = traj.t[0]
   if (traj && timePlayer.current.t > traj.t[traj.t.length - 1]) timePlayer.current.t = traj.t[traj.t.length - 1]
   return (
     <>
+    <div className={`mw-scene${inspecting ? ' mw-scene-inspecting' : ''}`} style={{ position: 'absolute' }}>
     <Canvas
       key={`${s.world.id}:${s.worldDigest}`}
       shadows
@@ -783,8 +784,7 @@ export function WorldScene({ s, inspecting = true }: { s: Session; inspecting?: 
       camera={{ position: cam.position, fov: 42, near: 0.1, far: 200 }}
       // the scene lives BETWEEN the side panels — no geometry or tag hides
       // under the cards (Html tags have no canvas-edge clipping of their own)
-      className={`mw-scene${inspecting ? ' mw-scene-inspecting' : ''}`}
-      style={{ position: 'absolute' }}
+      style={{ position: 'absolute', inset: 0 }}
     >
       <color attach="background" args={[PAPER]} />
       <fog attach="fog" args={[PAPER, 26, 60]} />
@@ -794,6 +794,7 @@ export function WorldScene({ s, inspecting = true }: { s: Session; inspecting?: 
       <WorldContent s={s} timePlayer={timePlayer} />
       <OrbitControls makeDefault target={cam.target} enableDamping dampingFactor={0.12} maxPolarAngle={Math.PI * 0.49} minDistance={3} maxDistance={40} />
     </Canvas>
+    </div>
     {traj && (
       <OdeTimeControls
         key={`${s.sessionId}:${s.committed?.generation ?? 0}`}

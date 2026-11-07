@@ -196,7 +196,7 @@ export interface WorldDefinition {
   objective: string
   model: MathModel
   controls: ControlDecl[]
-  goal: { constraints: ConstraintDecl[]; attempts: number }
+  goal: { mode?: 'explore' | 'challenge'; constraints: ConstraintDecl[]; attempts: number }
   scene: { axes: { x: AxisDecl; y: AxisDecl; z?: AxisDecl } }
   rules?: string[]
 }

@@ -49,12 +49,19 @@ else
 fi
 
 echo
-echo "下载完成。启动 OVMS（按目标设备改 --target_device）："
-echo "  ovms --model_path $ALIAS_DIR --model_name qwen3-0.6 --rest_port 8000 --task text_generation --target_device CPU"
+echo "下载完成。启动 OVMS —— 每个设备一个独立实例（不同 rest_port / target_device），"
+echo "只启动你实际要用的设备即可；单设备场景用第一行就够："
+echo "  CPU: ovms --model_path $ALIAS_DIR --model_name qwen3-0.6     --rest_port 8000 --task text_generation --target_device CPU"
+echo "  GPU: ovms --model_path $ALIAS_DIR --model_name qwen3-0.6-gpu --rest_port 8001 --task text_generation --target_device GPU"
+echo "  NPU: 制品名与参数以官方 NPU demo 为准（https://docs.openvino.ai/2026/model-server/ovms_demos_llm_npu.html），"
+echo "       本脚本拉取的 INT4 导出不预先宣称可在 NPU 运行；官方确认制品后再启动，"
+echo "       形态同上：ovms --model_path <NPU制品> --model_name qwen3-0.6-npu --rest_port 8002 --task text_generation --target_device NPU"
 echo
-echo "然后以 server/edge/config.example.json 启动适配："
-echo "  PAPER2LAB_EDGE_CONFIG=server/edge/config.example.json \\"
-echo "  PAPER2LAB_PAPER_BASE_URL=http://127.0.0.1:8788/ node --import tsx server/edge/main.ts"
+echo "然后以对应示例配置启动适配："
+echo "  单 CPU：   PAPER2LAB_EDGE_CONFIG=server/edge/config.example.json \\"
+echo "  多设备：   PAPER2LAB_EDGE_CONFIG=server/edge/config.multi-device.example.json \\"
+echo "  两者都需要 PAPER2LAB_PAPER_BASE_URL=http://127.0.0.1:8788/ node --import tsx server/edge/main.ts"
+echo "  （多设备配置里 order 为 NPU>GPU>CPU；单次无副作用推理按序回退，请求可带 device 指定优先设备）"
 echo
 echo "注意：设备枚举走 GET /devices（官方 OpenVINO 绑定）；在真实设备上完成"
 echo "推理记录之前，一切端侧能力保持 not_hardware_verified。"

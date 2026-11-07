@@ -57,13 +57,29 @@ export interface AgentDockProps {
   dockId?: string
   defaultOpen?: boolean
   questionRequest?: { id: number; text: string }
+  /** resume an existing research session (carried from the study space into
+   *  the world via the handoff URL) — takes precedence over localStorage */
+  initialSessionId?: string
+  /** the host learns the session id (for cross-view handoff links) */
+  onSessionId?: (id: string | null) => void
 }
 
-export function AgentDock({ contextBuilder, dataCard, onMathPointer, initialQuestion, dockId = 'study', defaultOpen = true, questionRequest }: AgentDockProps) {
+/** the research session is per-origin and shared by every dock on it */
+const SESSION_KEY = 'p2l-research-session'
+
+function readStoredSession(): string | null {
+  try {
+    return localStorage.getItem(SESSION_KEY) || null
+  } catch {
+    return null
+  }
+}
+
+export function AgentDock({ contextBuilder, dataCard, onMathPointer, initialQuestion, dockId = 'study', defaultOpen = true, questionRequest, initialSessionId, onSessionId }: AgentDockProps) {
   const [open, setOpen] = useState(defaultOpen)
   const [health, setHealth] = useState<{ ok: boolean; configured: boolean; model: string | null } | null>(null)
   const [turns, setTurns] = useState<Turn[]>([])
-  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(initialSessionId ?? readStoredSession())
   const [question, setQuestion] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
   const askedInitial = useRef(false)
@@ -74,6 +90,24 @@ export function AgentDock({ contextBuilder, dataCard, onMathPointer, initialQues
     setOpen(true)
   }, [questionRequest])
 
+  useEffect(() => {
+    onSessionId?.(sessionId)
+  }, [sessionId, onSessionId])
+
+  // session recovery: the stored/carried session's turns come back on mount —
+  // the conversation (and an in-flight turn) survives reloads and view switches
+  useEffect(() => {
+    const id = initialSessionId ?? readStoredSession()
+    if (!id) return
+    void fetch(`${RESEARCH_BASE}/turns?sessionId=${encodeURIComponent(id)}&limit=50`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { turns?: Turn[] } | null) => {
+        if (!data?.turns?.length) return
+        setTurns((prev) => (prev.length ? prev : [...data.turns!].reverse()))
+      })
+      .catch(() => { /* health notice covers an unreachable backend */ })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     void fetch(`${RESEARCH_BASE}/health`)
@@ -94,7 +128,12 @@ export function AgentDock({ contextBuilder, dataCard, onMathPointer, initialQues
         const body = (await res.json()) as { turnId?: number; sessionId?: string | null; message?: string }
         if (!res.ok || typeof body.turnId !== 'number') throw new Error(body.message ?? `HTTP ${res.status}`)
         setTurns((prev) => [...prev, { turnId: body.turnId as number, question: q, status: 'queued', finalResponse: null, error: null, model: '' }])
-        if (body.sessionId) setSessionId(body.sessionId)
+        if (body.sessionId) {
+          setSessionId(body.sessionId)
+          try {
+            localStorage.setItem(SESSION_KEY, body.sessionId)
+          } catch { /* private mode */ }
+        }
       } catch (err) {
         setNotice(`提问未提交：${err instanceof Error ? err.message : err}`)
       }
@@ -148,7 +187,7 @@ export function AgentDock({ contextBuilder, dataCard, onMathPointer, initialQues
         onClick={() => setOpen(true)}
         title="展开研究助手"
       >
-        💬 研究助手{health?.ok ? ` · ${health.model}` : '（AI 未配置）'}
+        💬 研究助手{health?.ok ? '' : '（AI 未配置）'}
       </button>
     )
   }
@@ -158,7 +197,7 @@ export function AgentDock({ contextBuilder, dataCard, onMathPointer, initialQues
       <header className="agent-dock-head">
         <span className="agent-dock-title">研究助手</span>
         <span className={`agent-dock-status${health?.ok ? ' ok' : ' blocked'}`}>
-          {health === null ? '…' : health.ok ? `Qwen · ${health.model}` : 'AI 未配置'}
+          {health === null ? '…' : health.ok ? 'AI 已连接' : 'AI 未配置'}
         </span>
         <button type="button" className="agent-dock-fold" onClick={() => { setFocusState(false); setOpen(false) }} title="折叠（Esc）">▾</button>
       </header>
@@ -184,7 +223,7 @@ export function AgentDock({ contextBuilder, dataCard, onMathPointer, initialQues
             {t.error && <div className="research-error">{t.error}</div>}
             {t.finalResponse && (
               <div className="research-answer">
-                <span className="research-answer-tag">模型回答（{t.model || 'AI'}）</span>
+                <span className="research-answer-tag">模型回答</span>
                 {t.finalResponse.split(/```math-request[\s\S]*?```/).map((seg, i) => <span key={i}>{seg}</span>)}
                 {(t.finalResponse.match(/```math-request\s*([\s\S]*?)```/g) ?? []).map((block, k) => {
                   try {

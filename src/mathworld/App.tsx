@@ -117,7 +117,7 @@ function ParamChip({ t, value, session }: { t: Tunable; value: number; session: 
   )
 }
 
-function FormulaCard({ s }: { s: Session }) {
+export function FormulaCard({ s }: { s: Session }) {
   const preview = useSyncExternalStore(host.subscribePreview, host.getPreview)
   const m = s.world.model
   const values = preview?.params ?? s.params
