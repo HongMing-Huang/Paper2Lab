@@ -2,7 +2,7 @@
 // 保留主要入口：「上传论文，你想理解或尝试什么？」；拖入即进论文研究空间
 // （原文立即可读、按需精读、候选→真实计算）。实验室入口收进折叠区，
 // 不再以链接墙形式堆在第一屏。
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { IngestMode } from '../ingest/upload'
 import type { StudyPayload } from '../study/types'
 
@@ -33,6 +33,21 @@ export function Home({
     }
     onStudy({ file, pdfUrl: URL.createObjectURL(file), mode, droppedAt: performance.now(), initialQuestion: question.trim() || undefined })
   }
+
+  // 粘贴上传：部分宿主（如 ZCode 内置预览浏览器）的 webview 弹不出系统文件
+  // 选择框，点击"选择文件"表现为无反应。在电脑上复制 PDF 后 ⌘V/Ctrl+V 即可
+  // 进入。只拦截带文件的粘贴；纯文本粘贴（问题输入框）不受影响。
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const file = e.clipboardData?.files?.[0]
+      if (!file) return // 普通文本粘贴走默认行为
+      e.preventDefault()
+      handleFile(file)
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+    // question 变化时重订阅，保证粘贴进入研究空间时携带最新提问
+  }, [question, onStudy])
 
   return (
     <div
@@ -75,6 +90,12 @@ export function Home({
         >
           拖入论文 PDF，或点击选择
         </button>
+        <div
+          style={{ fontSize: 11, color: '#6b6154', marginTop: 4, lineHeight: 1.5 }}
+          data-testid="home-upload-hint"
+        >
+          预览面板里点选弹不出系统文件框？把 PDF 直接拖进本页，或在电脑上复制文件后 ⌘V / Ctrl+V 粘贴。
+        </div>
         <div className="home-foot">
           原文 PDF.js 立即渲染 · 精读按页进行 · 计算经真实任务落 PostgreSQL Run · 每个数字可回溯源句
         </div>
